@@ -1,0 +1,1144 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "admin@managewize.com",
+      "password": "Admin123!",
+      "name": "Admin User",
+      "role": "scrum_master",
+      "avatar": "https://i.ibb.co/qLwwFjJT/7708d7c13008.jpg",
+      "subscription": {
+        "plan": "premium",
+        "tokensUsed": 110,
+        "tokensLimit": -1,
+        "userStoriesUsed": 15,
+        "userStoriesLimit": -1
+      },
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "resume": {
+        "skills": [
+          "Scrum",
+          "Agile",
+          "Leadership",
+          "Project Management"
+        ],
+        "experience": "10 years",
+        "certifications": [
+          "PSM I",
+          "PSM II"
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "email": "po@managewize.com",
+      "password": "ProductOwner123!",
+      "name": "Product Owner",
+      "role": "product_owner",
+      "avatar": "/placeholder.svg?height=40&width=40",
+      "subscription": {
+        "plan": "free",
+        "tokensUsed": 45,
+        "tokensLimit": 100,
+        "userStoriesUsed": 3,
+        "userStoriesLimit": 10
+      },
+      "createdAt": "2024-01-15T00:00:00.000Z",
+      "resume": {
+        "skills": [
+          "Product Strategy",
+          "User Stories",
+          "Backlog Management"
+        ],
+        "experience": "5 years",
+        "certifications": [
+          "CSPO"
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "email": "dev@managewize.com",
+      "password": "Developer123!",
+      "name": "Developer User",
+      "role": "developer",
+      "avatar": "/placeholder.svg?height=40&width=40",
+      "subscription": {
+        "plan": "free",
+        "tokensUsed": 20,
+        "tokensLimit": 100,
+        "userStoriesUsed": 1,
+        "userStoriesLimit": 10
+      },
+      "createdAt": "2024-02-01T00:00:00.000Z",
+      "resume": {
+        "skills": [
+          "React",
+          "Node.js",
+          "TypeScript",
+          "Next.js",
+          "TailwindCSS"
+        ],
+        "experience": "3 years",
+        "certifications": []
+      }
+    }
+  ],
+  "projects": [
+    {
+      "id": "1",
+      "name": "E-commerce Platform",
+      "description": "Plataforma de comercio electrónico con IA",
+      "objectives": [
+        "Aumentar ventas 30%",
+        "Mejorar UX",
+        "Integrar IA para recomendaciones"
+      ],
+      "timeline": {
+        "start": "2024-01-01",
+        "end": "2024-06-30"
+      },
+      "members": [
+        "1",
+        "2",
+        "3"
+      ],
+      "createdBy": "1",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "status": "active"
+    },
+    {
+      "id": "01f9",
+      "name": "Crea una plataforma ecommer",
+      "description": "Proyecto generado por IA: Crea una plataforma ecommer",
+      "objectives": [
+        "Definir alcance y requerimientos",
+        "Diseñar arquitectura del sistema",
+        "Implementar funcionalidades core",
+        "Realizar pruebas y QA",
+        "Desplegar a producción"
+      ],
+      "timeline": {
+        "start": "2025-10-01",
+        "end": "2025-12-30"
+      },
+      "members": [
+        "1"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:07:12.643Z",
+      "status": "active"
+    },
+    {
+      "id": "7921",
+      "name": "Crea una plataforma para",
+      "description": "Proyecto generado por IA: Crea una plataforma para marketing digital",
+      "objectives": [
+        "Definir alcance y requerimientos",
+        "Diseñar arquitectura del sistema",
+        "Implementar funcionalidades core",
+        "Realizar pruebas y QA",
+        "Desplegar a producción"
+      ],
+      "timeline": {
+        "start": "2025-10-01",
+        "end": "2025-12-30"
+      },
+      "members": [
+        "1"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:10:35.999Z",
+      "status": "active"
+    },
+    {
+      "id": "4ed0",
+      "name": "Crear una plataforma e-commerce",
+      "description": "Proyecto generado por IA: Crear una plataforma e-commerce de venta de lentes",
+      "objectives": [
+        "Definir alcance y requerimientos",
+        "Diseñar arquitectura del sistema",
+        "Implementar funcionalidades core",
+        "Realizar pruebas y QA",
+        "Desplegar a producción"
+      ],
+      "timeline": {
+        "start": "2025-10-04",
+        "end": "2026-01-02"
+      },
+      "members": [
+        "1"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:07:34.038Z",
+      "status": "active"
+    }
+  ],
+  "backlogs": [
+    {
+      "id": "9bf8",
+      "projectId": "7921",
+      "type": "product",
+      "items": [
+        "0e78",
+        "c59e",
+        "e738",
+        "b72f",
+        "4295"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:11:09.008Z",
+      "status": "active"
+    },
+    {
+      "id": "bbc5",
+      "projectId": "4ed0",
+      "type": "product",
+      "items": [
+        "fffc",
+        "db7b",
+        "374d",
+        "e939",
+        "a499"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:08:32.197Z",
+      "status": "active"
+    }
+  ],
+  "userStories": [
+    {
+      "id": "6e1f",
+      "title": "Autenticación de usuarios",
+      "description": "Como usuario, quiero poder registrarme e iniciar sesión para acceder a mi cuenta",
+      "acceptanceCriteria": [
+        "El usuario puede registrarse con email y contraseña",
+        "El usuario puede iniciar sesión con credenciales válidas",
+        "El sistema valida el formato del email",
+        "Las contraseñas deben tener al menos 8 caracteres"
+      ],
+      "priority": "high",
+      "storyPoints": 8,
+      "status": "todo",
+      "projectId": "1",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:48:21.510Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.89,
+        "rouge": 0.92
+      }
+    },
+    {
+      "id": "3cc8",
+      "title": "Dashboard de usuario",
+      "description": "Como usuario, quiero ver un dashboard con mis métricas para monitorear mi progreso",
+      "acceptanceCriteria": [
+        "El dashboard muestra estadísticas clave",
+        "Los datos se actualizan en tiempo real",
+        "El usuario puede personalizar widgets",
+        "Responsive en todos los dispositivos"
+      ],
+      "priority": "high",
+      "storyPoints": 13,
+      "status": "todo",
+      "projectId": "1",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:48:21.510Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.91,
+        "rouge": 0.88
+      }
+    },
+    {
+      "id": "5fe2",
+      "title": "Gestión de perfil",
+      "description": "Como usuario, quiero editar mi perfil para mantener mi información actualizada",
+      "acceptanceCriteria": [
+        "El usuario puede editar nombre, email y foto",
+        "Los cambios se guardan correctamente",
+        "Se validan los datos antes de guardar",
+        "Se muestra confirmación de cambios"
+      ],
+      "priority": "medium",
+      "storyPoints": 5,
+      "status": "todo",
+      "projectId": "1",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:48:21.510Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.87,
+        "rouge": 0.9
+      }
+    },
+    {
+      "id": "2af7",
+      "title": "Notificaciones en tiempo real",
+      "description": "Como usuario, quiero recibir notificaciones para estar al tanto de eventos importantes",
+      "acceptanceCriteria": [
+        "Las notificaciones aparecen en tiempo real",
+        "El usuario puede marcar como leídas",
+        "Se pueden configurar preferencias de notificación",
+        "Soporte para notificaciones push"
+      ],
+      "priority": "medium",
+      "storyPoints": 8,
+      "status": "todo",
+      "projectId": "1",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:48:21.510Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.86,
+        "rouge": 0.89
+      }
+    },
+    {
+      "id": "51b0",
+      "title": "Búsqueda avanzada",
+      "description": "Como usuario, quiero buscar contenido con filtros para encontrar información rápidamente",
+      "acceptanceCriteria": [
+        "La búsqueda funciona en tiempo real",
+        "Se pueden aplicar múltiples filtros",
+        "Los resultados se ordenan por relevancia",
+        "Se muestran sugerencias de búsqueda"
+      ],
+      "priority": "low",
+      "storyPoints": 5,
+      "status": "todo",
+      "projectId": "1",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:48:21.510Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.88,
+        "rouge": 0.91
+      }
+    },
+    {
+      "id": "0e78",
+      "title": "Autenticación de usuarios",
+      "description": "Como usuario, quiero poder registrarme e iniciar sesión para acceder a mi cuenta",
+      "acceptanceCriteria": [
+        "El usuario puede registrarse con email y contraseña",
+        "El usuario puede iniciar sesión con credenciales válidas",
+        "El sistema valida el formato del email",
+        "Las contraseñas deben tener al menos 8 caracteres"
+      ],
+      "priority": "high",
+      "storyPoints": 8,
+      "status": "todo",
+      "projectId": "7921",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:11:08.984Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.89,
+        "rouge": 0.92
+      }
+    },
+    {
+      "id": "c59e",
+      "title": "Dashboard de usuario",
+      "description": "Como usuario, quiero ver un dashboard con mis métricas para monitorear mi progreso",
+      "acceptanceCriteria": [
+        "El dashboard muestra estadísticas clave",
+        "Los datos se actualizan en tiempo real",
+        "El usuario puede personalizar widgets",
+        "Responsive en todos los dispositivos"
+      ],
+      "priority": "high",
+      "storyPoints": 13,
+      "status": "todo",
+      "projectId": "7921",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:11:08.984Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.91,
+        "rouge": 0.88
+      }
+    },
+    {
+      "id": "e738",
+      "title": "Gestión de perfil",
+      "description": "Como usuario, quiero editar mi perfil para mantener mi información actualizada",
+      "acceptanceCriteria": [
+        "El usuario puede editar nombre, email y foto",
+        "Los cambios se guardan correctamente",
+        "Se validan los datos antes de guardar",
+        "Se muestra confirmación de cambios"
+      ],
+      "priority": "medium",
+      "storyPoints": 5,
+      "status": "todo",
+      "projectId": "7921",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:11:08.984Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.87,
+        "rouge": 0.9
+      }
+    },
+    {
+      "id": "b72f",
+      "title": "Notificaciones en tiempo real",
+      "description": "Como usuario, quiero recibir notificaciones para estar al tanto de eventos importantes",
+      "acceptanceCriteria": [
+        "Las notificaciones aparecen en tiempo real",
+        "El usuario puede marcar como leídas",
+        "Se pueden configurar preferencias de notificación",
+        "Soporte para notificaciones push"
+      ],
+      "priority": "medium",
+      "storyPoints": 8,
+      "status": "todo",
+      "projectId": "7921",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:11:08.984Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.86,
+        "rouge": 0.89
+      }
+    },
+    {
+      "id": "4295",
+      "title": "Búsqueda avanzada",
+      "description": "Como usuario, quiero buscar contenido con filtros para encontrar información rápidamente",
+      "acceptanceCriteria": [
+        "La búsqueda funciona en tiempo real",
+        "Se pueden aplicar múltiples filtros",
+        "Los resultados se ordenan por relevancia",
+        "Se muestran sugerencias de búsqueda"
+      ],
+      "priority": "low",
+      "storyPoints": 5,
+      "status": "todo",
+      "projectId": "7921",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:11:08.984Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.88,
+        "rouge": 0.91
+      }
+    },
+    {
+      "id": "fffc",
+      "title": "Autenticación de usuarios",
+      "description": "Como usuario, quiero poder registrarme e iniciar sesión para acceder a mi cuenta",
+      "acceptanceCriteria": [
+        "El usuario puede registrarse con email y contraseña",
+        "El usuario puede iniciar sesión con credenciales válidas",
+        "El sistema valida el formato del email",
+        "Las contraseñas deben tener al menos 8 caracteres"
+      ],
+      "priority": "high",
+      "storyPoints": 8,
+      "status": "todo",
+      "projectId": "4ed0",
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:08:32.175Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.89,
+        "rouge": 0.92
+      }
+    },
+    {
+      "id": "db7b",
+      "title": "Dashboard de usuario",
+      "description": "Como usuario, quiero ver un dashboard con mis métricas para monitorear mi progreso",
+      "acceptanceCriteria": [
+        "El dashboard muestra estadísticas clave",
+        "Los datos se actualizan en tiempo real",
+        "El usuario puede personalizar widgets",
+        "Responsive en todos los dispositivos"
+      ],
+      "priority": "high",
+      "storyPoints": 13,
+      "status": "todo",
+      "projectId": "4ed0",
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:08:32.175Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.91,
+        "rouge": 0.88
+      }
+    },
+    {
+      "id": "374d",
+      "title": "Gestión de perfil",
+      "description": "Como usuario, quiero editar mi perfil para mantener mi información actualizada",
+      "acceptanceCriteria": [
+        "El usuario puede editar nombre, email y foto",
+        "Los cambios se guardan correctamente",
+        "Se validan los datos antes de guardar",
+        "Se muestra confirmación de cambios"
+      ],
+      "priority": "medium",
+      "storyPoints": 5,
+      "status": "todo",
+      "projectId": "4ed0",
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:08:32.175Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.87,
+        "rouge": 0.9
+      }
+    },
+    {
+      "id": "e939",
+      "title": "Notificaciones en tiempo real",
+      "description": "Como usuario, quiero recibir notificaciones para estar al tanto de eventos importantes",
+      "acceptanceCriteria": [
+        "Las notificaciones aparecen en tiempo real",
+        "El usuario puede marcar como leídas",
+        "Se pueden configurar preferencias de notificación",
+        "Soporte para notificaciones push"
+      ],
+      "priority": "medium",
+      "storyPoints": 8,
+      "status": "todo",
+      "projectId": "4ed0",
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:08:32.175Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.86,
+        "rouge": 0.89
+      }
+    },
+    {
+      "id": "a499",
+      "title": "Búsqueda avanzada",
+      "description": "Como usuario, quiero buscar contenido con filtros para encontrar información rápidamente",
+      "acceptanceCriteria": [
+        "La búsqueda funciona en tiempo real",
+        "Se pueden aplicar múltiples filtros",
+        "Los resultados se ordenan por relevancia",
+        "Se muestran sugerencias de búsqueda"
+      ],
+      "priority": "low",
+      "storyPoints": 5,
+      "status": "todo",
+      "projectId": "4ed0",
+      "createdBy": "1",
+      "createdAt": "2025-10-04T02:08:32.175Z",
+      "aiGenerated": true,
+      "qualityMetrics": {
+        "bleu": 0.88,
+        "rouge": 0.91
+      }
+    }
+  ],
+  "epics": [],
+  "tasks": [
+    {
+      "id": "1aec",
+      "title": "Diseñar UI para Autenticación de usuarios",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "6e1f",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "done",
+      "priority": "high",
+      "estimatedHours": 4,
+      "dueDate": "2025-10-03T23:59:59.000Z",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true,
+      "startDate": "2025-10-06T05:00:00.000Z"
+    },
+    {
+      "id": "79ae",
+      "title": "Implementar frontend para Dashboard de usuario",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "3cc8",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "done",
+      "priority": "high",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "b5f1",
+      "title": "Testing para Dashboard de usuario",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "3cc8",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "in_progress",
+      "priority": "high",
+      "estimatedHours": 3,
+      "dueDate": "2025-10-04T23:59:59.000Z",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "0d53",
+      "title": "Diseñar UI para Gestión de perfil",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "5fe2",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "in_progress",
+      "priority": "medium",
+      "estimatedHours": 4,
+      "dueDate": "2025-10-05T23:59:59.000Z",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "52e1",
+      "title": "Implementar backend para Gestión de perfil",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "5fe2",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "done",
+      "priority": "medium",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "02a2",
+      "title": "Implementar frontend para Gestión de perfil",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "5fe2",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "8d28",
+      "title": "Testing para Gestión de perfil",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "5fe2",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "in_progress",
+      "priority": "medium",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "a9f8",
+      "title": "Implementar backend para Autenticación de usuarios",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "6e1f",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "high",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "4759",
+      "title": "Diseñar UI para Notificaciones en tiempo real",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "2af7",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 4,
+      "dueDate": "2025-10-06T23:59:59.000Z",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "98c7",
+      "title": "Implementar backend para Notificaciones en tiempo real",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "2af7",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "cfcc",
+      "title": "Implementar frontend para Notificaciones en tiempo real",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "2af7",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "61a7",
+      "title": "Testing para Notificaciones en tiempo real",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "2af7",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "4262",
+      "title": "Diseñar UI para Búsqueda avanzada",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "51b0",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "low",
+      "estimatedHours": 4,
+      "dueDate": "2025-10-07T23:59:59.000Z",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "bb07",
+      "title": "Implementar backend para Búsqueda avanzada",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "51b0",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "low",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "2f9b",
+      "title": "Implementar frontend para Búsqueda avanzada",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "51b0",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "low",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "c461",
+      "title": "Testing para Búsqueda avanzada",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "51b0",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "low",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "9e02",
+      "title": "Implementar frontend para Autenticación de usuarios",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "6e1f",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "high",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "07a0",
+      "title": "Testing para Autenticación de usuarios",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "6e1f",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "high",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "d090",
+      "title": "Diseñar UI para Dashboard de usuario",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "3cc8",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "high",
+      "estimatedHours": 4,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "b2f8",
+      "title": "Implementar backend para Dashboard de usuario",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "3cc8",
+      "projectId": "1",
+      "assignedTo": "3",
+      "status": "todo",
+      "priority": "high",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.570Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "9392",
+      "title": "Diseñar UI para Notificaciones en tiempo real",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "b72f",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "in_progress",
+      "priority": "medium",
+      "estimatedHours": 4,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "2ffa",
+      "title": "Diseñar UI para Búsqueda avanzada",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "4295",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "done",
+      "priority": "low",
+      "estimatedHours": 4,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "541b",
+      "title": "Implementar backend para Búsqueda avanzada",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "4295",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "todo",
+      "priority": "low",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "6b3e",
+      "title": "Implementar frontend para Búsqueda avanzada",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "4295",
+      "projectId": "7921",
+      "status": "in_progress",
+      "priority": "low",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "5e43",
+      "title": "Testing para Búsqueda avanzada",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "4295",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "done",
+      "priority": "low",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "13d8",
+      "title": "Diseñar UI para Gestión de perfil",
+      "description": "Crear mockups y diseño de interfaz",
+      "userStoryId": "e738",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "in_progress",
+      "priority": "medium",
+      "estimatedHours": 4,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "89d4",
+      "title": "Implementar backend para Gestión de perfil",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "e738",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "2f85",
+      "title": "Implementar frontend para Gestión de perfil",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "e738",
+      "projectId": "7921",
+      "status": "done",
+      "priority": "medium",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "ad88",
+      "title": "Testing para Gestión de perfil",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "e738",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "616a",
+      "title": "Implementar backend para Notificaciones en tiempo real",
+      "description": "Desarrollar lógica de negocio y APIs",
+      "userStoryId": "b72f",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 8,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "8bdb",
+      "title": "Implementar frontend para Notificaciones en tiempo real",
+      "description": "Desarrollar componentes y vistas",
+      "userStoryId": "b72f",
+      "projectId": "7921",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 6,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    },
+    {
+      "id": "6f9b",
+      "title": "Testing para Notificaciones en tiempo real",
+      "description": "Pruebas unitarias e integración",
+      "userStoryId": "b72f",
+      "projectId": "7921",
+      "assignedTo": "1",
+      "status": "todo",
+      "priority": "medium",
+      "estimatedHours": 3,
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.428Z",
+      "aiAssigned": true
+    }
+  ],
+  "sprints": [
+    {
+      "id": "43c2",
+      "name": "Sprint 1",
+      "projectId": "1",
+      "startDate": "2025-10-04T05:00:00.000Z",
+      "endDate": "2025-10-10T05:00:00.000Z",
+      "goal": "Implementar autenticación",
+      "userStories": [
+        "6e1f",
+        "3cc8",
+        "5fe2",
+        "2af7",
+        "51b0"
+      ],
+      "tasks": [
+        "1aec",
+        "a9f8",
+        "9e02",
+        "07a0",
+        "d090",
+        "b2f8",
+        "79ae",
+        "b5f1",
+        "0d53",
+        "52e1",
+        "02a2",
+        "8d28",
+        "4759",
+        "98c7",
+        "cfcc",
+        "61a7",
+        "4262",
+        "bb07",
+        "2f9b",
+        "c461"
+      ],
+      "status": "planning",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T03:49:41.619Z"
+    },
+    {
+      "id": "6903",
+      "name": "Sprint 1",
+      "projectId": "7921",
+      "startDate": "2025-10-09",
+      "endDate": "2025-10-09",
+      "goal": "Implementar la generación de imagenes con ia",
+      "userStories": [
+        "b72f",
+        "4295",
+        "e738"
+      ],
+      "tasks": [
+        "9392",
+        "616a",
+        "8bdb",
+        "6f9b",
+        "2ffa",
+        "541b",
+        "6b3e",
+        "5e43",
+        "13d8",
+        "89d4",
+        "2f85",
+        "ad88"
+      ],
+      "status": "planning",
+      "createdBy": "1",
+      "createdAt": "2025-10-01T04:12:01.459Z"
+    }
+  ],
+  "meetings": [
+    {
+      "id": "meeting-1",
+      "title": "Daily Scrum - Día 1",
+      "type": "daily",
+      "date": "2025-10-03T09:00:00.000Z",
+      "time": "09:00",
+      "duration": 15,
+      "attendees": [
+        "1",
+        "2",
+        "3"
+      ],
+      "projectId": "1",
+      "sprintId": "43c2"
+    },
+    {
+      "id": "meeting-2",
+      "title": "Sprint Planning - Sprint 1",
+      "type": "planning",
+      "date": "2025-10-02T10:00:00.000Z",
+      "time": "10:00",
+      "duration": 120,
+      "attendees": [
+        "1",
+        "2",
+        "3"
+      ],
+      "projectId": "1",
+      "sprintId": "43c2"
+    },
+    {
+      "id": "meeting-4",
+      "title": "Retrospectiva - Sprint 1",
+      "type": "retrospective",
+      "date": "2025-10-08T16:00:00.000Z",
+      "time": "16:00",
+      "duration": 60,
+      "attendees": [
+        "1",
+        "2",
+        "3"
+      ],
+      "projectId": "1",
+      "sprintId": "43c2"
+    },
+    {
+      "id": "meeting-5",
+      "title": "Daily Scrum - Día 2",
+      "type": "daily",
+      "date": "2025-10-04T09:00:00.000Z",
+      "time": "09:00",
+      "duration": 15,
+      "attendees": [
+        "1",
+        "2",
+        "3"
+      ],
+      "projectId": "1",
+      "sprintId": "43c2"
+    },
+    {
+      "id": "meeting-6",
+      "title": "Refinement Session",
+      "type": "other",
+      "date": "2025-10-05T15:00:00.000Z",
+      "time": "15:00",
+      "duration": 45,
+      "attendees": [
+        "1",
+        "2"
+      ],
+      "projectId": "1"
+    }
+  ],
+  "chatHistory": [],
+  "payments": []
+}
