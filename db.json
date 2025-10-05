@@ -9,7 +9,7 @@
       "avatar": "https://i.ibb.co/qLwwFjJT/7708d7c13008.jpg",
       "subscription": {
         "plan": "premium",
-        "tokensUsed": 110,
+        "tokensUsed": 260,
         "tokensLimit": -1,
         "userStoriesUsed": 15,
         "userStoriesLimit": -1
@@ -86,123 +86,147 @@
   ],
   "projects": [
     {
-      "id": "1",
-      "name": "E-commerce Platform",
-      "description": "Plataforma de comercio electrónico con IA",
+      "id": "aecb",
+      "name": "MuzikStream Plataforma de Música Online",
+      "description": "Desarrollo de una plataforma de música online amigable para el usuario, con funcionalidades de streaming, playlists, búsqueda y recomendaciones personalizadas.",
       "objectives": [
-        "Aumentar ventas 30%",
-        "Mejorar UX",
-        "Integrar IA para recomendaciones"
+        "Aumentar la base de usuarios activos mensuales en un 20% para junio de 2026.",
+        "Lograr una puntuación de satisfacción del cliente de 4.5/5 en las encuestas de usuario para marzo de 2026.",
+        "Implementar todas las funcionalidades esenciales de la plataforma (streaming, playlists, búsqueda) para diciembre de 2025."
       ],
       "timeline": {
-        "start": "2024-01-01",
-        "end": "2024-06-30"
-      },
-      "members": [
-        "1",
-        "2",
-        "3"
-      ],
-      "createdBy": "1",
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "status": "active"
-    },
-    {
-      "id": "01f9",
-      "name": "Crea una plataforma ecommer",
-      "description": "Proyecto generado por IA: Crea una plataforma ecommer",
-      "objectives": [
-        "Definir alcance y requerimientos",
-        "Diseñar arquitectura del sistema",
-        "Implementar funcionalidades core",
-        "Realizar pruebas y QA",
-        "Desplegar a producción"
-      ],
-      "timeline": {
-        "start": "2025-10-01",
-        "end": "2025-12-30"
+        "startDate": "2025-10-05",
+        "estimatedEndDate": "2026-03-31",
+        "milestones": [
+          {
+            "name": "MVP (Minimum Viable Product) Release",
+            "date": "2025-12-15",
+            "description": "Lanzamiento de la versión básica de la plataforma con funcionalidades core: streaming, búsqueda, creación de playlists."
+          },
+          {
+            "name": "Beta Testing Completion",
+            "date": "2026-02-15",
+            "description": "Finalización de la fase de pruebas beta con usuarios reales y recopilación de feedback para mejoras."
+          },
+          {
+            "name": "Final Release",
+            "date": "2026-03-31",
+            "description": "Lanzamiento oficial de la plataforma completa con todas las funcionalidades y mejoras basadas en el feedback de los usuarios."
+          }
+        ]
       },
       "members": [
         "1"
       ],
       "createdBy": "1",
-      "createdAt": "2025-10-01T04:07:12.643Z",
-      "status": "active"
-    },
-    {
-      "id": "7921",
-      "name": "Crea una plataforma para",
-      "description": "Proyecto generado por IA: Crea una plataforma para marketing digital",
-      "objectives": [
-        "Definir alcance y requerimientos",
-        "Diseñar arquitectura del sistema",
-        "Implementar funcionalidades core",
-        "Realizar pruebas y QA",
-        "Desplegar a producción"
-      ],
-      "timeline": {
-        "start": "2025-10-01",
-        "end": "2025-12-30"
-      },
-      "members": [
-        "1"
-      ],
-      "createdBy": "1",
-      "createdAt": "2025-10-01T04:10:35.999Z",
-      "status": "active"
-    },
-    {
-      "id": "4ed0",
-      "name": "Crear una plataforma e-commerce",
-      "description": "Proyecto generado por IA: Crear una plataforma e-commerce de venta de lentes",
-      "objectives": [
-        "Definir alcance y requerimientos",
-        "Diseñar arquitectura del sistema",
-        "Implementar funcionalidades core",
-        "Realizar pruebas y QA",
-        "Desplegar a producción"
-      ],
-      "timeline": {
-        "start": "2025-10-04",
-        "end": "2026-01-02"
-      },
-      "members": [
-        "1"
-      ],
-      "createdBy": "1",
-      "createdAt": "2025-10-04T02:07:34.038Z",
-      "status": "active"
+      "createdAt": "2025-10-05T02:45:19.530Z",
+      "status": "active",
+      "aiGenerated": true,
+      "structuredPrompt": {
+        "objective": "Desarrollar una plataforma de musica online",
+        "role": "Scrum Master",
+        "context": "El proyecto trata de una plataforma parecida a spotify, la estructura debe ser amigable para los usuarios",
+        "constraints": "Debe ser entregada para Marzo del 2026"
+      }
     }
   ],
   "backlogs": [
     {
-      "id": "9bf8",
-      "projectId": "7921",
-      "type": "product",
-      "items": [
-        "0e78",
-        "c59e",
-        "e738",
-        "b72f",
-        "4295"
+      "id": "e6ux",
+      "title": "User Story: Escuchar música",
+      "description": "Como usuario, quiero poder escuchar música en streaming para disfrutar de mi contenido favorito.",
+      "priority": "Alta",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "La música debe reproducirse sin interrupciones.",
+        "Debe haber controles de reproducción básicos (play, pause, stop, siguiente, anterior).",
+        "El usuario debe poder ajustar el volumen."
       ],
+      "projectId": "aecb",
       "createdBy": "1",
-      "createdAt": "2025-10-01T04:11:09.008Z",
-      "status": "active"
+      "createdAt": "2025-10-05T02:45:19.854Z",
+      "status": "pending"
     },
     {
-      "id": "bbc5",
-      "projectId": "4ed0",
+      "id": "hw04",
+      "title": "User Story: Crear playlist",
+      "description": "Como usuario, quiero poder crear playlists personalizadas para organizar mi música.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario debe poder crear nuevas playlists.",
+        "El usuario debe poder agregar canciones a las playlists.",
+        "El usuario debe poder eliminar canciones de las playlists.",
+        "El usuario debe poder renombrar las playlists.",
+        "El usuario debe poder eliminar las playlists."
+      ],
+      "projectId": "aecb",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T02:45:19.873Z",
+      "status": "pending"
+    },
+    {
+      "id": "qmjv",
+      "title": "User Story: Buscar música",
+      "description": "Como usuario, quiero poder buscar música por título, artista o álbum para encontrar canciones específicas.",
+      "priority": "Alta",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "La búsqueda debe ser rápida y eficiente.",
+        "Los resultados de la búsqueda deben ser relevantes.",
+        "El usuario debe poder filtrar los resultados de la búsqueda."
+      ],
+      "projectId": "aecb",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T02:45:19.888Z",
+      "status": "pending"
+    },
+    {
+      "id": "fjip",
+      "title": "User Story: Recomendaciones de música",
+      "description": "Como usuario, quiero recibir recomendaciones de música basadas en mis gustos para descubrir nueva música.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "Las recomendaciones deben ser relevantes para los gustos del usuario.",
+        "El algoritmo de recomendación debe mejorar con el tiempo.",
+        "El usuario debe poder indicar si le gusta o no una recomendación."
+      ],
+      "projectId": "aecb",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T02:45:19.895Z",
+      "status": "pending"
+    },
+    {
+      "id": "hpys",
+      "title": "User Story: Gestionar mi cuenta",
+      "description": "Como usuario, quiero poder gestionar mi cuenta (actualizar perfil, cambiar contraseña) para mantener mi información segura.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario debe poder actualizar su nombre de usuario.",
+        "El usuario debe poder cambiar su contraseña.",
+        "El usuario debe poder actualizar su correo electrónico.",
+        "El usuario debe poder eliminar su cuenta."
+      ],
+      "projectId": "aecb",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T02:45:19.900Z",
+      "status": "pending"
+    },
+    {
+      "id": "13ew",
+      "projectId": "aecb",
       "type": "product",
       "items": [
-        "fffc",
-        "db7b",
-        "374d",
-        "e939",
-        "a499"
+        "e6ux",
+        "hw04",
+        "qmjv",
+        "fjip",
+        "hpys"
       ],
       "createdBy": "1",
-      "createdAt": "2025-10-04T02:08:32.197Z",
+      "createdAt": "2025-10-05T02:45:19.908Z",
       "status": "active"
     }
   ],
@@ -220,7 +244,7 @@
       "priority": "high",
       "storyPoints": 8,
       "status": "todo",
-      "projectId": "1",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T03:48:21.510Z",
       "aiGenerated": true,
@@ -242,7 +266,7 @@
       "priority": "high",
       "storyPoints": 13,
       "status": "todo",
-      "projectId": "1",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T03:48:21.510Z",
       "aiGenerated": true,
@@ -264,7 +288,7 @@
       "priority": "medium",
       "storyPoints": 5,
       "status": "todo",
-      "projectId": "1",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T03:48:21.510Z",
       "aiGenerated": true,
@@ -286,7 +310,7 @@
       "priority": "medium",
       "storyPoints": 8,
       "status": "todo",
-      "projectId": "1",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T03:48:21.510Z",
       "aiGenerated": true,
@@ -308,7 +332,7 @@
       "priority": "low",
       "storyPoints": 5,
       "status": "todo",
-      "projectId": "1",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T03:48:21.510Z",
       "aiGenerated": true,
@@ -330,7 +354,7 @@
       "priority": "high",
       "storyPoints": 8,
       "status": "todo",
-      "projectId": "7921",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T04:11:08.984Z",
       "aiGenerated": true,
@@ -352,7 +376,7 @@
       "priority": "high",
       "storyPoints": 13,
       "status": "todo",
-      "projectId": "7921",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T04:11:08.984Z",
       "aiGenerated": true,
@@ -374,7 +398,7 @@
       "priority": "medium",
       "storyPoints": 5,
       "status": "todo",
-      "projectId": "7921",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T04:11:08.984Z",
       "aiGenerated": true,
@@ -396,7 +420,7 @@
       "priority": "medium",
       "storyPoints": 8,
       "status": "todo",
-      "projectId": "7921",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T04:11:08.984Z",
       "aiGenerated": true,
@@ -418,7 +442,7 @@
       "priority": "low",
       "storyPoints": 5,
       "status": "todo",
-      "projectId": "7921",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-01T04:11:08.984Z",
       "aiGenerated": true,
@@ -440,7 +464,7 @@
       "priority": "high",
       "storyPoints": 8,
       "status": "todo",
-      "projectId": "4ed0",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-04T02:08:32.175Z",
       "aiGenerated": true,
@@ -462,7 +486,7 @@
       "priority": "high",
       "storyPoints": 13,
       "status": "todo",
-      "projectId": "4ed0",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-04T02:08:32.175Z",
       "aiGenerated": true,
@@ -484,7 +508,7 @@
       "priority": "medium",
       "storyPoints": 5,
       "status": "todo",
-      "projectId": "4ed0",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-04T02:08:32.175Z",
       "aiGenerated": true,
@@ -506,7 +530,7 @@
       "priority": "medium",
       "storyPoints": 8,
       "status": "todo",
-      "projectId": "4ed0",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-04T02:08:32.175Z",
       "aiGenerated": true,
@@ -528,7 +552,7 @@
       "priority": "low",
       "storyPoints": 5,
       "status": "todo",
-      "projectId": "4ed0",
+      "projectId": null,
       "createdBy": "1",
       "createdAt": "2025-10-04T02:08:32.175Z",
       "aiGenerated": true,
@@ -545,7 +569,7 @@
       "title": "Diseñar UI para Autenticación de usuarios",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "6e1f",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "done",
       "priority": "high",
@@ -561,7 +585,7 @@
       "title": "Implementar frontend para Dashboard de usuario",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "3cc8",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "done",
       "priority": "high",
@@ -575,7 +599,7 @@
       "title": "Testing para Dashboard de usuario",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "3cc8",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "in_progress",
       "priority": "high",
@@ -590,7 +614,7 @@
       "title": "Diseñar UI para Gestión de perfil",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "5fe2",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "in_progress",
       "priority": "medium",
@@ -605,7 +629,7 @@
       "title": "Implementar backend para Gestión de perfil",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "5fe2",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "done",
       "priority": "medium",
@@ -619,7 +643,7 @@
       "title": "Implementar frontend para Gestión de perfil",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "5fe2",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "medium",
@@ -633,7 +657,7 @@
       "title": "Testing para Gestión de perfil",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "5fe2",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "in_progress",
       "priority": "medium",
@@ -647,7 +671,7 @@
       "title": "Implementar backend para Autenticación de usuarios",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "6e1f",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "high",
@@ -661,7 +685,7 @@
       "title": "Diseñar UI para Notificaciones en tiempo real",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "2af7",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "medium",
@@ -676,7 +700,7 @@
       "title": "Implementar backend para Notificaciones en tiempo real",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "2af7",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "medium",
@@ -690,7 +714,7 @@
       "title": "Implementar frontend para Notificaciones en tiempo real",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "2af7",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "medium",
@@ -704,7 +728,7 @@
       "title": "Testing para Notificaciones en tiempo real",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "2af7",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "medium",
@@ -718,7 +742,7 @@
       "title": "Diseñar UI para Búsqueda avanzada",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "51b0",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "low",
@@ -733,7 +757,7 @@
       "title": "Implementar backend para Búsqueda avanzada",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "51b0",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "low",
@@ -747,7 +771,7 @@
       "title": "Implementar frontend para Búsqueda avanzada",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "51b0",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "low",
@@ -761,7 +785,7 @@
       "title": "Testing para Búsqueda avanzada",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "51b0",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "low",
@@ -775,7 +799,7 @@
       "title": "Implementar frontend para Autenticación de usuarios",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "6e1f",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "high",
@@ -789,7 +813,7 @@
       "title": "Testing para Autenticación de usuarios",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "6e1f",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "high",
@@ -803,7 +827,7 @@
       "title": "Diseñar UI para Dashboard de usuario",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "3cc8",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "high",
@@ -817,7 +841,7 @@
       "title": "Implementar backend para Dashboard de usuario",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "3cc8",
-      "projectId": "1",
+      "projectId": null,
       "assignedTo": "3",
       "status": "todo",
       "priority": "high",
@@ -831,7 +855,7 @@
       "title": "Diseñar UI para Notificaciones en tiempo real",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "b72f",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "in_progress",
       "priority": "medium",
@@ -845,7 +869,7 @@
       "title": "Diseñar UI para Búsqueda avanzada",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "4295",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "done",
       "priority": "low",
@@ -859,7 +883,7 @@
       "title": "Implementar backend para Búsqueda avanzada",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "4295",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "todo",
       "priority": "low",
@@ -873,7 +897,7 @@
       "title": "Implementar frontend para Búsqueda avanzada",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "4295",
-      "projectId": "7921",
+      "projectId": null,
       "status": "in_progress",
       "priority": "low",
       "estimatedHours": 6,
@@ -886,7 +910,7 @@
       "title": "Testing para Búsqueda avanzada",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "4295",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "done",
       "priority": "low",
@@ -900,7 +924,7 @@
       "title": "Diseñar UI para Gestión de perfil",
       "description": "Crear mockups y diseño de interfaz",
       "userStoryId": "e738",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "in_progress",
       "priority": "medium",
@@ -914,7 +938,7 @@
       "title": "Implementar backend para Gestión de perfil",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "e738",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "todo",
       "priority": "medium",
@@ -928,7 +952,7 @@
       "title": "Implementar frontend para Gestión de perfil",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "e738",
-      "projectId": "7921",
+      "projectId": null,
       "status": "done",
       "priority": "medium",
       "estimatedHours": 6,
@@ -941,7 +965,7 @@
       "title": "Testing para Gestión de perfil",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "e738",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "todo",
       "priority": "medium",
@@ -955,7 +979,7 @@
       "title": "Implementar backend para Notificaciones en tiempo real",
       "description": "Desarrollar lógica de negocio y APIs",
       "userStoryId": "b72f",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "todo",
       "priority": "medium",
@@ -969,7 +993,7 @@
       "title": "Implementar frontend para Notificaciones en tiempo real",
       "description": "Desarrollar componentes y vistas",
       "userStoryId": "b72f",
-      "projectId": "7921",
+      "projectId": null,
       "status": "todo",
       "priority": "medium",
       "estimatedHours": 6,
@@ -982,7 +1006,7 @@
       "title": "Testing para Notificaciones en tiempo real",
       "description": "Pruebas unitarias e integración",
       "userStoryId": "b72f",
-      "projectId": "7921",
+      "projectId": null,
       "assignedTo": "1",
       "status": "todo",
       "priority": "medium",
@@ -992,78 +1016,7 @@
       "aiAssigned": true
     }
   ],
-  "sprints": [
-    {
-      "id": "43c2",
-      "name": "Sprint 1",
-      "projectId": "1",
-      "startDate": "2025-10-04T05:00:00.000Z",
-      "endDate": "2025-10-10T05:00:00.000Z",
-      "goal": "Implementar autenticación",
-      "userStories": [
-        "6e1f",
-        "3cc8",
-        "5fe2",
-        "2af7",
-        "51b0"
-      ],
-      "tasks": [
-        "1aec",
-        "a9f8",
-        "9e02",
-        "07a0",
-        "d090",
-        "b2f8",
-        "79ae",
-        "b5f1",
-        "0d53",
-        "52e1",
-        "02a2",
-        "8d28",
-        "4759",
-        "98c7",
-        "cfcc",
-        "61a7",
-        "4262",
-        "bb07",
-        "2f9b",
-        "c461"
-      ],
-      "status": "planning",
-      "createdBy": "1",
-      "createdAt": "2025-10-01T03:49:41.619Z"
-    },
-    {
-      "id": "6903",
-      "name": "Sprint 1",
-      "projectId": "7921",
-      "startDate": "2025-10-09",
-      "endDate": "2025-10-09",
-      "goal": "Implementar la generación de imagenes con ia",
-      "userStories": [
-        "b72f",
-        "4295",
-        "e738"
-      ],
-      "tasks": [
-        "9392",
-        "616a",
-        "8bdb",
-        "6f9b",
-        "2ffa",
-        "541b",
-        "6b3e",
-        "5e43",
-        "13d8",
-        "89d4",
-        "2f85",
-        "ad88"
-      ],
-      "status": "planning",
-      "createdBy": "1",
-      "createdAt": "2025-10-01T04:12:01.459Z"
-    }
-  ],
+  "sprints": [],
   "meetings": [
     {
       "id": "meeting-1",
@@ -1077,8 +1030,8 @@
         "2",
         "3"
       ],
-      "projectId": "1",
-      "sprintId": "43c2"
+      "projectId": null,
+      "sprintId": null
     },
     {
       "id": "meeting-2",
@@ -1092,8 +1045,8 @@
         "2",
         "3"
       ],
-      "projectId": "1",
-      "sprintId": "43c2"
+      "projectId": null,
+      "sprintId": null
     },
     {
       "id": "meeting-4",
@@ -1107,8 +1060,8 @@
         "2",
         "3"
       ],
-      "projectId": "1",
-      "sprintId": "43c2"
+      "projectId": null,
+      "sprintId": null
     },
     {
       "id": "meeting-5",
@@ -1122,8 +1075,8 @@
         "2",
         "3"
       ],
-      "projectId": "1",
-      "sprintId": "43c2"
+      "projectId": null,
+      "sprintId": null
     },
     {
       "id": "meeting-6",
@@ -1136,7 +1089,7 @@
         "1",
         "2"
       ],
-      "projectId": "1"
+      "projectId": null
     }
   ],
   "chatHistory": [],

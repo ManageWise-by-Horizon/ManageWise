@@ -20,11 +20,14 @@ import {
   List,
   GanttChart,
   CalendarDays,
+  Bot,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AddMemberDialog } from "@/components/projects/add-member-dialog"
+import { ProjectChat } from "@/components/projects/project-chat"
+import { ProjectBacklog } from "@/components/projects/project-backlog"
 
 interface Project {
   id: string
@@ -32,13 +35,21 @@ interface Project {
   description: string
   objectives: string[]
   timeline: {
-    start: string
-    end: string
+    start?: string
+    end?: string
+    startDate?: string
+    estimatedEndDate?: string
   }
   members: string[]
   createdBy: string
   createdAt: string
   status: string
+  structuredPrompt?: {
+    objective: string
+    role: string
+    context: string
+    constraints: string
+  }
 }
 
 interface User {
@@ -182,8 +193,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </CardHeader>
           <CardContent>
             <div className="text-sm">
-              <p className="font-medium">{formatDate(project.timeline.start)}</p>
-              <p className="text-muted-foreground">hasta {formatDate(project.timeline.end)}</p>
+              <p className="font-medium">
+                {formatDate(project.timeline.startDate || project.timeline.start || "")}
+              </p>
+              <p className="text-muted-foreground">
+                hasta {formatDate(project.timeline.estimatedEndDate || project.timeline.end || "")}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -218,13 +233,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <LayoutGrid className="mr-2 h-4 w-4" />
             Resumen
           </TabsTrigger>
+          <TabsTrigger value="backlog">
+            <List className="mr-2 h-4 w-4" />
+            Backlog
+          </TabsTrigger>
+          <TabsTrigger value="chat">
+            <Bot className="mr-2 h-4 w-4" />
+            Chat IA
+          </TabsTrigger>
           <TabsTrigger value="board">
             <LayoutGrid className="mr-2 h-4 w-4" />
             Board
-          </TabsTrigger>
-          <TabsTrigger value="list">
-            <List className="mr-2 h-4 w-4" />
-            Lista
           </TabsTrigger>
           <TabsTrigger value="timeline">
             <GanttChart className="mr-2 h-4 w-4" />
@@ -301,6 +320,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="backlog" className="space-y-4">
+          <ProjectBacklog projectId={project.id} projectName={project.name} />
+        </TabsContent>
+
+        <TabsContent value="chat" className="space-y-4">
+          <div className="h-[600px]">
+            <ProjectChat
+              projectId={project.id}
+              projectContext={{
+                projectName: project.name,
+                description: project.description,
+                objectives: project.objectives,
+                timeline: project.timeline,
+              }}
+              initialPrompt={project.structuredPrompt}
+            />
           </div>
         </TabsContent>
 

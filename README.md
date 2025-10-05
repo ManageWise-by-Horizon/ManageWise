@@ -2,6 +2,34 @@
 
 Gestor de proyectos Scrum con inteligencia artificial integrada, construido con Next.js, Tailwind CSS y Shadcn/UI. Incluye generación automática de backlogs, user stories, asignación inteligente de tareas, dashboards predictivos con ML y análisis de sentimiento.
 
+## ✨ NUEVAS FUNCIONALIDADES (Actualización)
+
+### 📋 Formulario Estructurado para IA
+Al crear proyectos con IA, ahora utiliza un **formulario estructurado** con 4 campos clave:
+- **Objetivo** - ¿Qué quieres lograr con el proyecto?
+- **Rol** - ¿Cuál es tu rol en el proyecto?
+- **Contexto** - Información sobre equipo, tecnologías y duración
+- **Restricciones** - Limitaciones, presupuesto y límites
+
+### 🤖 Chat Iterativo en Tiempo Real
+Visualización en vivo del proceso de generación con **Google Gemini AI** (estilo v0/Figma Make):
+- ✅ Logs de progreso en tiempo real
+- ✅ Vista de chunks de respuesta streaming
+- ✅ Indicadores visuales de estado (cargando/completado/error)
+- ✅ Confirmación de éxito con detalles
+
+### 🎯 Integración con Gemini AI
+- Reemplazadas respuestas mockeadas por **IA real** usando Google Gemini
+- Generación de proyectos completos con estructura profesional
+- Creación de backlogs, user stories y sprints optimizados
+- Consumo de 50 tokens por generación de proyecto
+
+### 📸 Foto de Perfil con ImgBB
+- Subida de imágenes a ImgBB
+- Validación de formato (JPG, PNG, GIF)
+- Validación de tamaño (máx 2MB)
+- Actualización en tiempo real
+
 ## 🚀 Características Principales
 
 ### Autenticación y Roles

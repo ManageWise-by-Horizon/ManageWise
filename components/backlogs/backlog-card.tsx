@@ -94,7 +94,7 @@ export function BacklogCard({ backlog, onUpdate }: BacklogCardProps) {
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Items en backlog</span>
-          <span className="font-semibold">{backlog.items.length}</span>
+          <span className="font-semibold">{backlog.items?.length || 0}</span>
         </div>
 
         <Link href={`/backlogs/${backlog.id}`}>
