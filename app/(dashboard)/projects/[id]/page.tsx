@@ -60,12 +60,49 @@ interface User {
   avatar: string
 }
 
+interface UserStory {
+  id: string
+  title: string
+  description: string
+  priority: string
+  storyPoints: number
+  acceptanceCriteria: string[]
+  status: string
+  projectId: string
+}
+
+interface Task {
+  id: string
+  title: string
+  description: string
+  userStoryId: string
+  projectId: string
+  assignedTo?: string
+  status: string
+  priority: string
+  estimatedHours: number
+  dueDate?: string
+}
+
+interface Sprint {
+  id: string
+  name: string
+  goal: string
+  startDate: string
+  endDate: string
+  status: string
+  projectId: string
+}
+
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const { user } = useAuth()
   const { toast } = useToast()
   const [project, setProject] = useState<Project | null>(null)
   const [members, setMembers] = useState<User[]>([])
+  const [userStories, setUserStories] = useState<UserStory[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [sprints, setSprints] = useState<Sprint[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeView, setActiveView] = useState("summary")
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
@@ -85,6 +122,28 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       const usersData = await usersRes.json()
       const projectMembers = usersData.filter((u: User) => projectData.members.includes(u.id))
       setMembers(projectMembers)
+
+      // Fetch user stories
+      const backlogRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs?projectId=${resolvedParams.id}`)
+      const backlogData = await backlogRes.json()
+      const stories = backlogData.filter((item: any) => item.title && !item.items)
+      setUserStories(stories)
+
+      // Fetch tasks for this project
+      const tasksRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks?projectId=${resolvedParams.id}`)
+      const tasksData = await tasksRes.json()
+      setTasks(tasksData)
+
+      // Fetch sprints for this project
+      const sprintsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sprints?projectId=${resolvedParams.id}`)
+      const sprintsData = await sprintsRes.json()
+      setSprints(sprintsData)
+      
+      console.log("🎯 Contexto completo cargado:")
+      console.log("  - User Stories:", stories.length)
+      console.log("  - Tasks:", tasksData.length)
+      console.log("  - Sprints:", sprintsData.length)
+      console.log("  - Members:", projectMembers.length)
     } catch (error) {
       console.error("[v0] Error fetching project details:", error)
       toast({
@@ -336,6 +395,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 description: project.description,
                 objectives: project.objectives,
                 timeline: project.timeline,
+                productBacklog: userStories,
+                tasks: tasks,
+                sprints: sprints,
+                teamMembers: members,
               }}
               initialPrompt={project.structuredPrompt}
             />

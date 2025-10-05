@@ -9,7 +9,7 @@
       "avatar": "https://i.ibb.co/qLwwFjJT/7708d7c13008.jpg",
       "subscription": {
         "plan": "premium",
-        "tokensUsed": 260,
+        "tokensUsed": 340,
         "tokensLimit": -1,
         "userStoriesUsed": 15,
         "userStoriesLimit": -1
@@ -86,32 +86,43 @@
   ],
   "projects": [
     {
-      "id": "aecb",
-      "name": "MuzikStream Plataforma de Música Online",
-      "description": "Desarrollo de una plataforma de música online amigable para el usuario, con funcionalidades de streaming, playlists, búsqueda y recomendaciones personalizadas.",
+      "id": "7ee0",
+      "name": "Melodia Online",
+      "description": "Desarrollo de una plataforma de streaming de música online con una interfaz amigable y funcionalidades robustas para la reproducción, descubrimiento y gestión de música.",
       "objectives": [
-        "Aumentar la base de usuarios activos mensuales en un 20% para junio de 2026.",
-        "Lograr una puntuación de satisfacción del cliente de 4.5/5 en las encuestas de usuario para marzo de 2026.",
-        "Implementar todas las funcionalidades esenciales de la plataforma (streaming, playlists, búsqueda) para diciembre de 2025."
+        "Lanzar una versión beta de la plataforma con funcionalidades core de reproducción de música para el 2026-01-31.",
+        "Permitir la creación de cuentas de usuario y la gestión de listas de reproducción para el 2026-02-15.",
+        "Integrar un motor de recomendación de música personalizado para cada usuario para el 2026-03-01.",
+        "Alcanzar un promedio de 10,000 usuarios activos diarios en la plataforma para el 2026-06-30."
       ],
       "timeline": {
-        "startDate": "2025-10-05",
-        "estimatedEndDate": "2026-03-31",
+        "start": "2025-10-05",
+        "end": "2026-03-15",
         "milestones": [
           {
-            "name": "MVP (Minimum Viable Product) Release",
-            "date": "2025-12-15",
-            "description": "Lanzamiento de la versión básica de la plataforma con funcionalidades core: streaming, búsqueda, creación de playlists."
+            "name": "Sprint 1 Finalizado - MVP Core Funcionalidad",
+            "date": "2025-11-01",
+            "description": "Implementación inicial de la reproducción de música y la interfaz básica."
           },
           {
-            "name": "Beta Testing Completion",
-            "date": "2026-02-15",
-            "description": "Finalización de la fase de pruebas beta con usuarios reales y recopilación de feedback para mejoras."
+            "name": "Sprint 2 Finalizado - Autenticación de Usuarios Implementada",
+            "date": "2025-11-29",
+            "description": "Implementación de la creación de cuentas, inicio de sesión y gestión de perfiles."
           },
           {
-            "name": "Final Release",
-            "date": "2026-03-31",
-            "description": "Lanzamiento oficial de la plataforma completa con todas las funcionalidades y mejoras basadas en el feedback de los usuarios."
+            "name": "Sprint 3 Finalizado - Listas de Reproducción y Búsqueda Implementadas",
+            "date": "2026-01-03",
+            "description": "Implementación de la creación, edición y gestión de listas de reproducción. Funcionalidad de búsqueda de música."
+          },
+          {
+            "name": "Sprint 4 Finalizado - Motor de Recomendación Inicial",
+            "date": "2026-02-07",
+            "description": "Integración de un motor de recomendación básico basado en el historial de reproducción del usuario."
+          },
+          {
+            "name": "Lanzamiento Beta",
+            "date": "2026-03-15",
+            "description": "Lanzamiento de la versión beta de la plataforma para pruebas con usuarios reales."
           }
         ]
       },
@@ -119,114 +130,337 @@
         "1"
       ],
       "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.530Z",
+      "createdAt": "2025-10-05T03:51:02.946Z",
       "status": "active",
       "aiGenerated": true,
       "structuredPrompt": {
-        "objective": "Desarrollar una plataforma de musica online",
+        "objective": "Desarrollar una plataforma de musica online\n",
         "role": "Scrum Master",
-        "context": "El proyecto trata de una plataforma parecida a spotify, la estructura debe ser amigable para los usuarios",
+        "context": "El proyecto trata de una plataforma parecida a spotify, la estructura debe ser amigable para los usuarios\n",
         "constraints": "Debe ser entregada para Marzo del 2026"
       }
     }
   ],
   "backlogs": [
     {
-      "id": "e6ux",
-      "title": "User Story: Escuchar música",
-      "description": "Como usuario, quiero poder escuchar música en streaming para disfrutar de mi contenido favorito.",
+      "id": "xvud",
+      "title": "Usuario puede escuchar música",
+      "description": "Como usuario, quiero poder reproducir canciones para disfrutar de la música.",
+      "priority": "Alta",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede iniciar la reproducción de una canción desde la lista de canciones.",
+        "El usuario puede pausar y reanudar la reproducción.",
+        "El usuario puede ajustar el volumen de la reproducción.",
+        "La canción se reproduce sin interrupciones."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.295Z",
+      "status": "pending"
+    },
+    {
+      "id": "qemz",
+      "title": "Usuario puede crear una cuenta",
+      "description": "Como usuario, quiero poder crear una cuenta para guardar mis preferencias y listas de reproducción.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede registrarse con un correo electrónico y contraseña válidos.",
+        "El usuario recibe una confirmación de registro por correo electrónico.",
+        "El usuario puede iniciar sesión con sus credenciales."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.322Z",
+      "status": "pending"
+    },
+    {
+      "id": "fnz6",
+      "title": "Usuario puede buscar canciones",
+      "description": "Como usuario, quiero poder buscar canciones por título, artista o álbum para encontrar la música que me gusta.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede ingresar términos de búsqueda en la barra de búsqueda.",
+        "El sistema muestra resultados relevantes a la búsqueda.",
+        "El usuario puede filtrar los resultados por título, artista o álbum.",
+        "La búsqueda es rápida y eficiente."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.341Z",
+      "status": "pending"
+    },
+    {
+      "id": "g5qa",
+      "title": "Usuario puede crear listas de reproducción",
+      "description": "Como usuario, quiero poder crear listas de reproducción para organizar mis canciones favoritas.",
       "priority": "Alta",
       "storyPoints": 8,
       "acceptanceCriteria": [
-        "La música debe reproducirse sin interrupciones.",
-        "Debe haber controles de reproducción básicos (play, pause, stop, siguiente, anterior).",
-        "El usuario debe poder ajustar el volumen."
+        "El usuario puede crear una nueva lista de reproducción con un nombre.",
+        "El usuario puede agregar canciones a una lista de reproducción.",
+        "El usuario puede eliminar canciones de una lista de reproducción.",
+        "El usuario puede eliminar una lista de reproducción."
       ],
-      "projectId": "aecb",
+      "projectId": "7ee0",
       "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.854Z",
+      "createdAt": "2025-10-05T03:51:03.347Z",
       "status": "pending"
     },
     {
-      "id": "hw04",
-      "title": "User Story: Crear playlist",
-      "description": "Como usuario, quiero poder crear playlists personalizadas para organizar mi música.",
-      "priority": "Alta",
-      "storyPoints": 5,
-      "acceptanceCriteria": [
-        "El usuario debe poder crear nuevas playlists.",
-        "El usuario debe poder agregar canciones a las playlists.",
-        "El usuario debe poder eliminar canciones de las playlists.",
-        "El usuario debe poder renombrar las playlists.",
-        "El usuario debe poder eliminar las playlists."
-      ],
-      "projectId": "aecb",
-      "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.873Z",
-      "status": "pending"
-    },
-    {
-      "id": "qmjv",
-      "title": "User Story: Buscar música",
-      "description": "Como usuario, quiero poder buscar música por título, artista o álbum para encontrar canciones específicas.",
-      "priority": "Alta",
-      "storyPoints": 3,
-      "acceptanceCriteria": [
-        "La búsqueda debe ser rápida y eficiente.",
-        "Los resultados de la búsqueda deben ser relevantes.",
-        "El usuario debe poder filtrar los resultados de la búsqueda."
-      ],
-      "projectId": "aecb",
-      "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.888Z",
-      "status": "pending"
-    },
-    {
-      "id": "fjip",
-      "title": "User Story: Recomendaciones de música",
+      "id": "x9x8",
+      "title": "Usuario puede ver recomendaciones de música",
       "description": "Como usuario, quiero recibir recomendaciones de música basadas en mis gustos para descubrir nueva música.",
       "priority": "Media",
-      "storyPoints": 5,
+      "storyPoints": 8,
       "acceptanceCriteria": [
-        "Las recomendaciones deben ser relevantes para los gustos del usuario.",
-        "El algoritmo de recomendación debe mejorar con el tiempo.",
-        "El usuario debe poder indicar si le gusta o no una recomendación."
+        "El sistema muestra recomendaciones de música en la página de inicio.",
+        "Las recomendaciones se basan en el historial de reproducción del usuario.",
+        "El usuario puede indicar si le gusta o no una recomendación.",
+        "Las recomendaciones se actualizan periódicamente."
       ],
-      "projectId": "aecb",
+      "projectId": "7ee0",
       "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.895Z",
+      "createdAt": "2025-10-05T03:51:03.353Z",
       "status": "pending"
     },
     {
-      "id": "hpys",
-      "title": "User Story: Gestionar mi cuenta",
-      "description": "Como usuario, quiero poder gestionar mi cuenta (actualizar perfil, cambiar contraseña) para mantener mi información segura.",
+      "id": "nu2x",
+      "title": "Usuario puede acceder a la aplicación desde un dispositivo móvil",
+      "description": "Como usuario, quiero poder acceder a la aplicación desde mi teléfono o tableta para escuchar música en cualquier lugar.",
+      "priority": "Media",
+      "storyPoints": 13,
+      "acceptanceCriteria": [
+        "La aplicación es compatible con dispositivos Android e iOS.",
+        "La aplicación tiene una interfaz adaptable a diferentes tamaños de pantalla.",
+        "La aplicación ofrece una experiencia de usuario similar a la versión web."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.359Z",
+      "status": "pending"
+    },
+    {
+      "id": "16gu",
+      "title": "Usuario puede compartir música con amigos",
+      "description": "Como usuario, quiero poder compartir mis canciones o listas de reproducción favoritas con mis amigos en redes sociales.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede compartir canciones o listas de reproducción en redes sociales como Facebook, Twitter o WhatsApp.",
+        "Se genera un enlace que dirige a la canción o lista de reproducción en la plataforma.",
+        "Se muestra una vista previa del contenido compartido."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.369Z",
+      "status": "pending"
+    },
+    {
+      "id": "uedw",
+      "title": "Usuario puede ver el historial de reproducción",
+      "description": "Como usuario, quiero poder ver un historial de las canciones que he escuchado para encontrar canciones que me gustaron.",
       "priority": "Media",
       "storyPoints": 3,
       "acceptanceCriteria": [
-        "El usuario debe poder actualizar su nombre de usuario.",
-        "El usuario debe poder cambiar su contraseña.",
-        "El usuario debe poder actualizar su correo electrónico.",
-        "El usuario debe poder eliminar su cuenta."
+        "El sistema registra las canciones que el usuario escucha.",
+        "El usuario puede acceder a un historial de reproducción ordenado por fecha.",
+        "El usuario puede eliminar canciones del historial."
       ],
-      "projectId": "aecb",
+      "projectId": "7ee0",
       "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.900Z",
+      "createdAt": "2025-10-05T03:51:03.374Z",
       "status": "pending"
     },
     {
-      "id": "13ew",
-      "projectId": "aecb",
+      "id": "d9a5",
+      "title": "Usuario puede valorar canciones",
+      "description": "Como usuario, quiero poder valorar canciones para expresar mi opinión y ayudar a otros usuarios a descubrir buena música.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede asignar una valoración a una canción (por ejemplo, de 1 a 5 estrellas).",
+        "La valoración promedio de una canción es visible para otros usuarios.",
+        "El usuario puede cambiar su valoración en cualquier momento."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.380Z",
+      "status": "pending"
+    },
+    {
+      "id": "4r1f",
+      "title": "Usuario puede importar listas de reproducción",
+      "description": "Como usuario, quiero poder importar listas de reproducción desde otras plataformas para no tener que recrearlas manualmente.",
+      "priority": "Baja",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El sistema permite importar listas de reproducción en formatos comunes (por ejemplo, CSV, M3U).",
+        "El sistema mapea las canciones de la lista importada con las canciones de la plataforma.",
+        "El usuario puede revisar y corregir el mapeo antes de importar la lista."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.385Z",
+      "status": "pending"
+    },
+    {
+      "id": "p50d",
+      "title": "Usuario puede reportar problemas",
+      "description": "Como usuario, quiero poder reportar problemas técnicos o contenido inapropiado para ayudar a mejorar la plataforma.",
+      "priority": "Baja",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede acceder a un formulario de reporte de problemas.",
+        "El usuario puede describir el problema y adjuntar capturas de pantalla.",
+        "El usuario recibe una confirmación de que el reporte ha sido recibido."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.388Z",
+      "status": "pending"
+    },
+    {
+      "id": "sa2i",
+      "title": "Usuario puede cambiar idioma",
+      "description": "Como usuario, quiero poder cambiar el idioma de la plataforma para una mejor experiencia",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede cambiar el idioma en la sección de configuración.",
+        "La interfaz de la plataforma cambia al idioma seleccionado.",
+        "Los idiomas disponibles son inglés y español."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.393Z",
+      "status": "pending"
+    },
+    {
+      "id": "23o7",
+      "title": "Usuario puede ver detalles de la canción",
+      "description": "Como usuario, quiero poder ver los detalles de la canción, como el álbum, el artista y el año de lanzamiento.",
+      "priority": "Alta",
+      "storyPoints": 1,
+      "acceptanceCriteria": [
+        "El usuario puede ver el título de la canción.",
+        "El usuario puede ver el nombre del artista.",
+        "El usuario puede ver el nombre del álbum.",
+        "El usuario puede ver el año de lanzamiento de la canción."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.397Z",
+      "status": "pending"
+    },
+    {
+      "id": "pvq9",
+      "title": "Usuario puede editar perfil",
+      "description": "Como usuario, quiero editar mi información de perfil, como mi nombre y foto",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede cambiar su nombre.",
+        "El usuario puede cambiar su foto de perfil.",
+        "El usuario puede cambiar su correo electronico."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.400Z",
+      "status": "pending"
+    },
+    {
+      "id": "zd9c",
+      "title": "Usuario puede ver artistas relacionados",
+      "description": "Como usuario, quiero ver otros artistas similares para descubrir más musica",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede ver artistas similares al artista que está escuchando.",
+        "Los artistas relacionados se muestran en la página del artista.",
+        "El sistema muestra al menos 5 artistas relacionados."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.406Z",
+      "status": "pending"
+    },
+    {
+      "id": "r690",
+      "title": "Usuario puede ver albums relacionados",
+      "description": "Como usuario, quiero ver otros albums similares para descubrir más musica",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede ver albums similares al artista que está escuchando.",
+        "Los albums relacionados se muestran en la página del artista.",
+        "El sistema muestra al menos 5 albums relacionados."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.410Z",
+      "status": "pending"
+    },
+    {
+      "id": "1igm",
+      "title": "Usuario puede ver la letra de la canción",
+      "description": "Como usuario, quiero poder ver la letra de la canción para cantar al mismo tiempo.",
+      "priority": "Baja",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "La letra de la canción se muestra en la página de la canción.",
+        "La letra se sincroniza con la música.",
+        "Si la letra no está disponible, se muestra un mensaje."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.415Z",
+      "status": "pending"
+    },
+    {
+      "id": "iulz",
+      "title": "Usuario puede agregar canciones a cola de reproducción",
+      "description": "Como usuario, quiero poder agregar canciones a una cola de reproducción para reproducir canciones más tarde.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede agregar canciones a la cola de reproducción.",
+        "El usuario puede ver la cola de reproducción.",
+        "El usuario puede reordenar la cola de reproducción."
+      ],
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-05T03:51:03.421Z",
+      "status": "pending"
+    },
+    {
+      "id": "zc6r",
+      "projectId": "7ee0",
       "type": "product",
       "items": [
-        "e6ux",
-        "hw04",
-        "qmjv",
-        "fjip",
-        "hpys"
+        "xvud",
+        "qemz",
+        "fnz6",
+        "g5qa",
+        "x9x8",
+        "nu2x",
+        "16gu",
+        "uedw",
+        "d9a5",
+        "4r1f",
+        "p50d",
+        "sa2i",
+        "23o7",
+        "pvq9",
+        "zd9c",
+        "r690",
+        "1igm",
+        "iulz"
       ],
       "createdBy": "1",
-      "createdAt": "2025-10-05T02:45:19.908Z",
+      "createdAt": "2025-10-05T03:51:03.426Z",
       "status": "active"
     }
   ],

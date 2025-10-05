@@ -57,8 +57,8 @@ Por favor, genera una respuesta en formato JSON con la siguiente estructura:
   "description": "Descripción detallada del proyecto",
   "objectives": ["Objetivo SMART 1", "Objetivo SMART 2", ...],
   "timeline": {
-    "startDate": "${todayStr}",
-    "estimatedEndDate": "YYYY-MM-DD (formato exacto, ejemplo: 2026-03-15)",
+    "start": "${todayStr}",
+    "end": "YYYY-MM-DD (formato exacto, ejemplo: 2026-03-15)",
     "milestones": [
       {
         "name": "Milestone 1",
@@ -291,7 +291,9 @@ export interface ProjectContext {
   description: string
   objectives?: any[]
   productBacklog?: any[]
+  tasks?: any[]
   sprints?: any[]
+  teamMembers?: any[]
   timeline?: any
 }
 
@@ -318,13 +320,73 @@ export async function chatWithGemini(
   const prompt = `
 Eres un asistente experto en gestión de proyectos Scrum y Domain-Driven Design (DDD).
 
-CONTEXTO DEL PROYECTO ACTUAL:
+CONTEXTO COMPLETO DEL PROYECTO:
+
+📋 **INFORMACIÓN GENERAL**
 - Nombre: ${projectContext.projectName}
 - Descripción: ${projectContext.description}
-${projectContext.objectives ? `- Objetivos: ${JSON.stringify(projectContext.objectives, null, 2)}` : ""}
-${projectContext.timeline ? `- Timeline: ${JSON.stringify(projectContext.timeline, null, 2)}` : ""}
-${projectContext.productBacklog ? `- Product Backlog (${projectContext.productBacklog.length} items): ${JSON.stringify(projectContext.productBacklog.slice(0, 5), null, 2)}${projectContext.productBacklog.length > 5 ? "\n... (y más items)" : ""}` : ""}
-${projectContext.sprints ? `- Sprints: ${projectContext.sprints.length} sprints planificados` : ""}
+${projectContext.objectives ? `- Objetivos SMART: ${projectContext.objectives.length} objetivos definidos
+${projectContext.objectives.map((obj: string, i: number) => `  ${i + 1}. ${obj}`).join('\n')}` : ""}
+${projectContext.timeline ? `- Timeline: 
+  • Inicio: ${projectContext.timeline.start || projectContext.timeline.startDate || 'No definido'}
+  • Fin estimado: ${projectContext.timeline.end || projectContext.timeline.estimatedEndDate || 'No definido'}` : ""}
+
+${projectContext.teamMembers && projectContext.teamMembers.length > 0 ? `
+👥 **EQUIPO DEL PROYECTO**
+- Total de miembros: ${projectContext.teamMembers.length}
+${projectContext.teamMembers.map((member: any) => `  • ${member.name} - ${member.role} (${member.email})`).join('\n')}
+` : ""}
+
+${projectContext.productBacklog && projectContext.productBacklog.length > 0 ? `
+📝 **PRODUCT BACKLOG**
+- Total User Stories: ${projectContext.productBacklog.length}
+- Distribución por prioridad:
+  • Alta: ${projectContext.productBacklog.filter((us: any) => us.priority?.toLowerCase() === 'alta' || us.priority?.toLowerCase() === 'high').length} US
+  • Media: ${projectContext.productBacklog.filter((us: any) => us.priority?.toLowerCase() === 'media' || us.priority?.toLowerCase() === 'medium').length} US
+  • Baja: ${projectContext.productBacklog.filter((us: any) => us.priority?.toLowerCase() === 'baja' || us.priority?.toLowerCase() === 'low').length} US
+- Story Points totales: ${projectContext.productBacklog.reduce((sum: number, us: any) => sum + (us.storyPoints || 0), 0)} puntos
+- Estado actual:
+  • Pendientes: ${projectContext.productBacklog.filter((us: any) => us.status === 'pending' || us.status === 'todo').length}
+  • En progreso: ${projectContext.productBacklog.filter((us: any) => us.status === 'in_progress').length}
+  • Completadas: ${projectContext.productBacklog.filter((us: any) => us.status === 'done').length}
+
+**User Stories del backlog:**
+${projectContext.productBacklog.slice(0, 15).map((us: any, i: number) => 
+  `${i + 1}. "${us.title}" 
+     - ${us.storyPoints} pts | Prioridad: ${us.priority} | Estado: ${us.status}
+     - ${us.description}`
+).join('\n')}
+${projectContext.productBacklog.length > 15 ? `\n... y ${projectContext.productBacklog.length - 15} User Stories más` : ''}
+` : ""}
+
+${projectContext.tasks && projectContext.tasks.length > 0 ? `
+✅ **TAREAS DEL PROYECTO**
+- Total de tareas: ${projectContext.tasks.length}
+- Por estado:
+  • To Do: ${projectContext.tasks.filter((t: any) => t.status === 'todo').length}
+  • En progreso: ${projectContext.tasks.filter((t: any) => t.status === 'in_progress').length}
+  • Completadas: ${projectContext.tasks.filter((t: any) => t.status === 'done').length}
+- Horas estimadas totales: ${projectContext.tasks.reduce((sum: number, t: any) => sum + (t.estimatedHours || 0), 0)} horas
+
+**Asignación de tareas por miembro:**
+${projectContext.teamMembers && projectContext.tasks ? projectContext.teamMembers.map((member: any) => {
+  const memberTasks = projectContext.tasks!.filter((t: any) => t.assignedTo === member.id)
+  return `• ${member.name}: ${memberTasks.length} tareas asignadas
+${memberTasks.slice(0, 3).map((t: any) => `    - "${t.title}" (${t.status}, ${t.estimatedHours}h)`).join('\n')}${memberTasks.length > 3 ? `\n    ... y ${memberTasks.length - 3} más` : ''}`
+}).join('\n') : 'No hay tareas asignadas aún'}
+
+${projectContext.tasks.filter((t: any) => !t.assignedTo).length > 0 ? `• Sin asignar: ${projectContext.tasks.filter((t: any) => !t.assignedTo).length} tareas` : ''}
+` : ""}
+
+${projectContext.sprints && projectContext.sprints.length > 0 ? `
+🏃 **SPRINTS**
+- Total de sprints: ${projectContext.sprints.length}
+${projectContext.sprints.map((sprint: any, i: number) => 
+  `${i + 1}. Sprint "${sprint.name}" (${sprint.status})
+     - Objetivo: ${sprint.goal}
+     - Fechas: ${sprint.startDate} a ${sprint.endDate}`
+).join('\n')}
+` : ""}
 
 HISTORIAL DE CONVERSACIÓN:
 ${conversationHistory || "No hay mensajes previos"}
@@ -332,15 +394,49 @@ ${conversationHistory || "No hay mensajes previos"}
 MENSAJE ACTUAL DEL USUARIO:
 ${userMessage}
 
-INSTRUCCIONES:
-- Responde de manera conversacional y profesional
-- Usa el contexto del proyecto para dar respuestas específicas y relevantes
-- Si el usuario pide modificaciones, explica qué cambios harías (aunque no puedas ejecutarlos directamente)
-- Si el usuario pide crear/modificar User Stories, backlog items, o sprints, genera la estructura JSON correspondiente
-- Puedes sugerir mejoras, detectar problemas, o hacer recomendaciones basadas en mejores prácticas
-- Mantén un tono amigable pero profesional
+═══════════════════════════════════════════════════════════════
 
-Responde ahora al mensaje del usuario:
+INSTRUCCIONES PARA TI COMO ASISTENTE:
+
+📌 **RESPONDE CON INFORMACIÓN PRECISA:**
+- Usa SIEMPRE los datos del contexto para responder
+- Si preguntan "cuántas US hay", responde: "${projectContext.productBacklog?.length || 0} User Stories"
+- Si preguntan por tareas de un usuario, busca en la sección "Asignación de tareas por miembro"
+- Si preguntan por objetivos, lista los ${projectContext.objectives?.length || 0} objetivos SMART
+
+🎯 **CAPACIDADES PARA MODIFICACIONES:**
+Cuando el usuario pida crear o modificar elementos del proyecto:
+
+1. **Crear User Stories nuevas:** Genera JSON con formato:
+\`\`\`json
+{
+  "action": "create_user_stories",
+  "items": [
+    {
+      "title": "Título descriptivo",
+      "description": "Como [rol], quiero [acción] para [beneficio]",
+      "priority": "Alta|Media|Baja",
+      "storyPoints": 3,
+      "acceptanceCriteria": ["Criterio 1", "Criterio 2", "Criterio 3"],
+      "status": "pending"
+    }
+  ]
+}
+\`\`\`
+
+2. **Agregar objetivos:** Genera objetivos SMART (Específicos, Medibles, Alcanzables, Relevantes, Temporales)
+
+3. **Crear tareas:** Desglosa User Stories en tareas técnicas con estimaciones realistas
+
+4. **Planificar sprints:** Sugiere sprints de 2 semanas con capacidad balanceada
+
+💡 **MEJORES PRÁCTICAS:**
+- Detecta anti-patterns (US muy grandes, falta de criterios de aceptación, etc.)
+- Sugiere refinamientos del backlog
+- Identifica riesgos en el timeline o carga de trabajo
+- Recomienda priorización basada en valor de negocio
+
+Responde ahora de manera conversacional, profesional y útil:
 `.trim()
 
   if (onProgress) {
