@@ -7,9 +7,11 @@ function getGeminiClient() {
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
   if (!apiKey) {
-    throw new Error("Gemini API key is not configured")
+    console.error("❌ Gemini API key is missing!")
+    throw new Error("Gemini API key is not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.")
   }
 
+  console.log("✅ Gemini API key found, initializing client...")
   return new GoogleGenerativeAI(apiKey)
 }
 
@@ -352,7 +354,7 @@ ${projectContext.productBacklog && projectContext.productBacklog.length > 0 ? `
 
 **User Stories del backlog:**
 ${projectContext.productBacklog.slice(0, 15).map((us: any, i: number) => 
-  `${i + 1}. "${us.title}" 
+  `${i + 1}. [ID: ${us.id}] "${us.title}" 
      - ${us.storyPoints} pts | Prioridad: ${us.priority} | Estado: ${us.status}
      - ${us.description}`
 ).join('\n')}
@@ -405,9 +407,11 @@ INSTRUCCIONES PARA TI COMO ASISTENTE:
 - Si preguntan por objetivos, lista los ${projectContext.objectives?.length || 0} objetivos SMART
 
 🎯 **CAPACIDADES PARA MODIFICACIONES:**
-Cuando el usuario pida crear o modificar elementos del proyecto:
+Cuando el usuario pida crear, modificar o eliminar elementos del proyecto:
 
-1. **Crear User Stories nuevas:** Genera JSON con formato:
+1. **Crear User Stories nuevas:** 
+   - Genera el JSON y luego confirma: "He creado el JSON para las User Stories. ¿Quieres que las agregue al proyecto ahora?"
+   - Formato del JSON:
 \`\`\`json
 {
   "action": "create_user_stories",
@@ -423,12 +427,38 @@ Cuando el usuario pida crear o modificar elementos del proyecto:
   ]
 }
 \`\`\`
+   - **IMPORTANTE**: Cuando el usuario confirme (diga "sí", "adelante", "hazlo", "créalas"), genera NUEVAMENTE el JSON para que el sistema lo ejecute.
 
-2. **Agregar objetivos:** Genera objetivos SMART (Específicos, Medibles, Alcanzables, Relevantes, Temporales)
+2. **Eliminar User Stories:**
+   - Cuando el usuario pida eliminar US (por título, ID o criterio), primero identifica cuáles eliminar
+   - Pregunta al usuario para confirmar: "¿Estás seguro de que quieres eliminar estas User Stories? [Lista de títulos]"
+   - Si confirma, genera el JSON con los **IDs exactos** (busca los IDs en el contexto):
+\`\`\`json
+{
+  "action": "delete_user_stories",
+  "items": [
+    {
+      "id": "ID-EXACTO-DE-LA-US",
+      "title": "Título de la US a eliminar"
+    }
+  ]
+}
+\`\`\`
+   - **IMPORTANTE**: 
+     * Siempre muestra los títulos de las US que se eliminarán y pide confirmación explícita
+     * Usa los IDs exactos del contexto (ej: si el contexto dice [ID: 1234], usa "id": "1234")
+     * Puedes identificar US por:
+       - Título exacto o parcial (ej: "elimina las US de login")
+       - Prioridad (ej: "elimina las US de baja prioridad")
+       - Estado (ej: "elimina las US completadas")
+       - Story Points (ej: "elimina las US de 1 punto")
+   - **NUNCA elimines sin confirmación explícita del usuario**
 
-3. **Crear tareas:** Desglosa User Stories en tareas técnicas con estimaciones realistas
+3. **Agregar objetivos:** Genera objetivos SMART (Específicos, Medibles, Alcanzables, Relevantes, Temporales)
 
-4. **Planificar sprints:** Sugiere sprints de 2 semanas con capacidad balanceada
+4. **Crear tareas:** Desglosa User Stories en tareas técnicas con estimaciones realistas
+
+5. **Planificar sprints:** Sugiere sprints de 2 semanas con capacidad balanceada
 
 💡 **MEJORES PRÁCTICAS:**
 - Detecta anti-patterns (US muy grandes, falta de criterios de aceptación, etc.)

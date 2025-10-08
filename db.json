@@ -6,12 +6,12 @@
       "password": "Admin123!",
       "name": "Admin User",
       "role": "scrum_master",
-      "avatar": "https://i.ibb.co/qLwwFjJT/7708d7c13008.jpg",
+      "avatar": "https://i.ibb.co/6R40x6rf/1aa39c2f0743.jpg",
       "subscription": {
         "plan": "premium",
-        "tokensUsed": 340,
+        "tokensUsed": 490,
         "tokensLimit": -1,
-        "userStoriesUsed": 15,
+        "userStoriesUsed": 18,
         "userStoriesLimit": -1
       },
       "createdAt": "2024-01-01T00:00:00.000Z",
@@ -35,12 +35,12 @@
       "password": "ProductOwner123!",
       "name": "Product Owner",
       "role": "product_owner",
-      "avatar": "/placeholder.svg?height=40&width=40",
+      "avatar": "https://i.ibb.co/jCXzjH8/d55e8ff23d62.gif",
       "subscription": {
         "plan": "free",
-        "tokensUsed": 45,
+        "tokensUsed": 95,
         "tokensLimit": 100,
-        "userStoriesUsed": 3,
+        "userStoriesUsed": 6,
         "userStoriesLimit": 10
       },
       "createdAt": "2024-01-15T00:00:00.000Z",
@@ -127,7 +127,8 @@
         ]
       },
       "members": [
-        "1"
+        "1",
+        "2"
       ],
       "createdBy": "1",
       "createdAt": "2025-10-05T03:51:02.946Z",
@@ -138,6 +139,119 @@
         "role": "Scrum Master",
         "context": "El proyecto trata de una plataforma parecida a spotify, la estructura debe ser amigable para los usuarios\n",
         "constraints": "Debe ser entregada para Marzo del 2026"
+      }
+    },
+    {
+      "id": "92d1",
+      "name": "Portfolio Audiovisual Next.js",
+      "description": "Desarrollo de un portfolio personal para un comunicador audiovisual utilizando Next.js. El portfolio permitirá la exhibición de videos y proyectos, la gestión de contenido y la presentación de información personal.",
+      "objectives": [
+        "Desarrollar un portfolio funcional y visualmente atractivo en Next.js para el comunicador audiovisual para el 2026-01-30.",
+        "Implementar un sistema de gestión de contenido (CMS) básico para que el usuario pueda agregar, editar y eliminar proyectos de su portfolio antes del 2026-02-28.",
+        "Garantizar que el portfolio sea responsive y accesible en diferentes dispositivos (desktop, tablets, mobile) antes del 2026-03-15.",
+        "Lograr una puntuación de rendimiento de al menos 80/100 en Google PageSpeed Insights para el portfolio antes del 2026-03-15."
+      ],
+      "timeline": {
+        "start": "2025-10-06",
+        "end": "2026-03-15",
+        "milestones": [
+          {
+            "name": "MVP (Minimum Viable Product) - Funcionalidades Core",
+            "date": "2025-12-15",
+            "description": "Implementación de la estructura básica del portfolio, la visualización de proyectos y la información del comunicador."
+          },
+          {
+            "name": "Implementación del CMS Básico",
+            "date": "2026-01-30",
+            "description": "Desarrollo del sistema de gestión de contenido para la administración de los proyectos."
+          },
+          {
+            "name": "Optimización de la Interfaz y Experiencia de Usuario (UX/UI)",
+            "date": "2026-02-28",
+            "description": "Mejora de la interfaz de usuario y la experiencia de navegación para una mayor usabilidad."
+          },
+          {
+            "name": "Deployment y Optimización de Rendimiento",
+            "date": "2026-03-15",
+            "description": "Publicación del portfolio y optimización para un rendimiento óptimo."
+          }
+        ]
+      },
+      "members": [
+        "1",
+        "2",
+        "3"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.542Z",
+      "status": "active",
+      "aiGenerated": true,
+      "structuredPrompt": {
+        "objective": "Desarrollar un portfolio para un comunicador audiovisual",
+        "role": "Tech lead",
+        "context": "El proyecto es para un comunicador audiovisual, que quiere ingresar sus videos y proyectos propios",
+        "constraints": "Debe realizarle en next.js"
+      }
+    },
+    {
+      "id": "24f6",
+      "name": "Plataforma de Comida Delivery - FoodieGo",
+      "description": "Desarrollo de una plataforma integral de entrega de comida a domicilio, conectando restaurantes con usuarios y optimizando la experiencia de pedido y entrega.",
+      "objectives": [
+        "Lanzar una plataforma funcional de entrega de comida en 2 meses, antes del 2025-12-08.",
+        "Soportar un mínimo de 1000 usuarios activos simultáneamente sin degradación significativa del rendimiento.",
+        "Alcanzar un puntaje de satisfacción del cliente de al menos 4.5 sobre 5 en las encuestas de satisfacción post-pedido.",
+        "Lograr que el 80% de los restaurantes asociados utilicen activamente el portal de gestión de pedidos en la plataforma durante el primer mes de lanzamiento.",
+        "Proporcionar un sistema de pedidos en línea fácil de usar que reduzca el tiempo promedio de pedido en un 30% en comparación con los métodos tradicionales (ej. por teléfono)."
+      ],
+      "timeline": {
+        "start": "2025-10-08",
+        "end": "2025-12-08",
+        "milestones": [
+          {
+            "name": "Sprint 1 Planning Complete",
+            "date": "2025-10-11",
+            "description": "Finalización de la planificación del Sprint 1, con backlog priorizado y tareas asignadas."
+          },
+          {
+            "name": "Backend MVP Release",
+            "date": "2025-10-25",
+            "description": "Entrega de una versión mínima viable del backend, incluyendo APIs para gestión de restaurantes y pedidos."
+          },
+          {
+            "name": "Frontend MVP Release",
+            "date": "2025-11-08",
+            "description": "Entrega de una versión mínima viable del frontend, incluyendo la interfaz de usuario para la navegación, búsqueda de restaurantes y selección de productos."
+          },
+          {
+            "name": "Payment Gateway Integration Complete",
+            "date": "2025-11-22",
+            "description": "Integración completa de una pasarela de pago segura para procesar transacciones en línea."
+          },
+          {
+            "name": "QA and User Acceptance Testing Complete",
+            "date": "2025-12-01",
+            "description": "Finalización de las pruebas de control de calidad y aceptación del usuario, asegurando que la plataforma cumple con los requisitos."
+          },
+          {
+            "name": "Final Product Deployment",
+            "date": "2025-12-08",
+            "description": "Despliegue final del producto en el entorno de producción."
+          }
+        ]
+      },
+      "members": [
+        "1"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.448Z",
+      "status": "active",
+      "aiGenerated": true,
+      "structuredPrompt": {
+        "objective": "Desarrollar una plataforma de comida",
+        "role": "Scrum Master",
+        "context": "Proyecto cuenta con un equipo de 6 personas, se debe desarrollar en 2 meses",
+        "constraints": "Debe soportar 1000 usuarios"
       }
     }
   ],
@@ -462,6 +576,818 @@
       "createdBy": "1",
       "createdAt": "2025-10-05T03:51:03.426Z",
       "status": "active"
+    },
+    {
+      "id": "c63c",
+      "title": "Usuario puede personalizar la apariencia visual de la plataforma",
+      "description": "Como usuario, quiero poder elegir entre diferentes temas visuales (claro/oscuro, colores de acento) para adaptar la apariencia de la plataforma a mis preferencias y mejorar mi experiencia visual.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede acceder a la sección de configuración de apariencia.",
+        "El usuario puede elegir entre al menos dos temas visuales predefinidos (claro y oscuro).",
+        "El usuario puede seleccionar un color de acento para la interfaz.",
+        "La apariencia de la plataforma se actualiza inmediatamente después de seleccionar un tema o color de acento.",
+        "La preferencia de apariencia se guarda para futuras sesiones."
+      ],
+      "status": "pending",
+      "projectId": "7ee0",
+      "createdBy": "2",
+      "createdAt": "2025-10-05T04:23:56.608Z",
+      "aiGenerated": true
+    },
+    {
+      "id": "9f8c",
+      "title": "Usuario recibe recomendaciones de música más diversas e inteligentes gracias a la IA",
+      "description": "Como usuario, quiero que el motor de recomendaciones de la plataforma utilice IA para analizar mis patrones de escucha y ofrecerme sugerencias de canciones y artistas más variadas y relevantes, incluso fuera de mis géneros habituales, para descubrir nueva música que me guste.",
+      "priority": "Media",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El motor de recomendaciones utiliza algoritmos de IA para analizar el historial de reproducción del usuario.",
+        "Las recomendaciones incluyen canciones y artistas de géneros diferentes a los que el usuario escucha habitualmente.",
+        "El usuario puede indicar si le gusta o no una recomendación para refinar el modelo de IA.",
+        "La plataforma muestra una explicación de por qué se le recomienda una canción o artista en particular (por ejemplo, 'porque escuchaste mucho a este artista similar').",
+        "Las recomendaciones se actualizan periódicamente en función de los nuevos patrones de escucha del usuario."
+      ],
+      "status": "pending",
+      "projectId": "7ee0",
+      "createdBy": "2",
+      "createdAt": "2025-10-05T04:27:43.909Z",
+      "aiGenerated": true
+    },
+    {
+      "id": "51d7",
+      "title": "Usuario puede crear automixes de música basados en sus preferencias y estilos",
+      "description": "Como usuario, quiero poder generar automixes de canciones según mis géneros, artistas o listas de reproducción favoritas, para disfrutar de música continua y variada sin tener que seleccionar cada canción manualmente.",
+      "priority": "Media",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El usuario puede seleccionar una o varias fuentes para el automix (géneros, artistas, listas de reproducción).",
+        "El usuario puede ajustar la duración total del automix.",
+        "El usuario puede previsualizar una porción del automix antes de generarlo completo.",
+        "El automix generado incluye canciones de las fuentes seleccionadas, respetando la duración total especificada.",
+        "El automix genera transiciones suaves entre canciones."
+      ],
+      "status": "pending",
+      "projectId": "7ee0",
+      "createdBy": "2",
+      "createdAt": "2025-10-05T04:28:16.126Z",
+      "aiGenerated": true
+    },
+    {
+      "id": "lwe6",
+      "title": "User Story: Visualizar la lista de proyectos",
+      "description": "Como visitante, quiero ver una lista de los proyectos del comunicador audiovisual en la página principal para tener una idea general de su trabajo.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "La lista de proyectos debe mostrarse en un formato visualmente atractivo.",
+        "Cada proyecto debe mostrar una miniatura, título y breve descripción.",
+        "La lista debe estar paginada si hay demasiados proyectos para mostrar en una sola página.",
+        "La lista debe ser responsive y adaptarse a diferentes tamaños de pantalla."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.863Z",
+      "status": "pending"
+    },
+    {
+      "id": "v7qq",
+      "title": "User Story: Administrar la lista de proyectos",
+      "description": "Como comunicador audiovisual, quiero poder agregar, editar y eliminar proyectos de mi portfolio a través de una interfaz de administración.",
+      "priority": "Alta",
+      "storyPoints": 13,
+      "acceptanceCriteria": [
+        "Debo poder iniciar sesión en la interfaz de administración con mis credenciales.",
+        "Debo poder agregar un nuevo proyecto, especificando título, descripción, video, créditos y miniatura.",
+        "Debo poder editar la información de un proyecto existente.",
+        "Debo poder eliminar un proyecto de mi portfolio.",
+        "La interfaz de administración debe ser intuitiva y fácil de usar."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.912Z",
+      "status": "pending"
+    },
+    {
+      "id": "pc56",
+      "title": "User Story: Autenticación de Usuario (Login)",
+      "description": "Como administrador, quiero poder iniciar sesión de forma segura en el CMS para gestionar el contenido del portfolio.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "Debe existir un formulario de inicio de sesión con campos para usuario y contraseña.",
+        "El sistema debe validar las credenciales del usuario contra una base de datos segura.",
+        "Si las credenciales son correctas, el usuario debe ser redirigido al panel de administración.",
+        "Si las credenciales son incorrectas, se debe mostrar un mensaje de error claro."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.923Z",
+      "status": "pending"
+    },
+    {
+      "id": "1b6q",
+      "title": "User Story: Cambiar la información personal",
+      "description": "Como comunicador audiovisual, quiero poder cambiar mi información personal (nombre, biografía, foto) que se muestra en el portfolio.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "Debo poder acceder a una sección de edición de mi información personal en la interfaz de administración.",
+        "Debo poder modificar mi nombre, biografía y foto de perfil.",
+        "Debo poder guardar los cambios y verlos reflejados en el portfolio.",
+        "El sistema debe validar que los datos ingresados sean válidos."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.931Z",
+      "status": "pending"
+    },
+    {
+      "id": "qx5c",
+      "title": "User Story: Implementar un diseño responsivo",
+      "description": "Como usuario, quiero que el portfolio se vea bien y funcione correctamente en cualquier dispositivo (desktop, tablet, mobile).",
+      "priority": "Alta",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El diseño debe adaptarse a diferentes tamaños de pantalla.",
+        "Los elementos deben ser fáciles de ver e interactuar en dispositivos táctiles.",
+        "El contenido debe ser legible en todos los dispositivos.",
+        "La navegación debe ser intuitiva en todos los dispositivos."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.939Z",
+      "status": "pending"
+    },
+    {
+      "id": "hd0m",
+      "title": "User Story: Optimizar el rendimiento del portfolio",
+      "description": "Como usuario, quiero que el portfolio cargue rápidamente para tener una buena experiencia de navegación.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El tiempo de carga inicial del portfolio debe ser inferior a 3 segundos.",
+        "Las imágenes deben estar optimizadas para la web.",
+        "El código debe estar minificado y comprimido.",
+        "Se debe utilizar un CDN para servir los recursos estáticos."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.947Z",
+      "status": "pending"
+    },
+    {
+      "id": "z2ou",
+      "title": "User Story: Agregar una sección de contacto",
+      "description": "Como visitante, quiero poder contactar al comunicador audiovisual a través de un formulario de contacto o información de contacto.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Debe haber una sección de contacto en el portfolio.",
+        "La sección debe incluir un formulario de contacto con campos para nombre, email y mensaje.",
+        "La sección debe mostrar la información de contacto del comunicador audiovisual (email, teléfono, redes sociales).",
+        "El formulario de contacto debe enviar un email al comunicador audiovisual."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.954Z",
+      "status": "pending"
+    },
+    {
+      "id": "iu38",
+      "title": "User Story: Agregar una sección 'Acerca de mí'",
+      "description": "Como visitante, quiero poder leer una breve biografía sobre el comunicador audiovisual para conocer su experiencia y habilidades.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Debe haber una sección 'Acerca de mí' en el portfolio.",
+        "La sección debe incluir una foto del comunicador audiovisual.",
+        "La sección debe incluir una breve biografía del comunicador audiovisual.",
+        "La sección debe destacar la experiencia y habilidades del comunicador audiovisual."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.963Z",
+      "status": "pending"
+    },
+    {
+      "id": "b6z4",
+      "title": "User Story: Integración con Redes Sociales",
+      "description": "Como comunicador audiovisual, quiero que mi portfolio esté integrado con mis redes sociales para aumentar mi visibilidad.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Deben haber botones para compartir proyectos en redes sociales.",
+        "Deben mostrarse los perfiles de redes sociales del comunicador audiovisual.",
+        "La integración debe ser fluida y fácil de usar."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.971Z",
+      "status": "pending"
+    },
+    {
+      "id": "z4nq",
+      "title": "User Story: Recuperación de Contraseña",
+      "description": "Como administrador, quiero poder recuperar mi contraseña en caso de que la olvide.",
+      "priority": "Baja",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Debe haber un enlace \"Olvidé mi contraseña\" en la página de inicio de sesión.",
+        "Al hacer clic en el enlace, se debe solicitar la dirección de correo electrónico.",
+        "Se debe enviar un correo electrónico con un enlace para restablecer la contraseña.",
+        "El enlace debe ser válido por un tiempo limitado."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.979Z",
+      "status": "pending"
+    },
+    {
+      "id": "qch2",
+      "title": "User Story: Gestionar metadatos SEO",
+      "description": "Como administrador, quiero poder gestionar los metadatos de cada página para optimizar el SEO.",
+      "priority": "Baja",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "Debo poder definir el título, la descripción y las palabras clave de cada página.",
+        "Los metadatos deben ser utilizados por los motores de búsqueda.",
+        "La gestión de metadatos debe ser sencilla e intuitiva."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.989Z",
+      "status": "pending"
+    },
+    {
+      "id": "h1n5",
+      "title": "User Story: Registrar nuevos usuarios",
+      "description": "Como nuevo usuario, quiero poder registrarme con mi email y contraseña para gestionar el contenido.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "Debe existir un formulario de registro.",
+        "El sistema debe validar el email y la contraseña.",
+        "El sistema debe guardar los datos en la base de datos de forma segura.",
+        "Luego del registro, el usuario debe ser redireccionado al dashboard."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:44.998Z",
+      "status": "pending"
+    },
+    {
+      "id": "zhjj",
+      "title": "User Story: Ver el número de visitas por proyecto",
+      "description": "Como administrador, quiero ver cuántas visitas tiene cada proyecto para evaluar su popularidad.",
+      "priority": "Baja",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Debo ver el número de visitas en la lista de proyectos en el dashboard.",
+        "Debo ver el número de visitas detallado en la página de edición de cada proyecto.",
+        "Los datos deben ser actualizados en tiempo real."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.004Z",
+      "status": "pending"
+    },
+    {
+      "id": "so84",
+      "title": "User Story: Filtrar proyectos por categoría",
+      "description": "Como visitante, quiero filtrar los proyectos por categoría para encontrar rápidamente el tipo de trabajo que me interesa.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "Debe haber un sistema de filtrado por categoría.",
+        "Debo poder seleccionar una o varias categorías.",
+        "La lista de proyectos debe actualizarse automáticamente al seleccionar una categoría.",
+        "Las categorías deben ser relevantes para los trabajos del comunicador."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.013Z",
+      "status": "pending"
+    },
+    {
+      "id": "el37",
+      "title": "User Story: Visualizar miniaturas de proyectos",
+      "description": "Como visitante, quiero ver miniaturas de los proyectos para identificar rápidamente su contenido antes de ver los detalles.",
+      "priority": "Alta",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Cada proyecto en la lista debe tener una miniatura.",
+        "La miniatura debe ser representativa del contenido del proyecto.",
+        "Las miniaturas deben tener un tamaño adecuado para una visualización rápida."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.021Z",
+      "status": "pending"
+    },
+    {
+      "id": "m11w",
+      "title": "User Story: Autenticación de Usuario (Logout)",
+      "description": "Como administrador, quiero poder cerrar sesión de forma segura.",
+      "priority": "Media",
+      "storyPoints": 1,
+      "acceptanceCriteria": [
+        "Debe existir un botón de cierre de sesión.",
+        "Al hacer clic, la sesión debe ser terminada.",
+        "Luego de cerrar sesión, el usuario debe ser redirigido a la página de inicio."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.029Z",
+      "status": "pending"
+    },
+    {
+      "id": "sv2a",
+      "title": "User Story: Soporte para múltiples formatos de video",
+      "description": "Como administrador, necesito que el sistema soporte varios formatos de video para asegurar la compatibilidad con diferentes tipos de archivo.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El sistema debe soportar los formatos de video más comunes (MP4, MOV, AVI).",
+        "El usuario debe poder subir archivos en cualquiera de estos formatos.",
+        "El sistema debe convertir automáticamente los videos a un formato estándar si es necesario."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.035Z",
+      "status": "pending"
+    },
+    {
+      "id": "mlkt",
+      "title": "User Story: Implementar Google Analytics",
+      "description": "Como administrador, quiero integrar Google Analytics para rastrear el tráfico y el comportamiento de los usuarios en el portfolio.",
+      "priority": "Baja",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "Google Analytics debe estar integrado en todas las páginas del portfolio.",
+        "Se deben rastrear las visitas a las páginas, el tiempo de permanencia y el comportamiento de los usuarios.",
+        "Los datos de Google Analytics deben ser accesibles a través de una cuenta de Google."
+      ],
+      "projectId": "92d1",
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.040Z",
+      "status": "pending"
+    },
+    {
+      "id": "cd6z",
+      "projectId": "92d1",
+      "type": "product",
+      "items": [
+        "lwe6",
+        "siyg",
+        "v7qq",
+        "pc56",
+        "1b6q",
+        "qx5c",
+        "hd0m",
+        "z2ou",
+        "iu38",
+        "b6z4",
+        "z4nq",
+        "qch2",
+        "h1n5",
+        "zhjj",
+        "so84",
+        "el37",
+        "m11w",
+        "sv2a",
+        "mlkt"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-06T03:09:45.045Z",
+      "status": "active"
+    },
+    {
+      "id": "a818",
+      "title": "Usuario puede personalizar la calidad de audio de la reproducción",
+      "description": "Como usuario, quiero poder seleccionar la calidad de audio (baja, media, alta) para la reproducción de música, para optimizar el consumo de datos o disfrutar de la mejor calidad de sonido posible.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede acceder a la sección de ajustes de reproducción.",
+        "El usuario puede seleccionar una opción de calidad de audio entre baja, media y alta.",
+        "La calidad de audio seleccionada se aplica a la reproducción de música.",
+        "La aplicación muestra una indicación de la calidad de audio actual.",
+        "El cambio de calidad de audio no interrumpe la reproducción actual."
+      ],
+      "status": "pending",
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:15:27.314Z",
+      "aiGenerated": true
+    },
+    {
+      "id": "f6aa",
+      "title": "Usuario percibe la aplicación con un diseño intuitivo y consistente",
+      "description": "Como usuario, quiero que la aplicación tenga un diseño intuitivo y consistente en todas las secciones para poder navegar y utilizarla fácilmente.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "La aplicación utiliza una guía de estilo definida para mantener la coherencia visual.",
+        "La navegación es intuitiva y fácil de usar en todas las secciones de la aplicación.",
+        "Se realizan pruebas de usabilidad para identificar y corregir problemas de diseño.",
+        "Se corrigen los problemas de diseño identificados en las pruebas de usabilidad."
+      ],
+      "status": "pending",
+      "projectId": "7ee0",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:19:04.769Z",
+      "aiGenerated": true
+    },
+    {
+      "id": "r3qs",
+      "title": "Usuario puede registrarse con email y contraseña",
+      "description": "Como usuario, quiero registrarme con email y contraseña para acceder a la plataforma y realizar pedidos.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario debe poder ingresar un email válido.",
+        "El usuario debe poder ingresar una contraseña segura (ej. longitud mínima, caracteres especiales).",
+        "La contraseña debe ser encriptada y almacenada de forma segura.",
+        "El usuario debe recibir un email de verificación (opcional).",
+        "El sistema debe prevenir el registro con emails duplicados."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.784Z",
+      "status": "pending"
+    },
+    {
+      "id": "8rjm",
+      "title": "Usuario puede iniciar sesión",
+      "description": "Como usuario, quiero iniciar sesión con mis credenciales registradas para acceder a mi cuenta y realizar pedidos.",
+      "priority": "Alta",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario debe poder ingresar email y contraseña.",
+        "El sistema debe verificar las credenciales con la base de datos.",
+        "El usuario debe ser redirigido a la página principal (ej. lista de restaurantes) después de iniciar sesión exitosamente.",
+        "El sistema debe mostrar un mensaje de error si las credenciales son incorrectas.",
+        "El sistema debe ofrecer una opción para recuperar la contraseña."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.794Z",
+      "status": "pending"
+    },
+    {
+      "id": "myq8",
+      "title": "Usuario puede buscar restaurantes por nombre y ubicación",
+      "description": "Como usuario, quiero buscar restaurantes por nombre o ubicación para encontrar opciones cerca de mí.",
+      "priority": "Alta",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El usuario debe poder ingresar texto en un campo de búsqueda.",
+        "El sistema debe mostrar restaurantes que coincidan con el texto ingresado en el nombre o ubicación.",
+        "Los resultados deben ser ordenados por relevancia (ej. distancia, popularidad).",
+        "El sistema debe mostrar un mensaje si no se encuentran restaurantes.",
+        "El sistema debe permitir filtrar por tipo de comida (ej. italiana, mexicana)."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.801Z",
+      "status": "pending"
+    },
+    {
+      "id": "i2la",
+      "title": "Usuario puede ver el menú de un restaurante",
+      "description": "Como usuario, quiero ver el menú de un restaurante para seleccionar los platos que deseo ordenar.",
+      "priority": "Alta",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El menú debe mostrarse con el nombre, descripción y precio de cada plato.",
+        "Las imágenes de los platos deben ser visibles.",
+        "El menú debe estar organizado por categorías (ej. entradas, platos principales, postres).",
+        "El sistema debe indicar si un plato está disponible o no.",
+        "El usuario debe poder agregar un plato al carrito."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.810Z",
+      "status": "pending"
+    },
+    {
+      "id": "dlop",
+      "title": "Usuario puede agregar platos al carrito",
+      "description": "Como usuario, quiero agregar platos al carrito para realizar un pedido.",
+      "priority": "Alta",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario debe poder especificar la cantidad de cada plato.",
+        "El carrito debe mostrar el total del pedido.",
+        "El usuario debe poder eliminar platos del carrito.",
+        "El carrito debe persistir al navegar entre páginas (ej. menú de otros restaurantes).",
+        "El usuario debe poder ver un resumen del carrito en cualquier momento."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.818Z",
+      "status": "pending"
+    },
+    {
+      "id": "uoze",
+      "title": "Usuario puede realizar el pago con tarjeta de crédito",
+      "description": "Como usuario, quiero realizar el pago con tarjeta de crédito para completar mi pedido.",
+      "priority": "Alta",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El sistema debe soportar el ingreso de la información de la tarjeta de crédito (número, fecha de vencimiento, CVV).",
+        "La información de la tarjeta de crédito debe ser encriptada y procesada de forma segura.",
+        "El sistema debe validar la información de la tarjeta de crédito.",
+        "El sistema debe mostrar un mensaje de confirmación si el pago es exitoso.",
+        "El sistema debe mostrar un mensaje de error si el pago falla."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.826Z",
+      "status": "pending"
+    },
+    {
+      "id": "qral",
+      "title": "Restaurante puede registrarse con información de contacto",
+      "description": "Como restaurante, quiero registrarme con mi información de contacto y detalles del establecimiento para aparecer en la plataforma.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El restaurante debe poder ingresar nombre, dirección, teléfono, email y horario de atención.",
+        "El restaurante debe poder subir un logo.",
+        "La información del restaurante debe ser validada.",
+        "El restaurante debe recibir un email de confirmación de registro.",
+        "Un administrador debe aprobar el registro antes de que el restaurante aparezca en la plataforma."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.836Z",
+      "status": "pending"
+    },
+    {
+      "id": "nc4m",
+      "title": "Restaurante puede gestionar su menú",
+      "description": "Como restaurante, quiero gestionar mi menú (agregar, editar, eliminar platos) para mantenerlo actualizado en la plataforma.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El restaurante debe poder agregar platos con nombre, descripción, precio y foto.",
+        "El restaurante debe poder editar la información de los platos.",
+        "El restaurante debe poder eliminar platos.",
+        "El restaurante debe poder organizar los platos por categorías.",
+        "Los cambios en el menú deben reflejarse inmediatamente en la plataforma."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.859Z",
+      "status": "pending"
+    },
+    {
+      "id": "yu99",
+      "title": "Restaurante puede ver los pedidos recibidos",
+      "description": "Como restaurante, quiero ver los pedidos recibidos para prepararlos y entregarlos.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El restaurante debe poder ver los detalles del pedido (platos, cantidad, datos del cliente, dirección de entrega).",
+        "El restaurante debe poder aceptar o rechazar un pedido.",
+        "El restaurante debe poder marcar un pedido como 'en preparación', 'listo para entregar' y 'entregado'.",
+        "El restaurante debe recibir notificaciones de nuevos pedidos.",
+        "El restaurante debe poder imprimir los detalles del pedido."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.872Z",
+      "status": "pending"
+    },
+    {
+      "id": "hybp",
+      "title": "Usuario puede ver el estado de su pedido",
+      "description": "Como usuario, quiero ver el estado de mi pedido para saber cuándo llegará mi comida.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario debe poder ver el estado actual del pedido (ej. 'recibido', 'en preparación', 'en camino', 'entregado').",
+        "El usuario debe poder ver el tiempo estimado de entrega.",
+        "El usuario debe recibir notificaciones de cambios de estado del pedido.",
+        "El usuario debe poder contactar al restaurante o al repartidor (opcional).",
+        "El usuario debe poder ver un mapa con la ubicación del repartidor (opcional)."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.878Z",
+      "status": "pending"
+    },
+    {
+      "id": "4c4k",
+      "title": "Usuario puede calificar y comentar un pedido",
+      "description": "Como usuario, quiero calificar y comentar un pedido para dar feedback sobre la experiencia.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario debe poder calificar el restaurante y el repartidor con estrellas (ej. 1-5).",
+        "El usuario debe poder escribir un comentario.",
+        "El comentario debe ser visible para otros usuarios (opcional).",
+        "El sistema debe calcular la calificación promedio del restaurante.",
+        "El sistema debe filtrar los comentarios inapropiados."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.884Z",
+      "status": "pending"
+    },
+    {
+      "id": "v7tr",
+      "title": "Sistema debe notificar al repartidor de nuevas asignaciones de pedidos",
+      "description": "Como sistema, debo notificar al repartidor sobre los nuevos pedidos asignados para que pueda recogerlos y entregarlos a tiempo.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El repartidor recibe una notificación push cuando se le asigna un nuevo pedido.",
+        "La notificación incluye detalles del pedido (restaurante, dirección del cliente).",
+        "El repartidor puede aceptar o rechazar la asignación.",
+        "Si el repartidor rechaza la asignación, el pedido se reasigna a otro repartidor.",
+        "El repartidor puede ver un mapa con la ruta optimizada para recoger y entregar el pedido."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.892Z",
+      "status": "pending"
+    },
+    {
+      "id": "z2n5",
+      "title": "Usuario puede recuperar su contraseña",
+      "description": "Como usuario, quiero recuperar mi contraseña en caso de que la olvide, para poder acceder nuevamente a la plataforma.",
+      "priority": "Media",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede solicitar una recuperación de contraseña ingresando su email.",
+        "El usuario recibe un email con un enlace para restablecer la contraseña.",
+        "El enlace de restablecimiento es válido por un tiempo limitado.",
+        "El usuario puede ingresar una nueva contraseña.",
+        "La nueva contraseña debe cumplir con los requisitos de seguridad."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.903Z",
+      "status": "pending"
+    },
+    {
+      "id": "pinl",
+      "title": "Administrador puede gestionar restaurantes",
+      "description": "Como administrador, quiero gestionar la información de los restaurantes (aprobar, editar, eliminar) para mantener la plataforma actualizada.",
+      "priority": "Baja",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El administrador puede ver una lista de todos los restaurantes.",
+        "El administrador puede ver los detalles de cada restaurante.",
+        "El administrador puede aprobar, editar o eliminar un restaurante.",
+        "El administrador puede buscar restaurantes por nombre o ubicación.",
+        "El administrador debe tener los permisos adecuados para realizar estas acciones."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.914Z",
+      "status": "pending"
+    },
+    {
+      "id": "8lp3",
+      "title": "Sistema debe generar informes de ventas",
+      "description": "Como sistema, debo generar informes de ventas (por restaurante, por período) para analizar el rendimiento de la plataforma.",
+      "priority": "Baja",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El sistema debe generar informes de ventas por restaurante.",
+        "El sistema debe generar informes de ventas por período (ej. diario, semanal, mensual).",
+        "Los informes deben incluir información como la cantidad de pedidos, el valor total de las ventas y los platos más vendidos.",
+        "Los informes deben poder ser exportados en formato CSV o Excel.",
+        "Los informes deben ser accesibles solo a usuarios con permisos adecuados."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.928Z",
+      "status": "pending"
+    },
+    {
+      "id": "e2mu",
+      "title": "El sistema debe permitir al usuario contactar con soporte",
+      "description": "Como usuario, quiero poder contactar con soporte en caso de tener problemas o dudas con la plataforma.",
+      "priority": "Baja",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        "El usuario puede acceder a una sección de 'Ayuda' o 'Contacto'.",
+        "El usuario puede enviar un mensaje a través de un formulario de contacto.",
+        "El usuario puede encontrar preguntas frecuentes (FAQ).",
+        "El usuario puede ver información de contacto (email, teléfono).",
+        "El sistema debe registrar las consultas de soporte."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.940Z",
+      "status": "pending"
+    },
+    {
+      "id": "ob9p",
+      "title": "Sistema debe enviar notificaciones push para promociones",
+      "description": "Como sistema, debo enviar notificaciones push para promociones y ofertas especiales para aumentar el número de pedidos.",
+      "priority": "Baja",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El sistema puede enviar notificaciones push a los usuarios.",
+        "Las notificaciones pueden incluir texto, imágenes y enlaces.",
+        "Las notificaciones pueden ser dirigidas a segmentos específicos de usuarios (ej. usuarios que no han pedido en el último mes).",
+        "Los usuarios pueden desactivar las notificaciones push.",
+        "El sistema debe registrar la efectividad de las notificaciones."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.947Z",
+      "status": "pending"
+    },
+    {
+      "id": "an07",
+      "title": "Usuario puede guardar sus direcciones favoritas",
+      "description": "Como usuario, quiero guardar mis direcciones de entrega favoritas para facilitar el proceso de pedido.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "El usuario puede agregar y guardar múltiples direcciones.",
+        "El usuario puede editar o eliminar direcciones guardadas.",
+        "Las direcciones guardadas deben estar fácilmente accesibles durante el proceso de pago.",
+        "El sistema debe validar el formato de la dirección.",
+        "El usuario puede nombrar sus direcciones guardadas (ej. 'Casa', 'Oficina')."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.953Z",
+      "status": "pending"
+    },
+    {
+      "id": "ogta",
+      "title": "Sistema debe permitir al usuario seleccionar métodos de pago alternativos",
+      "description": "Como usuario, quiero seleccionar métodos de pago alternativos además de la tarjeta de crédito, para tener más opciones para completar mi pedido.",
+      "priority": "Media",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        "El sistema debe integrar al menos un método de pago alternativo (ej. PayPal, Apple Pay, Google Pay).",
+        "El usuario debe poder seleccionar su método de pago preferido durante el proceso de pago.",
+        "El sistema debe dirigir al usuario al sitio del método de pago seleccionado para completar la transacción.",
+        "Después de la transacción, el sistema debe redirigir al usuario de vuelta a la plataforma.",
+        "El sistema debe asegurar la seguridad de las transacciones realizadas a través de métodos de pago alternativos."
+      ],
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.967Z",
+      "status": "pending"
+    },
+    {
+      "id": "g6ie",
+      "projectId": "24f6",
+      "type": "product",
+      "items": [
+        "r3qs",
+        "8rjm",
+        "myq8",
+        "i2la",
+        "dlop",
+        "uoze",
+        "qral",
+        "nc4m",
+        "yu99",
+        "hybp",
+        "4c4k",
+        "v7tr",
+        "z2n5",
+        "pinl",
+        "8lp3",
+        "e2mu",
+        "ob9p",
+        "an07",
+        "ogta"
+      ],
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:27:32.974Z",
+      "status": "active"
+    },
+    {
+      "id": "bdf2",
+      "title": "Diseño de la interfaz de usuario (UI) intuitiva y atractiva",
+      "description": "Como usuario, quiero una interfaz de usuario intuitiva y visualmente atractiva para navegar fácilmente por la plataforma y realizar pedidos de manera eficiente.",
+      "priority": "Media",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        "La interfaz de usuario es fácil de usar y navegar.",
+        "El diseño es visualmente atractivo y moderno.",
+        "La interfaz es adaptable a diferentes dispositivos (responsive design).",
+        "Se han realizado pruebas de usabilidad con usuarios reales y se han implementado las mejoras necesarias."
+      ],
+      "status": "pending",
+      "projectId": "24f6",
+      "createdBy": "1",
+      "createdAt": "2025-10-08T00:28:30.870Z",
+      "aiGenerated": true
     }
   ],
   "userStories": [

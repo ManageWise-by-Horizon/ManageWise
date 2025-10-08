@@ -47,8 +47,12 @@ export default function BacklogsPage() {
       const backlogsData = await backlogsRes.json()
       const projectsData = await projectsRes.json()
 
+      // Filter only backlog containers (items with 'type' and 'items' fields)
+      // Ignore individual User Stories
+      const backlogContainers = backlogsData.filter((item: any) => item.type && item.items)
+
       // Enrich backlogs with project names
-      const enrichedBacklogs = backlogsData.map((backlog: Backlog) => {
+      const enrichedBacklogs = backlogContainers.map((backlog: Backlog) => {
         const project = projectsData.find((p: any) => p.id === backlog.projectId)
         return {
           ...backlog,

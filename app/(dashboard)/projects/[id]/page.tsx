@@ -383,7 +383,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </TabsContent>
 
         <TabsContent value="backlog" className="space-y-4">
-          <ProjectBacklog projectId={project.id} projectName={project.name} />
+          <ProjectBacklog 
+            projectId={project.id} 
+            projectName={project.name} 
+            externalUserStories={userStories}
+          />
         </TabsContent>
 
         <TabsContent value="chat" className="space-y-4">
@@ -401,6 +405,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 teamMembers: members,
               }}
               initialPrompt={project.structuredPrompt}
+              onDataUpdate={fetchProjectDetails} // Actualiza sin reload
             />
           </div>
         </TabsContent>

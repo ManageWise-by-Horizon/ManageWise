@@ -17,24 +17,32 @@ interface UserStory {
   acceptanceCriteria: string[]
   status: string
   projectId: string
-  createdBy: string
-  createdAt: string
+  createdBy?: string
+  createdAt?: string
+  aiGenerated?: boolean
 }
 
 interface ProjectBacklogProps {
   projectId: string
   projectName: string
+  externalUserStories?: UserStory[] // User Stories desde el padre (actualizadas en tiempo real)
 }
 
-export function ProjectBacklog({ projectId, projectName }: ProjectBacklogProps) {
+export function ProjectBacklog({ projectId, projectName, externalUserStories }: ProjectBacklogProps) {
   const [userStories, setUserStories] = useState<UserStory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const { toast } = useToast()
 
+  // Si hay User Stories externas (del padre), usarlas en lugar de fetch
   useEffect(() => {
-    fetchUserStories()
-  }, [projectId])
+    if (externalUserStories) {
+      setUserStories(externalUserStories)
+      setIsLoading(false)
+    } else {
+      fetchUserStories()
+    }
+  }, [projectId, externalUserStories])
 
   const fetchUserStories = async () => {
     try {

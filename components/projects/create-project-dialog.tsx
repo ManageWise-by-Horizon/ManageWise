@@ -266,16 +266,44 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         onProjectCreated()
       }, 2000)
     } catch (error) {
-      console.error("Error generating project with Gemini:", error)
+      console.error("❌ Error generating project with Gemini:", error)
+      
+      // Get error message
+      let errorMessage = "Error desconocido"
+      let errorTitle = "Error al generar proyecto"
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        console.error("📋 Error message:", errorMessage)
+        console.error("📋 Error stack:", error.stack)
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      // Check for specific error types
+      if (errorMessage.includes("API key")) {
+        errorTitle = "Error de configuración"
+        errorMessage = "API key de Gemini no configurada correctamente"
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servicio de IA"
+      } else if (errorMessage.includes("quota") || errorMessage.includes("limit")) {
+        errorTitle = "Límite alcanzado"
+        errorMessage = "Has alcanzado el límite de uso de la API"
+      }
+      
       setGenerationLog((prev) => [
         ...prev,
         getMessageForStep("error"),
-        `Detalles: ${error instanceof Error ? error.message : "Error desconocido"}`,
+        `⚠️ ${errorMessage}`,
       ])
+      
+      // Show user-friendly error with better styling
       toast({
-        title: "Error",
-        description: "No se pudo generar el proyecto con IA. Verifica tu conexión y API key.",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
+        className: "bg-red-600 text-white border-red-700",
       })
     } finally {
       setIsGenerating(false)
