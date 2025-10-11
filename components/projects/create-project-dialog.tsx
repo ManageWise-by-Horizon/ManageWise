@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,12 +17,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Sparkles, Bot, CheckCircle2, AlertCircle } from "lucide-react"
+import { Loader2, Sparkles, Bot, CheckCircle2, AlertCircle, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 import { generateProjectWithGemini, type StructuredPrompt } from "@/lib/gemini"
 import { getMessageForStep } from "@/lib/generation-messages"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface CreateProjectDialogProps {
   open: boolean
@@ -47,6 +54,12 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   const [role, setRole] = useState("")
   const [context, setContext] = useState("")
   const [constraints, setConstraints] = useState("")
+
+  // File attachment state
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [attachedFilePreviews, setAttachedFilePreviews] = useState<{file: File, preview: string | null}[]>([])
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const documentInputRef = useRef<HTMLInputElement>(null)
 
   // AI Generation state
   const [generationLog, setGenerationLog] = useState<string[]>([])
@@ -98,6 +111,80 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
     }
   }
 
+  // File handling functions
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (20MB limit)
+    if (file.size > 20 * 1024 * 1024) {
+      toast({
+        title: "Archivo muy grande",
+        description: "El archivo no debe superar los 20MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if already exists
+    const isDuplicate = attachedFiles.some(
+      f => f.name === file.name && f.size === file.size
+    )
+    if (isDuplicate) {
+      toast({
+        title: "Archivo duplicado",
+        description: "Este archivo ya está adjuntado",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check limit (10 files for project creation)
+    if (attachedFiles.length >= 10) {
+      toast({
+        title: "Límite alcanzado",
+        description: "Puedes adjuntar máximo 10 archivos",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Add to files array
+    setAttachedFiles(prev => [...prev, file])
+
+    // Generate preview for images
+    if (type === 'image' && file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAttachedFilePreviews(prev => [...prev, { file, preview: reader.result as string }])
+      }
+      reader.readAsDataURL(file)
+    } else {
+      setAttachedFilePreviews(prev => [...prev, { file, preview: null }])
+    }
+
+    toast({
+      title: "Archivo adjuntado",
+      description: `${file.name} se ha adjuntado correctamente`,
+    })
+  }
+
+  const handleRemoveFile = (fileToRemove: File) => {
+    setAttachedFiles(prev => prev.filter(f => f !== fileToRemove))
+    setAttachedFilePreviews(prev => prev.filter(p => p.file !== fileToRemove))
+    
+    // Reset input values
+    if (imageInputRef.current) imageInputRef.current.value = ""
+    if (documentInputRef.current) documentInputRef.current.value = ""
+  }
+
+  const clearAllFiles = () => {
+    setAttachedFiles([])
+    setAttachedFilePreviews([])
+    if (imageInputRef.current) imageInputRef.current.value = ""
+    if (documentInputRef.current) documentInputRef.current.value = ""
+  }
+
   const handleAIGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -111,8 +198,9 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       return
     }
 
-    // Check limits
-    if (!checkLimits("tokens", 50)) {
+    // Check limits - include file count in token calculation
+    const tokensNeeded = 50 + (attachedFiles.length * 10)
+    if (!checkLimits("tokens", tokensNeeded)) {
       toast({
         title: "Límite alcanzado",
         description: "Has alcanzado el límite de tokens. Actualiza a Premium para continuar.",
@@ -148,8 +236,17 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       // Step 4: Generating objectives
       setGenerationLog((prev) => [...prev, getMessageForStep("generating_objectives")])
 
-      // Generate with Gemini (silent, no chunk logging)
-      const result = await generateProjectWithGemini(structuredPrompt)
+      // Generate with Gemini (with files support and progress callback)
+      const result = await generateProjectWithGemini(
+        structuredPrompt,
+        attachedFiles.length > 0 ? attachedFiles : undefined,
+        (message) => {
+          // Show OCR progress messages
+          if (message.includes('📄') || message.includes('✅') || message.includes('⚠️')) {
+            setGenerationLog((prev) => [...prev, message])
+          }
+        }
+      )
 
       // Step 5: Creating timeline
       setGenerationLog((prev) => [...prev, getMessageForStep("creating_timeline")])
@@ -253,7 +350,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       setGenerationLog((prev) => [...prev, getMessageForStep("success")])
 
       // Update token usage
-      await updateUsage("tokens", 50)
+      await updateUsage("tokens", tokensNeeded)
 
       toast({
         title: "Proyecto generado con IA",
@@ -319,6 +416,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
     setRole("")
     setContext("")
     setConstraints("")
+    clearAllFiles()
     setGenerationLog([])
     setGeneratedProject(null)
     setShowPreview(false)
@@ -326,7 +424,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Crear Nuevo Proyecto</DialogTitle>
           <DialogDescription>Crea un proyecto manualmente o genera uno con IA</DialogDescription>
@@ -410,85 +508,198 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
 
           <TabsContent value="ai">
             {!showPreview ? (
-              <form onSubmit={handleAIGenerate} className="space-y-4">
-                <div className="space-y-4">
-                  <div className="rounded-lg bg-muted/50 p-4 border border-border">
-                    <div className="flex items-start gap-2 mb-3">
-                      <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <form onSubmit={handleAIGenerate} className="space-y-2.5">
+                <div className="space-y-2.5">
+                  <div className="rounded-lg bg-muted/50 p-2.5 border border-border">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                       <div>
                         <h4 className="font-semibold text-sm">Formulario Estructurado para IA</h4>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground">
                           Completa los campos para que Gemini AI genere un proyecto optimizado
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="objective">
-                      Objetivo <span className="text-destructive">*</span>
-                    </Label>
-                    <Textarea
-                      id="objective"
-                      placeholder="Ejemplo: Desarrollar una plataforma de e-commerce que permita a pequeños comerciantes vender sus productos en línea"
-                      value={objective}
-                      onChange={(e) => setObjective(e.target.value)}
-                      required
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">¿Qué quieres lograr con este proyecto?</p>
+                  {/* Grid de 2 columnas para layout horizontal */}
+                  <div className="grid grid-cols-2 gap-3">{/* Reducido de gap-4 a gap-3 */}
+                    {/* Columna Izquierda */}
+                    <div className="space-y-2.5">
+                      <div className="space-y-1">
+                        <Label htmlFor="objective" className="text-sm">
+                          Objetivo <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                          id="objective"
+                          placeholder="Ejemplo: Desarrollar una plataforma de e-commerce que permita a pequeños comerciantes vender sus productos en línea"
+                          value={objective}
+                          onChange={(e) => setObjective(e.target.value)}
+                          required
+                          rows={2}
+                          className="text-sm resize-none"
+                        />
+                        <p className="text-xs text-muted-foreground">¿Qué quieres lograr con este proyecto?</p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="context" className="text-sm">
+                          Contexto <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                          id="context"
+                          placeholder="Ejemplo: El proyecto se desarrollará con un equipo de 5 personas (2 developers, 1 designer, 1 QA, 1 PO). Tecnologías: React, Node.js, PostgreSQL. Duración estimada: 3 meses"
+                          value={context}
+                          onChange={(e) => setContext(e.target.value)}
+                          required
+                          rows={3}
+                          className="text-sm resize-none"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Proporciona contexto sobre el equipo, tecnologías y duración
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Columna Derecha */}
+                    <div className="space-y-2.5">
+                      <div className="space-y-1">
+                        <Label htmlFor="role" className="text-sm">
+                          Rol del Usuario <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="role"
+                          placeholder="Ejemplo: Scrum Master, Product Owner, Tech Lead"
+                          value={role}
+                          onChange={(e) => setRole(e.target.value)}
+                          required
+                          className="text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">¿Cuál es tu rol en el proyecto?</p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="constraints" className="text-sm">
+                          Restricciones y Límites <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                          id="constraints"
+                          placeholder="Ejemplo: Presupuesto limitado ($50k), debe lanzarse antes del Q4, cumplir con GDPR, soportar 1000 usuarios concurrentes"
+                          value={constraints}
+                          onChange={(e) => setConstraints(e.target.value)}
+                          required
+                          rows={4}
+                          className="text-sm resize-none"
+                        />
+                        <p className="text-xs text-muted-foreground">¿Qué limitaciones o restricciones existen?</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="role">
-                      Rol del Usuario <span className="text-destructive">*</span>
+                  {/* File attachment section - compacto */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="file-upload" className="text-sm">
+                      Adjuntar Archivos <span className="text-xs text-muted-foreground">(opcional)</span>
                     </Label>
-                    <Input
-                      id="role"
-                      placeholder="Ejemplo: Scrum Master, Product Owner, Tech Lead"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      required
+                    
+                    {/* Hidden file inputs */}
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      id="image-upload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'image')}
                     />
-                    <p className="text-xs text-muted-foreground">¿Cuál es tu rol en el proyecto?</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="context">
-                      Contexto <span className="text-destructive">*</span>
-                    </Label>
-                    <Textarea
-                      id="context"
-                      placeholder="Ejemplo: El proyecto se desarrollará con un equipo de 5 personas (2 developers, 1 designer, 1 QA, 1 PO). Tecnologías: React, Node.js, PostgreSQL. Duración estimada: 3 meses"
-                      value={context}
-                      onChange={(e) => setContext(e.target.value)}
-                      required
-                      rows={4}
+                    <input
+                      ref={documentInputRef}
+                      type="file"
+                      id="document-upload"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'document')}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Proporciona contexto sobre el equipo, tecnologías y duración
+                    
+                    {/* Dropdown menu for file attachment */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={attachedFiles.length >= 10}
+                          className="w-full relative text-sm h-9"
+                        >
+                          <Paperclip className="mr-2 h-3.5 w-3.5" />
+                          {attachedFiles.length > 0 ? `${attachedFiles.length} archivo(s)` : "Adjuntar archivos"}
+                          {attachedFiles.length > 0 && (
+                            <Badge variant="secondary" className="ml-2 text-xs h-5">{attachedFiles.length}</Badge>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                          <ImageIcon className="mr-2 h-4 w-4" />
+                          Adjuntar imagen
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Adjuntar documento
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    {attachedFiles.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium">{attachedFiles.length} archivo(s)</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearAllFiles}
+                            className="h-6 text-xs"
+                          >
+                            Limpiar
+                          </Button>
+                        </div>
+                        <div className="space-y-1 max-h-[100px] overflow-y-auto">
+                          {attachedFiles.map((file, index) => (
+                            <div key={`${file.name}-${index}`} className="relative border rounded p-1.5 bg-muted/50">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-0.5 right-0.5 h-5 w-5"
+                                onClick={() => handleRemoveFile(file)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                              <div className="flex items-center gap-1.5 pr-6">
+                                {file.type.startsWith('image/') ? (
+                                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                ) : (
+                                  <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                )}
+                                <span className="text-xs truncate flex-1">{file.name}</span>
+                                <Badge variant="outline" className="text-[10px] h-4 px-1">
+                                  {(file.size / 1024 / 1024).toFixed(1)}MB
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      📷 📄 Gemini AI puede extraer texto de imágenes y documentos. Max 10 archivos, 20MB c/u.
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="constraints">
-                      Restricciones y Límites <span className="text-destructive">*</span>
-                    </Label>
-                    <Textarea
-                      id="constraints"
-                      placeholder="Ejemplo: Presupuesto limitado ($50k), debe lanzarse antes del Q4, cumplir con GDPR, soportar 1000 usuarios concurrentes"
-                      value={constraints}
-                      onChange={(e) => setConstraints(e.target.value)}
-                      required
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">¿Qué limitaciones o restricciones existen?</p>
-                  </div>
-
-                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5">
                     <p className="text-xs text-amber-600 dark:text-amber-400">
-                      💡 Esta generación consumirá <strong>50 tokens</strong>. Gemini AI creará objetivos SMART,
-                      timeline, backlog y estructura completa del proyecto.
+                      💡 Esta generación consumirá <strong>{50 + (attachedFiles.length * 10)} tokens</strong>. Gemini AI creará objetivos SMART,
+                      timeline, backlog y estructura completa{attachedFiles.length > 0 ? ` usando ${attachedFiles.length} archivo(s)` : ""}.
                     </p>
                   </div>
                 </div>

@@ -6,10 +6,16 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
+import { Send, Bot, User, Loader2, CheckCircle2, AlertCircle, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react"
 import { chatWithGemini, ChatMessage, ProjectContext } from "@/lib/gemini"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface ProjectChatProps {
   projectId: string
@@ -28,7 +34,11 @@ export function ProjectChat({ projectId, projectContext, initialPrompt, onDataUp
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [streamingMessage, setStreamingMessage] = useState("")
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [attachedFilePreviews, setAttachedFilePreviews] = useState<{file: File, preview: string | null}[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const documentInputRef = useRef<HTMLInputElement>(null)
   const { user, checkLimits, updateUsage } = useAuth()
   const { toast } = useToast()
 
@@ -74,6 +84,125 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
       scrollRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages, streamingMessage])
+
+  /**
+   * Handle file attachment (multiple files support)
+   */
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'document') => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check if file already exists
+    if (attachedFiles.some(f => f.name === file.name && f.size === file.size)) {
+      toast({
+        title: "Archivo ya adjuntado",
+        description: `El archivo "${file.name}" ya está en la lista`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate maximum files (e.g., 5 files max)
+    if (attachedFiles.length >= 5) {
+      toast({
+        title: "Límite alcanzado",
+        description: "Máximo 5 archivos por mensaje",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (fileType === 'image') {
+      // Validate image type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Tipo de archivo no soportado",
+          description: "Solo se permiten imágenes (JPG, PNG, GIF, WebP)",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Archivo muy grande",
+          description: "El tamaño máximo permitido es 10MB por imagen",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Generate preview for images
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const preview = e.target?.result as string
+        setAttachedFilePreviews(prev => [...prev, { file, preview }])
+      }
+      reader.readAsDataURL(file)
+    } else {
+      // Validate document type
+      const validTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+      ]
+      
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Tipo de archivo no soportado",
+          description: "Solo se permiten PDF, Word, Excel o archivos de texto",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Validate file size (max 20MB for documents)
+      if (file.size > 20 * 1024 * 1024) {
+        toast({
+          title: "Archivo muy grande",
+          description: "El tamaño máximo permitido es 20MB por documento",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // No preview for documents
+      setAttachedFilePreviews(prev => [...prev, { file, preview: null }])
+    }
+
+    // Add file to array
+    setAttachedFiles(prev => [...prev, file])
+    
+    // Reset input to allow selecting same file again later
+    if (imageInputRef.current) imageInputRef.current.value = ''
+    if (documentInputRef.current) documentInputRef.current.value = ''
+  }
+
+  /**
+   * Remove specific attached file
+   */
+  const handleRemoveFile = (fileToRemove: File) => {
+    setAttachedFiles(prev => prev.filter(f => f !== fileToRemove))
+    setAttachedFilePreviews(prev => prev.filter(p => p.file !== fileToRemove))
+  }
+
+  /**
+   * Clear all attached files
+   */
+  const clearAllFiles = () => {
+    setAttachedFiles([])
+    setAttachedFilePreviews([])
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+    if (documentInputRef.current) {
+      documentInputRef.current.value = ''
+    }
+  }
 
   /**
    * Execute actions from AI response (create user stories, tasks, etc.)
@@ -431,10 +560,11 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
   }
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return
 
-    // Check limits (5 tokens per message)
-    if (!checkLimits("tokens", 5)) {
+    // Check limits (10 tokens per file + 5 base)
+    const tokensRequired = attachedFiles.length > 0 ? 5 + (attachedFiles.length * 10) : 5
+    if (!checkLimits("tokens", tokensRequired)) {
       toast({
         title: "Límite alcanzado",
         description: "Has alcanzado el límite de tokens. Actualiza a Premium para continuar.",
@@ -443,26 +573,69 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
       return
     }
 
+    // Build file labels
+    let fileLabels: string[] = []
+    if (attachedFiles.length > 0) {
+      fileLabels = attachedFiles.map(file => {
+        if (file.type.startsWith('image/')) {
+          return `📷 [Imagen: ${file.name}]`
+        } else {
+          return `📄 [Documento: ${file.name}]`
+        }
+      })
+    }
+
+    // Create user message content
+    let messageContent = ""
+    if (input.trim() && attachedFiles.length > 0) {
+      // Both text and files: show text + file labels
+      messageContent = `${input}\n\n${fileLabels.join('\n')}`
+    } else if (attachedFiles.length > 0) {
+      // Only files: show file labels
+      messageContent = fileLabels.join('\n')
+    } else {
+      // Only text
+      messageContent = input
+    }
+
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}-user`,
       role: "user",
-      content: input,
+      content: messageContent,
       timestamp: new Date().toISOString(),
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = input
+    const currentFiles = [...attachedFiles]
     setInput("")
+    clearAllFiles()
     setIsLoading(true)
     setStreamingMessage("")
 
     try {
       let fullResponse = ""
       
+      // Create proper prompt for file analysis
+      let promptText = currentInput
+      if (!promptText && currentFiles.length > 0) {
+        if (currentFiles.length === 1) {
+          if (currentFiles[0].type.startsWith('image/')) {
+            promptText = "Analiza esta imagen y dame información relevante para el proyecto"
+          } else {
+            promptText = "Analiza este documento y extrae la información relevante para el proyecto"
+          }
+        } else {
+          promptText = `Analiza estos ${currentFiles.length} archivos y extrae toda la información relevante para el proyecto`
+        }
+      }
+      
       const response = await chatWithGemini(
         projectContext,
         messages,
-        input,
-        (chunk) => {
+        promptText,
+        currentFiles.length > 0 ? currentFiles : undefined,
+        (chunk: string) => {
           fullResponse += chunk
           // Only show chunks that are not JSON
           const withoutJson = cleanResponseForDisplay(fullResponse)
@@ -487,7 +660,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
       await executeActionsFromResponse(response)
 
       // Update token usage
-      await updateUsage("tokens", 5)
+      await updateUsage("tokens", tokensRequired)
     } catch (error) {
       console.error("Error in chat:", error)
       toast({
@@ -515,7 +688,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
           Chat con IA - {projectContext.projectName}
         </CardTitle>
         <CardDescription>
-          Pregunta sobre el proyecto, pide modificaciones o mejoras. El asistente conoce todo el contexto.
+          Pregunta sobre el proyecto, pide modificaciones o mejoras. Puedes adjuntar imágenes 📷 o documentos 📄 (PDF, Word, Excel) para análisis con OCR
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0">
@@ -607,16 +780,103 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
           </div>
         </ScrollArea>
 
+        {/* File attachments preview - multiple files */}
+        {attachedFiles.length > 0 && (
+          <div className="mb-2 space-y-2">
+            <div className="flex items-center justify-between px-2">
+              <p className="text-xs text-muted-foreground">
+                {attachedFiles.length} archivo(s) adjuntado(s) - {(attachedFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)} MB total
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFiles}
+                className="h-6 text-xs"
+              >
+                Limpiar todo
+              </Button>
+            </div>
+            {attachedFiles.map((file, index) => (
+              <div key={index} className="p-2 border rounded-lg flex items-center gap-2 bg-muted">
+                {file.type.startsWith('image/') ? (
+                  <ImageIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate font-medium">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveFile(file)}
+                  className="h-8 w-8 p-0 flex-shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2 mt-4">
+          {/* Hidden file inputs */}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileSelect(e, 'image')}
+            className="hidden"
+          />
+          <input
+            ref={documentInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(e) => handleFileSelect(e, 'document')}
+            className="hidden"
+          />
+          
+          {/* Dropdown menu for file attachment */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={isLoading || attachedFiles.length >= 5}
+                title={attachedFiles.length >= 5 ? "Máximo 5 archivos" : "Adjuntar archivo"}
+              >
+                <Paperclip className="h-4 w-4" />
+                {attachedFiles.length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
+                    {attachedFiles.length}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Adjuntar imagen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
+                <FileText className="mr-2 h-4 w-4" />
+                Adjuntar documento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Escribe tu mensaje..."
+            placeholder={attachedFiles.length > 0 ? "Describe los archivos (opcional)..." : "Escribe tu mensaje..."}
             disabled={isLoading}
             className="flex-1"
           />
-          <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+          <Button onClick={handleSend} disabled={isLoading || (!input.trim() && attachedFiles.length === 0)}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

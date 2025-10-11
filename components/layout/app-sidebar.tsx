@@ -33,9 +33,6 @@ import { Badge } from "@/components/ui/badge"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Proyectos", href: "/projects", icon: FolderKanban },
-  { name: "Backlogs", href: "/backlogs", icon: ListTodo },
-  { name: "Sprints", href: "/sprints", icon: Calendar },
-  { name: "Asistente IA", href: "/ai-assistant", icon: Bot },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ]
 

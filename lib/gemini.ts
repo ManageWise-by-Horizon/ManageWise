@@ -16,6 +16,65 @@ function getGeminiClient() {
 }
 
 /**
+ * Convert file to base64 for Gemini API
+ */
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      // Remove data:...;base64, prefix
+      const base64Data = base64.split(',')[1]
+      resolve(base64Data)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * Extract text from file (image or document) using Gemini Vision/Document AI
+ */
+export async function extractTextFromFile(file: File): Promise<string> {
+  try {
+    const base64File = await fileToBase64(file)
+    const mimeType = file.type
+
+    const genAI = getGeminiClient()
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+
+    const prompt = `Extrae TODO el texto visible en este archivo de manera estructurada.
+    
+Instrucciones:
+- Transcribe fielmente TODO el texto que veas
+- Mantén el formato y estructura (títulos, listas, párrafos)
+- Si hay tablas, conviértelas a formato markdown
+- Si hay diagramas o wireframes, describe los componentes principales
+- Si hay código, envuélvelo en bloques de código
+- Si hay requisitos o especificaciones, lista cada uno claramente
+- Si no hay texto legible, responde: "No se detectó texto en el archivo"
+
+Por favor, extrae y estructura el contenido ahora:`
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: base64File,
+          mimeType: mimeType,
+        },
+      },
+      prompt,
+    ])
+
+    const response = await result.response
+    return response.text()
+  } catch (error) {
+    console.error("❌ Error extracting text from file:", error)
+    throw new Error("No se pudo extraer el texto del archivo")
+  }
+}
+
+/**
  * Structured prompt interface for project generation
  */
 export interface StructuredPrompt {
@@ -99,36 +158,77 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin texto adicional antes 
 }
 
 /**
- * Generate project structure using Gemini AI
+ * Generate project structure using Gemini AI with optional file context
  */
 export async function generateProjectWithGemini(
   prompt: StructuredPrompt,
-  onProgress?: (chunk: string) => void
+  files?: File | File[],
+  onProgress?: (message: string) => void
 ): Promise<any> {
-  const genAI = getGeminiClient()
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+  try {
+    const genAI = getGeminiClient()
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
-  const structuredPrompt = buildStructuredPrompt(prompt)
+    // Handle both single file and multiple files
+    const fileArray = files ? (Array.isArray(files) ? files : [files]) : []
 
-  if (onProgress) {
-    // Stream response for iterative chat
-    const result = await model.generateContentStream(structuredPrompt)
-    let fullText = ""
-
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text()
-      fullText += chunkText
-      onProgress(chunkText)
+    // Extract text from all files if provided
+    let filesContext = ""
+    if (fileArray.length > 0) {
+      if (onProgress) onProgress(`📄 Analizando ${fileArray.length} archivo(s) adjunto(s) con OCR...`)
+      
+      const extractedTexts = await Promise.all(
+        fileArray.map(async (file, index) => {
+          try {
+            const text = await extractTextFromFile(file)
+            if (onProgress) onProgress(`✅ Archivo ${index + 1}/${fileArray.length} analizado: ${file.name}`)
+            return `\n### Archivo ${index + 1}: ${file.name}\n${text}\n`
+          } catch (error) {
+            console.error(`Error extrayendo texto de ${file.name}:`, error)
+            if (onProgress) onProgress(`⚠️ No se pudo extraer texto de ${file.name}`)
+            return `\n### Archivo ${index + 1}: ${file.name}\n[Error: No se pudo extraer el texto de este archivo]\n`
+          }
+        })
+      )
+      
+      filesContext = extractedTexts.join('\n---\n')
     }
 
-    return parseGeminiResponse(fullText)
-  } else {
-    // Non-streaming response
-    const result = await model.generateContent(structuredPrompt)
-    const response = await result.response
-    const text = response.text()
+    // Enhance context with files information
+    const enhancedPrompt = {
+      ...prompt,
+      context: filesContext 
+        ? `${prompt.context}\n\n**Información adicional extraída de archivos adjuntos (${fileArray.length}):**\n${filesContext}`
+        : prompt.context
+    }
 
-    return parseGeminiResponse(text)
+    const structuredPrompt = buildStructuredPrompt(enhancedPrompt)
+
+    if (onProgress) {
+      onProgress("🤖 Generando estructura del proyecto...")
+      
+      // Stream response for progress feedback
+      const result = await model.generateContentStream(structuredPrompt)
+      let fullText = ""
+
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text()
+        fullText += chunkText
+      }
+
+      onProgress("✅ Proyecto generado exitosamente")
+      return parseGeminiResponse(fullText)
+    } else {
+      // Non-streaming response
+      const result = await model.generateContent(structuredPrompt)
+      const response = await result.response
+      const text = response.text()
+
+      return parseGeminiResponse(text)
+    }
+  } catch (error) {
+    console.error("❌ Error generating project with Gemini:", error)
+    throw error
   }
 }
 
@@ -300,18 +400,46 @@ export interface ProjectContext {
 }
 
 /**
- * Generate chat response with project context (iterative chat)
+ * Generate chat response with project context and optional files (iterative chat)
  */
 export async function chatWithGemini(
   projectContext: ProjectContext,
   chatHistory: ChatMessage[],
   userMessage: string,
+  files?: File | File[],
   onProgress?: (chunk: string) => void
 ): Promise<string> {
-  const genAI = getGeminiClient()
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+  try {
+    const genAI = getGeminiClient()
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
-  // Build conversation history
+    // Handle both single file and multiple files
+    const fileArray = files ? (Array.isArray(files) ? files : [files]) : []
+
+    // Extract text from all files if provided
+    let filesContext = ""
+    if (fileArray.length > 0) {
+      console.log(`📄 Extrayendo texto de ${fileArray.length} archivo(s)...`)
+      
+      const extractedTexts = await Promise.all(
+        fileArray.map(async (file, index) => {
+          try {
+            console.log(`  ${index + 1}. ${file.name} (${file.type})`)
+            const text = await extractTextFromFile(file)
+            console.log(`  ✅ Texto extraído de ${file.name}: ${text.substring(0, 50)}...`)
+            return `\n### Archivo ${index + 1}: ${file.name}\n${text}\n`
+          } catch (error) {
+            console.error(`  ❌ Error extrayendo texto de ${file.name}:`, error)
+            return `\n### Archivo ${index + 1}: ${file.name}\n[Error: No se pudo extraer el texto de este archivo]\n`
+          }
+        })
+      )
+      
+      filesContext = extractedTexts.join('\n---\n')
+      console.log(`✅ Extracción completada de ${fileArray.length} archivo(s)`)
+    }
+
+    // Build conversation history
   const conversationHistory = chatHistory
     .map((msg) => {
       const role = msg.role === "user" ? "Usuario" : "Asistente"
@@ -395,6 +523,8 @@ ${conversationHistory || "No hay mensajes previos"}
 
 MENSAJE ACTUAL DEL USUARIO:
 ${userMessage}
+
+${filesContext ? `\n## 📷 CONTENIDO DE ARCHIVOS ADJUNTOS\n\n${filesContext}\n\nPuedes referenciar esta información en tu respuesta y usarla para generar User Stories, analizar requisitos, o responder preguntas.\n` : ""}
 
 ═══════════════════════════════════════════════════════════════
 
@@ -484,5 +614,9 @@ Responde ahora de manera conversacional, profesional y útil:
     const result = await model.generateContent(prompt)
     const response = await result.response
     return response.text()
+  }
+  } catch (error) {
+    console.error("❌ Error chatting with Gemini:", error)
+    throw error
   }
 }
