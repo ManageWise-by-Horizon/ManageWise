@@ -28,6 +28,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AddMemberDialog } from "@/components/projects/add-member-dialog"
 import { ProjectChat } from "@/components/projects/project-chat"
 import { ProjectBacklog } from "@/components/projects/project-backlog"
+import { ProjectBoard } from "@/components/projects/project-board"
 
 interface Project {
   id: string
@@ -411,13 +412,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </TabsContent>
 
         <TabsContent value="board">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <LayoutGrid className="mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">Vista de Board</h3>
-              <p className="text-sm text-muted-foreground">Próximamente: Tablero Kanban con drag & drop</p>
-            </CardContent>
-          </Card>
+          <ProjectBoard 
+            projectId={project.id}
+            tasks={tasks}
+            members={members}
+            onUpdate={fetchProjectDetails}
+          />
         </TabsContent>
 
         <TabsContent value="list">
