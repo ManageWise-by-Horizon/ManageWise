@@ -29,15 +29,30 @@ interface DashboardStats {
 export default function DashboardPage() {
   const { user } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
+  const [greeting, setGreeting] = useState("") // Estado para el saludo
+  const [isClient, setIsClient] = useState(false) // Para evitar hidratación
   const [stats, setStats] = useState<DashboardStats>({
     totalProjects: 0,
     activeProjects: 0,
     totalTasks: 0,
     completedTasks: 0,
     upcomingMeetings: 0,
-    tokensUsed: user?.subscription.tokensUsed || 0,
-    tokensLimit: user?.subscription.tokensLimit || 100,
+    tokensUsed: 0, // Inicializar siempre con 0
+    tokensLimit: 100, // Inicializar siempre con 100
   })
+
+  // useEffect para marcar que estamos en el cliente
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // useEffect para generar el saludo solo en el cliente
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) setGreeting("Buenos días")
+    else if (hour < 18) setGreeting("Buenas tardes")
+    else setGreeting("Buenas noches")
+  }, [])
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -69,13 +84,6 @@ export default function DashboardPage() {
     fetchDashboardData()
   }, [user])
 
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return "Buenos días"
-    if (hour < 18) return "Buenas tardes"
-    return "Buenas noches"
-  }
-
   const taskCompletionRate = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0
   const tokenUsageRate = stats.tokensLimit > 0 ? (stats.tokensUsed / stats.tokensLimit) * 100 : 0
 
@@ -84,7 +92,7 @@ export default function DashboardPage() {
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">
-          {getGreeting()}, {user?.name}
+          {greeting && `${greeting}, `}{isClient ? user?.name : ''}
         </h1>
         <p className="mt-2 text-muted-foreground">Aquí está el resumen de tus proyectos y tareas</p>
       </div>
@@ -132,15 +140,15 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {user?.subscription.plan === "premium" ? "∞" : `${stats.tokensUsed}/${stats.tokensLimit}`}
+              {isClient && user?.subscription.plan === "premium" ? "∞" : `${stats.tokensUsed}/${stats.tokensLimit}`}
             </div>
-            {user?.subscription.plan === "free" && (
+            {isClient && user?.subscription.plan === "free" && (
               <>
                 <p className="text-xs text-muted-foreground">tokens usados</p>
                 <Progress value={tokenUsageRate} className="mt-2" />
               </>
             )}
-            {user?.subscription.plan === "premium" && <p className="text-xs text-muted-foreground">ilimitados</p>}
+            {isClient && user?.subscription.plan === "premium" && <p className="text-xs text-muted-foreground">ilimitados</p>}
           </CardContent>
         </Card>
       </div>
@@ -245,7 +253,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Upgrade Banner for Free Users */}
-      {user?.subscription.plan === "free" && tokenUsageRate > 70 && (
+      {isClient && user?.subscription.plan === "free" && tokenUsageRate > 70 && (
         <Card className="border-chart-1 bg-chart-1/5">
           <CardContent className="flex items-center justify-between p-6">
             <div className="flex items-center gap-4">

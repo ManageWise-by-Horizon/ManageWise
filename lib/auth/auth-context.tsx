@@ -46,9 +46,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+    
     // Check for stored auth token
     const token = localStorage.getItem("auth_token")
     const storedUser = localStorage.getItem("user")
@@ -92,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false)
-  }, [])
+  }, [isClient])
 
   const login = async (email: string, password: string) => {
     try {
@@ -116,8 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Remove password from user object
       const { password: _, ...userWithoutPassword } = foundUser
 
-      localStorage.setItem("auth_token", token)
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword))
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("auth_token", token)
+        localStorage.setItem("user", JSON.stringify(userWithoutPassword))
+      }
 
       setUser(userWithoutPassword)
       router.push("/dashboard")
@@ -176,8 +185,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user")
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("auth_token")
+      localStorage.removeItem("user")
+    }
     setUser(null)
     router.push("/login")
   }
@@ -214,12 +225,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     setUser(updatedUser)
-    localStorage.setItem("user", JSON.stringify(updatedUser))
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("user", JSON.stringify(updatedUser))
+    }
   }
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser)
-    localStorage.setItem("user", JSON.stringify(updatedUser))
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("user", JSON.stringify(updatedUser))
+    }
   }
 
   return (
