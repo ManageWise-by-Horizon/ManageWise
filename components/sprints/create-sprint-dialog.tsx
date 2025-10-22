@@ -158,15 +158,33 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
         allTasks.push(...mockTasks)
       }
 
-      // Create tasks
+      // Create tasks with validation
       const createdTasks = await Promise.all(
-        allTasks.map((task) =>
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+        allTasks.map(async (task) => {
+          // Validate required fields before creating
+          if (!task.projectId) {
+            throw new Error(`Task "${task.title}" missing projectId`)
+          }
+          if (!task.userStoryId) {
+            throw new Error(`Task "${task.title}" missing userStoryId`)
+          }
+          if (task.status !== "todo") {
+            console.warn(`Task "${task.title}" has unexpected status: ${task.status}`)
+            task.status = "todo" // Force correct status
+          }
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(task),
-          }).then((res) => res.json()),
-        ),
+          })
+          
+          if (!response.ok) {
+            throw new Error(`Failed to create task: ${task.title}`)
+          }
+          
+          return response.json()
+        }),
       )
 
       // Create sprint

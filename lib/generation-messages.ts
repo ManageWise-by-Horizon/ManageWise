@@ -15,6 +15,7 @@ export const GENERATION_MESSAGES = {
   ASSIGNING_ROLES: "👥 Asignando roles y responsabilidades...",
   IDENTIFYING_RISKS: "⚠️ Identificando riesgos y mitigaciones...",
   SAVING_BACKLOG: "💾 Guardando Product Backlog...",
+  CREATING_TASKS: "⚡ Generando tareas para cada User Story...",
   CREATING_PROJECT: "🎨 Creando el proyecto...",
   FINALIZING: "✅ Finalizando generación...",
   SUCCESS: "🎉 ¡Proyecto creado exitosamente!",
@@ -33,6 +34,7 @@ export type GenerationStep =
   | "assigning_roles"
   | "identifying_risks"
   | "saving_backlog"
+  | "creating_tasks"
   | "creating_project"
   | "finalizing"
   | "success"
@@ -51,6 +53,7 @@ export function getMessageForStep(step: GenerationStep): string {
     assigning_roles: GENERATION_MESSAGES.ASSIGNING_ROLES,
     identifying_risks: GENERATION_MESSAGES.IDENTIFYING_RISKS,
     saving_backlog: GENERATION_MESSAGES.SAVING_BACKLOG,
+    creating_tasks: GENERATION_MESSAGES.CREATING_TASKS,
     creating_project: GENERATION_MESSAGES.CREATING_PROJECT,
     finalizing: GENERATION_MESSAGES.FINALIZING,
     success: GENERATION_MESSAGES.SUCCESS,

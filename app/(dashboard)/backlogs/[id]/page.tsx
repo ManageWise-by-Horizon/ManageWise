@@ -5,18 +5,20 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Plus, Sparkles, TrendingUp, Target } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ArrowLeft, Plus, Sparkles, TrendingUp, Target, MoreVertical, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { UserStoryCard } from "@/components/backlogs/user-story-card"
 import { CreateUserStoryDialog } from "@/components/backlogs/create-user-story-dialog"
+import { UserStoryDetailModal } from "@/components/backlogs/user-story-detail-modal"
 
 interface UserStory {
   id: string
   title: string
   description: string
   acceptanceCriteria: string[]
-  priority: "high" | "medium" | "low"
+  priority: "high" | "medium" | "low" | "Alta" | "Media" | "Baja"
   storyPoints: number
   status: string
   projectId: string
@@ -47,6 +49,8 @@ export default function BacklogDetailPage({ params }: { params: Promise<{ id: st
   const [userStories, setUserStories] = useState<UserStory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [selectedUserStory, setSelectedUserStory] = useState<UserStory | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   useEffect(() => {
     fetchBacklogDetails()
@@ -54,19 +58,35 @@ export default function BacklogDetailPage({ params }: { params: Promise<{ id: st
 
   const fetchBacklogDetails = async () => {
     try {
+      console.log("[DEBUG] Fetching backlog with ID:", resolvedParams.id)
+      console.log("[DEBUG] API URL:", process.env.NEXT_PUBLIC_API_URL)
+      
       const backlogRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs/${resolvedParams.id}`)
       const backlogData = await backlogRes.json()
+      console.log("[DEBUG] Backlog data:", backlogData)
       setBacklog(backlogData)
 
       // Fetch project
       const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${backlogData.projectId}`)
       const projectData = await projectRes.json()
+      console.log("[DEBUG] Project data:", projectData)
       setProject(projectData)
 
-      // Fetch user stories
+      // Fetch user stories from userStories collection
       const storiesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`)
       const storiesData = await storiesRes.json()
-      const backlogStories = storiesData.filter((s: UserStory) => backlogData.items.includes(s.id))
+      console.log("[DEBUG] All user stories:", storiesData.length)
+      console.log("[DEBUG] Backlog items:", backlogData.items)
+      
+      // Filter stories that are in the backlog items
+      const backlogStories = storiesData.filter((s: any) => {
+        const isIncluded = backlogData.items.includes(s.id)
+        console.log(`[DEBUG] Story ${s.id} (${s.title}) - Included: ${isIncluded}`)
+        return isIncluded
+      })
+      console.log("[DEBUG] Filtered backlog stories:", backlogStories.length)
+      console.log("[DEBUG] Backlog stories:", backlogStories)
+      console.log("[DEBUG] First few stories for debugging:", backlogStories.slice(0, 3))
       setUserStories(backlogStories)
     } catch (error) {
       console.error("[v0] Error fetching backlog details:", error)
@@ -81,9 +101,9 @@ export default function BacklogDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const getPriorityStats = () => {
-    const high = userStories.filter((s) => s.priority === "high").length
-    const medium = userStories.filter((s) => s.priority === "medium").length
-    const low = userStories.filter((s) => s.priority === "low").length
+    const high = userStories.filter((s) => s.priority === "high" || s.priority === "Alta").length
+    const medium = userStories.filter((s) => s.priority === "medium" || s.priority === "Media").length
+    const low = userStories.filter((s) => s.priority === "low" || s.priority === "Baja").length
     return { high, medium, low }
   }
 
@@ -211,7 +231,7 @@ export default function BacklogDetailPage({ params }: { params: Promise<{ id: st
         )}
       </div>
 
-      {/* User Stories List */}
+      {/* User Stories Table */}
       <div>
         <h2 className="mb-4 text-xl font-semibold">User Stories</h2>
         {userStories.length === 0 ? (
@@ -227,15 +247,133 @@ export default function BacklogDetailPage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {userStories
-              .sort((a, b) => {
-                const priorityOrder = { high: 0, medium: 1, low: 2 }
-                return priorityOrder[a.priority] - priorityOrder[b.priority]
-              })
-              .map((story) => (
-                <UserStoryCard key={story.id} story={story} onUpdate={fetchBacklogDetails} />
-              ))}
+          <div className="rounded-lg border bg-card">
+            <div className="max-h-[600px] overflow-y-auto">
+              <table className="w-full">
+                <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm border-b">
+                  <tr>
+                    <th className="text-left p-3 font-medium text-sm">ID</th>
+                    <th className="text-left p-3 font-medium text-sm">Título</th>
+                    <th className="text-left p-3 font-medium text-sm">Prioridad</th>
+                    <th className="text-left p-3 font-medium text-sm">Story Points</th>
+                    <th className="text-left p-3 font-medium text-sm">Estado</th>
+                    <th className="text-left p-3 font-medium text-sm">IA</th>
+                    <th className="text-left p-3 font-medium text-sm">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userStories
+                    .sort((a, b) => {
+                      const priorityOrder: Record<string, number> = { 
+                        "high": 0, "Alta": 0, 
+                        "medium": 1, "Media": 1, 
+                        "low": 2, "Baja": 2 
+                      }
+                      return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3)
+                    })
+                    .map((story, index) => (
+                      <tr 
+                        key={story.id} 
+                        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedUserStory(story)
+                          setIsDetailModalOpen(true)
+                        }}
+                      >
+                        <td className="p-3">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            US-{String(index + 1).padStart(2, '0')}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <div className="max-w-xs">
+                            <h4 className="font-medium text-sm line-clamp-2">{story.title}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{story.description}</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <Badge 
+                            className={
+                              (story.priority === "high" || story.priority === "Alta")
+                                ? "bg-red-500 text-white" 
+                                : (story.priority === "medium" || story.priority === "Media")
+                                ? "bg-yellow-500 text-white"
+                                : "bg-green-500 text-white"
+                            }
+                          >
+                            {story.priority === "high" || story.priority === "Alta" ? "Alta" : 
+                             story.priority === "medium" || story.priority === "Media" ? "Media" : "Baja"}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="secondary">{story.storyPoints}</Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              story.status === "done"
+                                ? "border-green-500 text-green-700 bg-green-50"
+                                : story.status === "in_progress"
+                                ? "border-blue-500 text-blue-700 bg-blue-50"
+                                : "border-gray-500 text-gray-700 bg-gray-50"
+                            }
+                          >
+                            {story.status === "done" ? "Completado" : story.status === "in_progress" ? "En Progreso" : "Por Hacer"}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          {story.aiGenerated && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              IA
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={async () => {
+                                  try {
+                                    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories/${story.id}`, {
+                                      method: "DELETE",
+                                    })
+                                    toast({
+                                      title: "User Story eliminada",
+                                      description: "La user story ha sido eliminada exitosamente",
+                                    })
+                                    fetchBacklogDetails()
+                                  } catch (error) {
+                                    toast({
+                                      title: "Error",
+                                      description: "No se pudo eliminar la user story",
+                                      variant: "destructive",
+                                    })
+                                  }
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -247,6 +385,14 @@ export default function BacklogDetailPage({ params }: { params: Promise<{ id: st
         backlogId={backlog.id}
         projectId={project.id}
         onStoryCreated={fetchBacklogDetails}
+      />
+
+      {/* User Story Detail Modal */}
+      <UserStoryDetailModal
+        open={isDetailModalOpen}
+        onOpenChange={setIsDetailModalOpen}
+        userStory={selectedUserStory}
+        projectId={project.id}
       />
     </div>
   )

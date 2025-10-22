@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { cascadeDeleteProject } from "@/lib/cascade-delete"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -58,21 +59,54 @@ export default function ProjectsPage() {
 
   const handleDeleteProject = async (projectId: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`, {
-        method: "DELETE",
-      })
-
-      setProjects(projects.filter((p) => p.id !== projectId))
-
+      // Mostrar toast de progreso
       toast({
-        title: "Proyecto eliminado",
-        description: "El proyecto ha sido eliminado exitosamente",
+        title: "Eliminando proyecto",
+        description: "Eliminando proyecto y todas las entidades relacionadas...",
       })
+
+      // Usar la función de eliminación en cascada
+      const result = await cascadeDeleteProject({
+        projectId,
+        apiUrl: process.env.NEXT_PUBLIC_API_URL!,
+        onProgress: (entity, count) => {
+          console.log(`Eliminadas ${count} entidades de tipo ${entity}`);
+        },
+        onError: (entity, error) => {
+          console.error(`Error eliminando ${entity}:`, error);
+        }
+      });
+
+      if (result.success) {
+        // Actualizar el estado local
+        setProjects(projects.filter((p) => p.id !== projectId))
+
+        // Mostrar resumen de eliminación
+        const totalDeleted = Object.values(result.deletedEntities).reduce((sum, count) => sum + count, 0);
+        
+        toast({
+          title: "Proyecto eliminado exitosamente",
+          description: `Proyecto y ${totalDeleted} entidades relacionadas eliminadas`,
+        })
+      } else {
+        // Mostrar errores pero indicar eliminación parcial
+        const totalDeleted = Object.values(result.deletedEntities).reduce((sum, count) => sum + count, 0);
+        
+        toast({
+          title: "Proyecto eliminado con advertencias",
+          description: `Se eliminaron ${totalDeleted} entidades, pero hubo ${result.errors.length} errores`,
+          variant: "destructive",
+        })
+
+        // Aún así actualizar la lista de proyectos
+        setProjects(projects.filter((p) => p.id !== projectId))
+      }
+
     } catch (error) {
       console.error("[v0] Error deleting project:", error)
       toast({
         title: "Error",
-        description: "No se pudo eliminar el proyecto",
+        description: "No se pudo eliminar el proyecto completamente",
         variant: "destructive",
       })
     }

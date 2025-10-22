@@ -4,22 +4,28 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Plus, Target, TrendingUp } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Plus, Target, TrendingUp, MoreVertical, Edit, Trash2, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { CreateUserStoryDialog } from "@/components/backlogs/create-user-story-dialog"
+import { UserStoryDetailModal } from "@/components/backlogs/user-story-detail-modal"
 
 interface UserStory {
   id: string
   title: string
   description: string
-  priority: string
+  priority: "high" | "medium" | "low"
   storyPoints: number
   acceptanceCriteria: string[]
   status: string
   projectId: string
-  createdBy?: string
-  createdAt?: string
+  createdBy: string
+  createdAt: string
   aiGenerated?: boolean
+  qualityMetrics?: {
+    bleu: number
+    rouge: number
+  }
 }
 
 interface ProjectBacklogProps {
@@ -32,6 +38,8 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
   const [userStories, setUserStories] = useState<UserStory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [selectedUserStory, setSelectedUserStory] = useState<UserStory | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const { toast } = useToast()
 
   // Si hay User Stories externas (del padre), usarlas en lugar de fetch
@@ -46,12 +54,9 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
 
   const fetchUserStories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs?projectId=${projectId}`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories?projectId=${projectId}`)
       const data = await response.json()
-      
-      // Filter only user stories (objects with title, not containers with items array)
-      const stories = data.filter((item: any) => item.title && !item.items)
-      setUserStories(stories)
+      setUserStories(data)
     } catch (error) {
       console.error("Error fetching user stories:", error)
       toast({
@@ -68,29 +73,78 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
     switch (priority.toLowerCase()) {
       case "alta":
       case "high":
-        return "bg-red-500"
+        return "bg-red-500 text-white"
       case "media":
       case "medium":
-        return "bg-yellow-500"
+        return "bg-yellow-500 text-white"
       case "baja":
       case "low":
-        return "bg-green-500"
+        return "bg-green-500 text-white"
       default:
-        return "bg-gray-500"
+        return "bg-gray-500 text-white"
     }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "pending":
       case "todo":
-        return <Badge variant="secondary">Por hacer</Badge>
+        return "border-gray-500 text-gray-700 bg-gray-50"
       case "in_progress":
-        return <Badge className="bg-blue-500">En progreso</Badge>
+        return "border-blue-500 text-blue-700 bg-blue-50"
       case "done":
-        return <Badge className="bg-green-500">Completado</Badge>
+        return "border-green-500 text-green-700 bg-green-50"
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return "border-gray-500 text-gray-700 bg-gray-50"
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "pending":
+      case "todo":
+        return "Por Hacer"
+      case "in_progress":
+        return "En Progreso"
+      case "done":
+        return "Completado"
+      default:
+        return status
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "alta":
+      case "high":
+        return "Alta"
+      case "media":
+      case "medium":
+        return "Media"
+      case "baja":
+      case "low":
+        return "Baja"
+      default:
+        return priority
+    }
+  }
+
+  const handleDeleteUserStory = async (storyId: string) => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories/${storyId}`, {
+        method: "DELETE",
+      })
+      toast({
+        title: "User Story eliminada",
+        description: "La user story ha sido eliminada exitosamente",
+      })
+      fetchUserStories()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la user story",
+        variant: "destructive",
+      })
     }
   }
 
@@ -165,7 +219,7 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
         </Button>
       </div>
 
-      {/* User Stories List */}
+      {/* User Stories Table */}
       {userStories.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
@@ -181,43 +235,107 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {userStories.map((story) => (
-            <Card key={story.id} className="hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1 h-8 rounded-full ${getPriorityColor(story.priority)}`} />
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{story.title}</CardTitle>
-                        <CardDescription className="mt-1">{story.description}</CardDescription>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    {getStatusBadge(story.status)}
-                    <Badge variant="outline" className="font-mono">
-                      {story.storyPoints} pts
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Criterios de Aceptación:</p>
-                  <ul className="space-y-1">
-                    {story.acceptanceCriteria?.map((criteria, index) => (
-                      <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-primary mt-1">✓</span>
-                        <span>{criteria}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="rounded-lg border bg-card">
+          <div 
+            className="max-h-[400px] overflow-y-scroll backlog-scroll"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(156, 163, 175, 0.5) rgba(241, 245, 249, 0.5)'
+            }}
+          >
+            <table className="w-full min-h-[500px]">
+              <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm border-b z-10">
+                <tr>
+                  <th className="text-left p-3 font-medium text-sm">ID</th>
+                  <th className="text-left p-3 font-medium text-sm">Título</th>
+                  <th className="text-left p-3 font-medium text-sm">Prioridad</th>
+                  <th className="text-left p-3 font-medium text-sm">Story Points</th>
+                  <th className="text-left p-3 font-medium text-sm">Estado</th>
+                  <th className="text-left p-3 font-medium text-sm">IA</th>
+                  <th className="text-left p-3 font-medium text-sm">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {userStories
+                  .sort((a, b) => {
+                    const priorityOrder: Record<string, number> = { 
+                      "alta": 0, "high": 0, 
+                      "media": 1, "medium": 1, 
+                      "baja": 2, "low": 2 
+                    }
+                    return (priorityOrder[a.priority.toLowerCase()] || 3) - (priorityOrder[b.priority.toLowerCase()] || 3)
+                  })
+                  .map((story, index) => (
+                    <tr 
+                      key={story.id} 
+                      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedUserStory(story)
+                        setIsDetailModalOpen(true)
+                      }}
+                    >
+                      <td className="p-3">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          US-{String(index + 1).padStart(2, '0')}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <div className="max-w-xs">
+                          <h4 className="font-medium text-sm line-clamp-2">{story.title}</h4>
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{story.description}</p>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <Badge className={getPriorityColor(story.priority)}>
+                          {getPriorityLabel(story.priority)}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="secondary">{story.storyPoints}</Badge>
+                      </td>
+                      <td className="p-3">
+                        <Badge 
+                          variant="outline" 
+                          className={getStatusColor(story.status)}
+                        >
+                          {getStatusLabel(story.status)}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        {story.aiGenerated && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            IA
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteUserStory(story.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -231,6 +349,14 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
           onStoryCreated={fetchUserStories}
         />
       )}
+
+      {/* User Story Detail Modal */}
+      <UserStoryDetailModal
+        open={isDetailModalOpen}
+        onOpenChange={setIsDetailModalOpen}
+        userStory={selectedUserStory}
+        projectId={projectId}
+      />
     </div>
   )
 }

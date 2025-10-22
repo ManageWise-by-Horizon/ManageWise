@@ -160,7 +160,7 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
       </div>
 
       {/* Kanban Board */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 h-[500px]">
         {columns.map((column) => {
           const columnTasks = getTasksByNormalizedStatus(column.status)
           const isActiveDrop = dragOverColumn === column.id
@@ -168,21 +168,29 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
             <div
               key={column.id}
               className={cn(
-                "space-y-4 transition-all rounded-lg p-4 min-h-[500px]",
+                "flex flex-col transition-all rounded-lg p-4 border",
+                "h-full",
                 isActiveDrop ? "ring-2 ring-primary/60 bg-primary/5" : "bg-muted/20"
               )}
               data-drop-column
               data-column-id={column.id}
             >
-              <div className="flex items-center justify-between">
+              {/* Column Header - Fixed */}
+              <div className="flex items-center justify-between mb-4 flex-shrink-0">
                 <h3 className="font-semibold text-lg">{column.title}</h3>
                 <Badge variant="secondary">{columnTasks.length}</Badge>
               </div>
 
-              <div className="space-y-3">
+              {/* Scrollable Content */}
+              <div 
+                className="flex-1 overflow-y-auto space-y-3 pr-2 min-h-0 kanban-scroll"
+                style={{
+                  maxHeight: '400px', // Altura fija para mostrar ~3.5 tareas
+                }}
+              >
                 {columnTasks.length === 0 ? (
-                  <Card className="border-dashed border-2">
-                    <CardContent className="flex items-center justify-center py-12">
+                  <Card className="border-dashed border-2 flex-shrink-0">
+                    <CardContent className="flex items-center justify-center py-8">
                       <p className="text-sm text-muted-foreground">
                         {column.id === "todo" ? "Arrastra tareas aquí" : "No hay tareas"}
                       </p>
@@ -194,38 +202,37 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
                     return (
                       <Card
                         key={task.id}
-                        className="group cursor-pointer transition-all hover:shadow-md border-l-4 border-l-primary/20"
+                        className="group cursor-pointer transition-all hover:shadow-md border-l-4 border-l-primary/20 flex-shrink-0"
                         data-draggable-task
                         data-task-id={task.id}
                         onClick={(e) => handleTaskClick(task, e)}
                       >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <CardTitle className="text-sm font-medium leading-tight flex items-center gap-2">
+                        <CardContent className="p-2">
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="text-sm font-medium leading-tight flex items-center gap-1 flex-1">
                               <GripVertical 
-                                className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" 
+                                className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab flex-shrink-0" 
                                 data-drag-handle
                               />
-                              {task.title}
-                            </CardTitle>
-                            <div className="flex items-center gap-1">
+                              <span className="line-clamp-2">{task.title}</span>
+                            </h4>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
                               {task.aiAssigned && (
-                                <Badge variant="secondary" className="gap-1">
-                                  <Sparkles className="h-3 w-3" />
+                                <Badge variant="secondary" className="gap-1 text-xs px-1 py-0 h-4">
+                                  <Sparkles className="h-2 w-2" />
                                 </Badge>
                               )}
-                              <div className={cn("w-3 h-3 rounded-full", getPriorityColor(task.priority))} />
+                              <div className={cn("w-2 h-2 rounded-full", getPriorityColor(task.priority))} />
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
+                          
+                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1">
                               {assignedUser ? (
                                 <>
-                                  <Avatar className="h-6 w-6">
+                                  <Avatar className="h-4 w-4">
                                     <AvatarImage src={assignedUser.avatar || "/placeholder.svg"} alt={assignedUser.name} />
                                     <AvatarFallback className="text-xs bg-primary text-primary-foreground">
                                       {assignedUser.name
@@ -234,22 +241,18 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
                                         .join("")}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="text-xs text-muted-foreground">{assignedUser.name}</span>
+                                  <span className="text-muted-foreground truncate max-w-[60px]">{assignedUser.name}</span>
                                 </>
                               ) : (
-                                <span className="text-xs text-muted-foreground">Sin asignar</span>
+                                <span className="text-muted-foreground">Sin asignar</span>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1 text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               {task.estimatedHours}h
                             </div>
                           </div>
-
-                          <Badge variant="outline" className="text-xs w-fit">
-                            {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Media" : "Baja"}
-                          </Badge>
                         </CardContent>
                       </Card>
                     )

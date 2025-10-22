@@ -299,19 +299,15 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
 
       // Save product backlog items as individual user stories and collect IDs
       const userStoryIds: string[] = []
+      const allCreatedTasks: any[] = []
       
       if (result.productBacklog && result.productBacklog.length > 0) {
         for (const backlogItem of result.productBacklog) {
-          // Generate unique ID for each user story
-          const userStoryId = Math.random().toString(36).substring(2, 6)
-          userStoryIds.push(userStoryId)
-          
-          // Save as individual backlog item (user story)
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs`, {
+          // Save as individual user story - let backend generate ID
+          const userStoryResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: userStoryId,
               title: backlogItem.title,
               description: backlogItem.description,
               priority: backlogItem.priority,
@@ -320,18 +316,104 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               projectId: createdProject.id,
               createdBy: user?.id,
               createdAt: new Date().toISOString(),
-              status: "pending",
+              status: "todo",
+              aiGenerated: true,
             }),
           })
+          
+          const createdUserStory = await userStoryResponse.json()
+          userStoryIds.push(createdUserStory.id)
+        }
+
+        // Step 12: Creating tasks for each user story
+        setGenerationLog((prev) => [...prev, getMessageForStep("creating_tasks")])
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        // Generate tasks for each user story
+        for (let i = 0; i < result.productBacklog.length; i++) {
+          const backlogItem = result.productBacklog[i]
+          const userStoryId = userStoryIds[i]
+          
+          // Generate tasks based on user story complexity and type
+          const tasksForStory = [
+            {
+              title: `Diseñar UI para ${backlogItem.title}`,
+              description: `Crear mockups y diseño de interfaz para: ${backlogItem.description}`,
+              userStoryId: userStoryId,
+              projectId: createdProject.id,
+              assignedTo: null, // Sin asignar por defecto
+              status: "todo",
+              priority: backlogItem.priority,
+              estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * 0.5)),
+              createdBy: user?.id,
+              createdAt: new Date().toISOString(),
+              aiGenerated: true,
+            },
+            {
+              title: `Implementar backend para ${backlogItem.title}`,
+              description: `Desarrollar lógica de negocio y APIs para: ${backlogItem.description}`,
+              userStoryId: userStoryId,
+              projectId: createdProject.id,
+              assignedTo: null,
+              status: "todo",
+              priority: backlogItem.priority,
+              estimatedHours: Math.max(4, Math.floor(backlogItem.storyPoints * 0.8)),
+              createdBy: user?.id,
+              createdAt: new Date().toISOString(),
+              aiGenerated: true,
+            },
+            {
+              title: `Implementar frontend para ${backlogItem.title}`,
+              description: `Desarrollar componentes y vistas para: ${backlogItem.description}`,
+              userStoryId: userStoryId,
+              projectId: createdProject.id,
+              assignedTo: null,
+              status: "todo",
+              priority: backlogItem.priority,
+              estimatedHours: Math.max(3, Math.floor(backlogItem.storyPoints * 0.6)),
+              createdBy: user?.id,
+              createdAt: new Date().toISOString(),
+              aiGenerated: true,
+            },
+            {
+              title: `Testing para ${backlogItem.title}`,
+              description: `Pruebas unitarias e integración para: ${backlogItem.description}`,
+              userStoryId: userStoryId,
+              projectId: createdProject.id,
+              assignedTo: null,
+              status: "todo",
+              priority: backlogItem.priority,
+              estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * 0.4)),
+              createdBy: user?.id,
+              createdAt: new Date().toISOString(),
+              aiGenerated: true,
+            },
+          ]
+
+          // Create tasks for this user story
+          for (const task of tasksForStory) {
+            try {
+              const taskResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(task),
+              })
+              
+              if (taskResponse.ok) {
+                const createdTask = await taskResponse.json()
+                allCreatedTasks.push(createdTask)
+              }
+            } catch (error) {
+              console.error(`Error creating task: ${task.title}`, error)
+            }
+          }
         }
 
         // Create a backlog container with references to all user stories
-        const backlogContainerId = Math.random().toString(36).substring(2, 6)
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: backlogContainerId,
             projectId: createdProject.id,
             type: "product",
             items: userStoryIds,
@@ -342,7 +424,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         })
       }
 
-      // Step 12: Finalizing
+      // Step 13: Finalizing
       setGenerationLog((prev) => [...prev, getMessageForStep("finalizing")])
       await new Promise((resolve) => setTimeout(resolve, 300))
 
@@ -354,7 +436,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
 
       toast({
         title: "Proyecto generado con IA",
-        description: `${result.projectName} creado con ${result.productBacklog?.length || 0} user stories`,
+        description: `${result.projectName} creado con ${result.productBacklog?.length || 0} user stories y ${allCreatedTasks.length} tareas`,
       })
 
       setTimeout(() => {

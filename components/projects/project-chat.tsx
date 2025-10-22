@@ -298,13 +298,14 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
     const generatingMessage: ChatMessage = {
       id: `msg-${Date.now()}-generating`,
       role: "assistant",
-      content: `⏳ **Generando User Stories...**\n\nEstoy creando ${items.length} User ${items.length === 1 ? 'Story' : 'Stories'} en el backlog del proyecto. Esto tomará solo unos segundos...`,
+      content: `⏳ **Generando User Stories...**\n\nEstoy creando ${items.length} User ${items.length === 1 ? 'Story' : 'Stories'} y sus tareas asociadas en el backlog del proyecto. Esto tomará solo unos segundos...`,
       timestamp: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, generatingMessage])
 
     try {
       const createdStories = []
+      const createdTasks = []
       
       for (const item of items) {
         const userStory = {
@@ -320,7 +321,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
           aiGenerated: true,
         }
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(userStory),
@@ -328,6 +329,80 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
 
         const created = await response.json()
         createdStories.push(created)
+
+        // Create tasks for this user story (MANDATORY)
+        const tasksForStory = [
+          {
+            title: `Diseñar UI para ${item.title}`,
+            description: `Crear mockups y diseño de interfaz para: ${item.description}`,
+            userStoryId: created.id,
+            projectId: projectId,
+            assignedTo: null,
+            status: "todo",
+            priority: item.priority,
+            estimatedHours: Math.max(2, Math.floor(item.storyPoints * 0.5)),
+            createdBy: user?.id,
+            createdAt: new Date().toISOString(),
+            aiGenerated: true,
+          },
+          {
+            title: `Implementar backend para ${item.title}`,
+            description: `Desarrollar lógica de negocio y APIs para: ${item.description}`,
+            userStoryId: created.id,
+            projectId: projectId,
+            assignedTo: null,
+            status: "todo",
+            priority: item.priority,
+            estimatedHours: Math.max(4, Math.floor(item.storyPoints * 0.8)),
+            createdBy: user?.id,
+            createdAt: new Date().toISOString(),
+            aiGenerated: true,
+          },
+          {
+            title: `Implementar frontend para ${item.title}`,
+            description: `Desarrollar componentes y vistas para: ${item.description}`,
+            userStoryId: created.id,
+            projectId: projectId,
+            assignedTo: null,
+            status: "todo",
+            priority: item.priority,
+            estimatedHours: Math.max(3, Math.floor(item.storyPoints * 0.6)),
+            createdBy: user?.id,
+            createdAt: new Date().toISOString(),
+            aiGenerated: true,
+          },
+          {
+            title: `Testing para ${item.title}`,
+            description: `Pruebas unitarias e integración para: ${item.description}`,
+            userStoryId: created.id,
+            projectId: projectId,
+            assignedTo: null,
+            status: "todo",
+            priority: item.priority,
+            estimatedHours: Math.max(2, Math.floor(item.storyPoints * 0.4)),
+            createdBy: user?.id,
+            createdAt: new Date().toISOString(),
+            aiGenerated: true,
+          },
+        ]
+
+        // Create all tasks for this user story
+        for (const task of tasksForStory) {
+          try {
+            const taskResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(task),
+            })
+            
+            if (taskResponse.ok) {
+              const createdTask = await taskResponse.json()
+              createdTasks.push(createdTask)
+            }
+          } catch (error) {
+            console.error(`Error creating task: ${task.title}`, error)
+          }
+        }
       }
 
       // Remove "generating" message
@@ -339,14 +414,14 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
       // Show success message
       toast({
         title: "✅ User Stories creadas",
-        description: `Se crearon ${createdStories.length} User Stories para el proyecto`,
+        description: `Se crearon ${createdStories.length} User Stories y ${createdTasks.length} tareas para el proyecto`,
       })
 
       // Add confirmation message to chat
       const confirmationMessage: ChatMessage = {
         id: `msg-${Date.now()}-system`,
         role: "assistant",
-        content: `✅ **¡Backlog actualizado!**\n\nSe ${createdStories.length === 1 ? 'creó' : 'crearon'} ${createdStories.length} User ${createdStories.length === 1 ? 'Story' : 'Stories'} exitosamente:\n${createdStories.map((s, i) => `${i + 1}. ${s.title} (${s.storyPoints} pts)`).join('\n')}\n\nPuedes verlas en la pestaña **Backlog** del proyecto.`,
+        content: `✅ **¡Backlog actualizado!**\n\nSe ${createdStories.length === 1 ? 'creó' : 'crearon'} ${createdStories.length} User ${createdStories.length === 1 ? 'Story' : 'Stories'} y ${createdTasks.length} tareas exitosamente:\n\n${createdStories.map((s, i) => `**${i + 1}.** ${s.title} *(${s.storyPoints} pts)*`).join('\n')}\n\n🎯 **Cada User Story incluye 4 tareas:**\n- Diseño UI\n- Implementación Backend\n- Implementación Frontend\n- Testing\n\nPuedes verlas en la pestaña **Backlog** del proyecto.`,
         timestamp: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, confirmationMessage])

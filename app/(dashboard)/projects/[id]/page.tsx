@@ -70,6 +70,9 @@ interface UserStory {
   acceptanceCriteria: string[]
   status: string
   projectId: string
+  createdBy: string
+  createdAt: string
+  aiGenerated?: boolean
 }
 
 interface Task {
@@ -125,10 +128,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       setMembers(projectMembers)
 
       // Fetch user stories
-      const backlogRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs?projectId=${resolvedParams.id}`)
-      const backlogData = await backlogRes.json()
-      const stories = backlogData.filter((item: any) => item.title && !item.items)
-      setUserStories(stories)
+      const userStoriesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories?projectId=${resolvedParams.id}`)
+      const userStoriesData = await userStoriesRes.json()
+      setUserStories(userStoriesData)
 
       // Fetch tasks for this project
       const tasksRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks?projectId=${resolvedParams.id}`)
@@ -141,7 +143,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       setSprints(sprintsData)
       
       console.log("🎯 Contexto completo cargado:")
-      console.log("  - User Stories:", stories.length)
+      console.log("  - User Stories:", userStoriesData.length)
       console.log("  - Tasks:", tasksData.length)
       console.log("  - Sprints:", sprintsData.length)
       console.log("  - Members:", projectMembers.length)
