@@ -236,10 +236,10 @@ export default function DashboardPage() {
                 Generar con IA
               </Button>
             </Link>
-            <Link href="/backlogs">
+            <Link href="/projects">
               <Button className="w-full justify-start bg-transparent" variant="outline">
                 <ListTodo className="mr-2 h-4 w-4" />
-                Ver Backlogs
+                Ver Proyectos
               </Button>
             </Link>
             <Link href="/calendar">
