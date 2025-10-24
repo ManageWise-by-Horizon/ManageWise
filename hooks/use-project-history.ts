@@ -9,6 +9,10 @@ import {
   HistoryFilters, 
   HistoryContext 
 } from '@/lib/types/project-history';
+import { 
+  CreateNotificationRequest, 
+  NotificationType 
+} from '@/lib/types/notifications';
 
 const API_BASE = 'http://localhost:3001';
 
@@ -36,6 +40,157 @@ export function useProjectHistory(): UseProjectHistoryReturn {
 
   const generateId = () => {
     return 'hist_' + Math.random().toString(36).substr(2, 9);
+  };
+
+  // Función para crear notificaciones automáticamente basadas en cambios
+  const createNotificationFromChange = async (
+    changeType: ChangeType,
+    entityType: EntityType,
+    entityId: string,
+    description: string,
+    details: Record<string, any>,
+    context: HistoryContext
+  ) => {
+    try {
+      // Determinar el tipo de notificación y los usuarios a notificar
+      let notificationType: NotificationType;
+      let notificationTitle: string;
+      let notificationMessage: string;
+      let usersToNotify: string[] = [];
+
+      // Mapear cambios a tipos de notificación
+      switch (entityType) {
+        case 'task':
+          if (changeType === 'task_created') {
+            notificationType = 'task_created';
+            notificationTitle = 'Nueva tarea creada';
+            notificationMessage = `Se creó la tarea "${details.title || details.name || entityId}"`;
+          } else if (changeType === 'task_updated') {
+            notificationType = 'task_updated';
+            notificationTitle = 'Tarea actualizada';
+            notificationMessage = `La tarea "${details.title || details.name || entityId}" ha sido actualizada`;
+          } else if (changeType === 'task_status_changed') {
+            notificationType = 'task_updated';
+            notificationTitle = 'Estado de tarea cambiado';
+            notificationMessage = `La tarea "${details.title || details.name || entityId}" cambió a ${details.newValue}`;
+          } else if (changeType === 'task_assigned') {
+            notificationType = 'task_assigned';
+            notificationTitle = 'Tarea asignada';
+            notificationMessage = `Te han asignado la tarea "${details.title || details.name || entityId}"`;
+            // Solo notificar al usuario asignado
+            if (details.assignedTo) {
+              usersToNotify = [details.assignedTo];
+            }
+          } else {
+            return; // No crear notificación para otros tipos
+          }
+          break;
+
+        case 'userStory':
+          if (changeType === 'user_story_created') {
+            notificationType = 'task_created';
+            notificationTitle = 'Nueva historia de usuario creada';
+            notificationMessage = `Se creó la historia "${details.title || details.name || entityId}"`;
+          } else if (changeType === 'user_story_updated') {
+            notificationType = 'task_updated';
+            notificationTitle = 'Historia de usuario actualizada';
+            notificationMessage = `La historia "${details.title || details.name || entityId}" ha sido actualizada`;
+          } else if (changeType === 'user_story_status_changed') {
+            notificationType = 'task_updated';
+            notificationTitle = 'Estado de historia cambiado';
+            notificationMessage = `La historia "${details.title || details.name || entityId}" cambió a ${details.newValue}`;
+          } else {
+            return;
+          }
+          break;
+
+        case 'project':
+          notificationType = 'project_updated';
+          notificationTitle = 'Proyecto actualizado';
+          notificationMessage = `El proyecto ha sido actualizado: ${description}`;
+          break;
+
+        case 'sprint':
+          if (changeType === 'sprint_created') {
+            notificationType = 'sprint_created';
+            notificationTitle = 'Nuevo sprint creado';
+            notificationMessage = `Se creó el sprint "${details.name || entityId}"`;
+          } else if (changeType === 'sprint_completed') {
+            notificationType = 'sprint_completed';
+            notificationTitle = 'Sprint completado';
+            notificationMessage = `El sprint "${details.name || entityId}" ha sido completado`;
+          } else {
+            return;
+          }
+          break;
+
+        default:
+          return; // No crear notificación para otros tipos de entidad
+      }
+
+      // Si no se especificaron usuarios, obtener todos los miembros del proyecto
+      if (usersToNotify.length === 0) {
+        try {
+          const membersResponse = await fetch(`${API_BASE}/projectMembers?projectId=${context.projectId}`);
+          if (membersResponse.ok) {
+            const members = await membersResponse.json();
+            usersToNotify = members.map((member: any) => member.userId);
+          }
+        } catch (err) {
+          console.error('Error fetching project members for notifications:', err);
+          return;
+        }
+      }
+
+      // Crear notificaciones para cada usuario
+      const notificationPromises = usersToNotify.map(async (userId) => {
+        // No notificar al usuario que hizo el cambio
+        if (userId === context.userId) return;
+
+        const notificationData: CreateNotificationRequest = {
+          userId,
+          projectId: context.projectId,
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
+          data: {
+            taskId: entityType === 'userStory' || entityType === 'task' ? entityId : undefined,
+            taskTitle: details.title || details.name,
+            projectId: context.projectId,
+            projectName: details.projectName,
+            changeType: changeType as any,
+            oldValue: details.oldValue,
+            newValue: details.newValue,
+            changedBy: context.userId,
+            changedByName: details.changedByName || 'Usuario desconocido',
+            sprintId: entityType === 'sprint' ? entityId : undefined,
+            sprintName: entityType === 'sprint' ? details.name : undefined
+          }
+        };
+
+        const response = await fetch(`${API_BASE}/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            ...notificationData,
+            read: false,
+            createdAt: new Date().toISOString(),
+            readAt: null
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al crear notificación');
+        }
+      });
+
+      await Promise.all(notificationPromises);
+
+    } catch (err) {
+      console.error('Error creating notifications from change:', err);
+      // No fallar el registro del historial por errores de notificación
+    }
   };
 
   const logChange = useCallback(async (
@@ -76,6 +231,16 @@ export function useProjectHistory(): UseProjectHistoryReturn {
         if (!response.ok) {
           throw new Error(`Error al registrar cambio: ${response.status}`);
         }
+
+        // Crear notificaciones automáticamente después de registrar el cambio
+        await createNotificationFromChange(
+          changeType,
+          entityType,
+          entityId,
+          description,
+          details,
+          context
+        );
 
         // Actualizar el estado local
         setHistory(prev => [historyEntry, ...prev]);

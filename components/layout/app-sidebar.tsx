@@ -17,6 +17,7 @@ import {
   Bot,
   BarChart3,
   Zap,
+  Bell,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +35,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Proyectos", href: "/projects", icon: FolderKanban },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Notificaciones", href: "/notifications", icon: Bell },
 ]
 
 const secondaryNavigation = [

@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge"
 import { Target, Plus, X, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl, apiRequest } from "@/lib/api-config"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useNotifications } from "@/hooks/use-notifications"
 
 interface KeyResult {
   id: string
@@ -101,6 +103,8 @@ export function EditOKRDialog({
   onOKRUpdated
 }: EditOKRDialogProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
+  const { createNotification } = useNotifications()
   const [loading, setLoading] = useState(false)
   
   // Datos del OKR
@@ -114,6 +118,9 @@ export function EditOKRDialog({
   
   // Key Results
   const [keyResults, setKeyResults] = useState<KeyResult[]>([])
+  
+  // Guardar valores originales para detectar cambios
+  const [originalProgress, setOriginalProgress] = useState(0)
 
   // Cargar datos del OKR cuando se abre el diálogo
   useEffect(() => {
@@ -126,6 +133,7 @@ export function EditOKRDialog({
       setStartDate(okr.startDate)
       setEndDate(okr.endDate)
       setKeyResults([...okr.keyResults])
+      setOriginalProgress(okr.progress)
     }
   }, [okr, open])
 
@@ -292,6 +300,55 @@ export function EditOKRDialog({
       }
       
       console.log("OKR actualizado:", updatedOKR)
+      
+      // Crear notificación si el progreso cambió significativamente (más de 5%)
+      const newProgress = calculateProgress()
+      const progressChange = Math.abs(newProgress - originalProgress)
+      
+      if (progressChange >= 5 && user && okr) {
+        try {
+          // Obtener miembros del proyecto para notificar
+          const membersResponse = await fetch(createApiUrl(`/projectMembers?projectId=${okr.projectId}`))
+          let membersToNotify = []
+          
+          if (membersResponse.ok) {
+            const projectMembers = await membersResponse.json()
+            membersToNotify = projectMembers.map((member: any) => member.userId)
+          } else {
+            // Si no se pueden obtener los miembros, notificar al menos al owner del OKR
+            membersToNotify = [okr.ownerId]
+          }
+
+          // Crear notificaciones para cada miembro (excepto quien hizo el cambio)
+          const notificationPromises = membersToNotify
+            .filter((userId: string) => userId !== user.id)
+            .map(async (userId: string) => {
+              await createNotification({
+                userId,
+                projectId: okr.projectId,
+                type: 'okr_updated',
+                title: 'OKR actualizado',
+                message: `El OKR "${title}" ha sido actualizado - Progreso: ${newProgress}%`,
+                data: {
+                  okrId: okr.id,
+                  okrTitle: title,
+                  changeType: 'progress_updated',
+                  oldProgress: originalProgress,
+                  newProgress: newProgress,
+                  changedBy: user.id,
+                  changedByName: user.name,
+                  projectId: okr.projectId,
+                  projectName: projectName
+                }
+              })
+            })
+          
+          await Promise.all(notificationPromises)
+        } catch (notificationError) {
+          console.error('Error creating OKR update notifications:', notificationError)
+          // No fallar la actualización por errores de notificación
+        }
+      }
       
       toast({
         title: "OKR actualizado exitosamente",

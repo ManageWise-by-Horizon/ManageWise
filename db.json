@@ -1603,7 +1603,7 @@
           "status": "in_progress"
         },
         {
-          "id": "kr_001_2", 
+          "id": "kr_001_2",
           "title": "Realizar pruebas con 50 usuarios beta",
           "description": "Ejecutar testing con usuarios reales para validar funcionalidades",
           "targetValue": 50,
@@ -1762,7 +1762,7 @@
       "manage_permissions": true
     },
     {
-      "id": "perm_002", 
+      "id": "perm_002",
       "projectId": "b3bc",
       "userId": "2",
       "read": true,
@@ -1773,13 +1773,145 @@
     },
     {
       "id": "perm_003",
-      "projectId": "b3bc", 
+      "projectId": "b3bc",
       "userId": "3",
       "read": true,
       "write": false,
       "manage_project": false,
       "manage_members": false,
       "manage_permissions": false
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif_001",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "task_updated",
+      "title": "Tarea actualizada",
+      "message": "La tarea 'Implementar autenticación' ha sido actualizada por Admin User",
+      "data": {
+        "taskId": "us_001",
+        "taskTitle": "Implementar autenticación",
+        "changeType": "status_changed",
+        "oldValue": "en_progreso",
+        "newValue": "completada",
+        "changedBy": "1",
+        "changedByName": "Admin User"
+      },
+      "read": false,
+      "createdAt": "2025-10-24T10:30:00.000Z",
+      "readAt": null
+    },
+    {
+      "id": "notif_002",
+      "userId": "2",
+      "projectId": "b3bc",
+      "type": "okr_updated",
+      "title": "OKR actualizado",
+      "message": "El OKR 'Lanzar versión beta funcional' ha sido actualizado - Progreso: 45%",
+      "data": {
+        "okrId": "okr_001",
+        "okrTitle": "Lanzar versión beta funcional",
+        "changeType": "progress_updated",
+        "oldProgress": 35,
+        "newProgress": 45,
+        "changedBy": "1",
+        "changedByName": "Admin User"
+      },
+      "read": false,
+      "createdAt": "2025-10-24T09:15:00.000Z",
+      "readAt": null
+    },
+    {
+      "id": "notif_003",
+      "userId": "3",
+      "projectId": "b3bc",
+      "type": "task_assigned",
+      "title": "Nueva tarea asignada",
+      "message": "Te han asignado la tarea 'Configurar base de datos'",
+      "data": {
+        "taskId": "us_003",
+        "taskTitle": "Configurar base de datos",
+        "assignedBy": "1",
+        "assignedByName": "Admin User"
+      },
+      "read": true,
+      "createdAt": "2025-10-24T08:45:00.000Z",
+      "readAt": "2025-10-24T09:00:00.000Z"
+    },
+    {
+      "id": "notif_004",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "project_updated",
+      "title": "Proyecto actualizado",
+      "message": "El estado del proyecto ha cambiado a 'En progreso'",
+      "data": {
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform",
+        "changeType": "status_changed",
+        "oldValue": "planificacion",
+        "newValue": "en_progreso",
+        "changedBy": "2",
+        "changedByName": "Product Owner"
+      },
+      "read": false,
+      "createdAt": "2025-10-24T07:30:00.000Z",
+      "readAt": null
+    },
+    {
+      "id": "notif_005",
+      "userId": "2",
+      "projectId": "b3bc",
+      "type": "system_error",
+      "title": "Error de sistema",
+      "message": "Fallo en el envío de notificaciones - Sistema recuperado",
+      "data": {
+        "errorType": "notification_delivery_failed",
+        "errorMessage": "Connection timeout",
+        "recoveredAt": "2025-10-24T06:45:00.000Z",
+        "affectedNotifications": ["notif_006", "notif_007"]
+      },
+      "read": false,
+      "createdAt": "2025-10-24T06:30:00.000Z",
+      "readAt": null
+    },
+    {
+      "id": "notif_006",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "system_error",
+      "title": "Error del sistema",
+      "message": "Error en el sistema de notificaciones: Fallo de conexión con la base de datos",
+      "data": {
+        "errorType": "database_connection_error",
+        "errorMessage": "Connection timeout after 30 seconds",
+        "affectedNotifications": ["notif_001", "notif_002"]
+      },
+      "read": false,
+      "createdAt": "2025-10-24T08:00:00.000Z",
+      "readAt": null,
+      "deliveryStatus": "failed",
+      "retryCount": 2,
+      "lastRetryAt": "2025-10-24T08:15:00.000Z",
+      "failureReason": "Database connection timeout"
+    },
+    {
+      "id": "notif_007",
+      "userId": "2",
+      "projectId": "b3bc",
+      "type": "system_error",
+      "title": "Error crítico del sistema",
+      "message": "Se detectó un error crítico en el sistema de notificaciones",
+      "data": {
+        "errorType": "critical_system_error",
+        "errorMessage": "Memory overflow in notification service",
+        "affectedNotifications": ["notif_003", "notif_004", "notif_005"]
+      },
+      "read": true,
+      "createdAt": "2025-10-24T07:30:00.000Z",
+      "readAt": "2025-10-24T07:45:00.000Z"
     }
   ]
 }
