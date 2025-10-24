@@ -9,6 +9,8 @@ import { Plus, Target, TrendingUp, MoreVertical, Edit, Trash2, Sparkles } from "
 import { useToast } from "@/hooks/use-toast"
 import { CreateUserStoryDialog } from "@/components/backlogs/create-user-story-dialog"
 import { UserStoryDetailModal } from "@/components/backlogs/user-story-detail-modal"
+import { PermissionGuard, PermissionWrapper } from "@/components/projects/permission-guard"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface UserStory {
   id: string
@@ -41,6 +43,7 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
   const [selectedUserStory, setSelectedUserStory] = useState<UserStory | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // Si hay User Stories externas (del padre), usarlas en lugar de fetch
   useEffect(() => {
@@ -213,10 +216,16 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
           <h2 className="text-2xl font-bold">Product Backlog</h2>
           <p className="text-muted-foreground">User Stories priorizadas para {projectName}</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva User Story
-        </Button>
+        <PermissionGuard
+          projectId={projectId}
+          userId={user?.id || ""}
+          requiredPermission="write"
+        >
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva User Story
+          </Button>
+        </PermissionGuard>
       </div>
 
       {/* User Stories Table */}
@@ -228,10 +237,16 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
             <p className="text-sm text-muted-foreground mb-4">
               Comienza agregando user stories a tu backlog
             </p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Crear Primera User Story
-            </Button>
+            <PermissionGuard
+              projectId={projectId}
+              userId={user?.id || ""}
+              requiredPermission="write"
+            >
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Crear Primera User Story
+              </Button>
+            </PermissionGuard>
           </CardContent>
         </Card>
       ) : (
@@ -317,17 +332,37 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteUserStory(story.id)}
-                              className="text-destructive"
+                            <PermissionWrapper
+                              projectId={projectId}
+                              userId={user?.id || ""}
+                              requiredPermission="write"
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Eliminar
-                            </DropdownMenuItem>
+                              {(canWrite) => (
+                                canWrite && (
+                                  <DropdownMenuItem>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                )
+                              )}
+                            </PermissionWrapper>
+                            <PermissionWrapper
+                              projectId={projectId}
+                              userId={user?.id || ""}
+                              requiredPermission="delete"
+                            >
+                              {(canDelete) => (
+                                canDelete && (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDeleteUserStory(story.id)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                )
+                              )}
+                            </PermissionWrapper>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>

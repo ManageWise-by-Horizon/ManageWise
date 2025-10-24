@@ -10,6 +10,9 @@ import { attachClosestEdge, extractClosestEdge } from "@atlaskit/pragmatic-drag-
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine"
 import { cn } from "@/lib/utils"
 import { TaskDetailModal } from "@/components/projects/task-detail-modal"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useProjectPermissions } from "@/hooks/use-project-permissions"
+import { useToast } from "@/hooks/use-toast"
 
 interface Task {
   id: string
@@ -25,11 +28,15 @@ interface Task {
 interface TaskBoardProps {
   tasks: Task[]
   onUpdate: () => void
+  projectId?: string
 }
 
 type DragState = "idle" | "preview" | "dragging"
 
-export function TaskBoard({ tasks, onUpdate }: TaskBoardProps) {
+export function TaskBoard({ tasks, onUpdate, projectId }: TaskBoardProps) {
+  const { user } = useAuth()
+  const { hasPermission, userRole } = useProjectPermissions(projectId || '', user?.id || '')
+  const { toast } = useToast()
   const [users, setUsers] = useState<any[]>([])
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
@@ -85,6 +92,16 @@ export function TaskBoard({ tasks, onUpdate }: TaskBoardProps) {
   }
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    // Check permissions before updating status (only if projectId is provided)
+    if (projectId && !hasPermission("write")) {
+      toast({
+        title: "Sin permisos",
+        description: `Tu rol ${userRole} no permite cambiar el estado de las tareas`,
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${taskId}`, {
         method: "PATCH",

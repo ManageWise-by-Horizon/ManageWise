@@ -37,11 +37,13 @@
       "role": "product_owner",
       "avatar": "https://i.ibb.co/jCXzjH8/d55e8ff23d62.gif",
       "subscription": {
-        "plan": "free",
-        "tokensUsed": 95,
-        "tokensLimit": 100,
+        "plan": "premium",
+        "tokensUsed": 100,
+        "tokensLimit": -1,
         "userStoriesUsed": 6,
-        "userStoriesLimit": 10
+        "userStoriesLimit": -1,
+        "startDate": "2025-10-23T19:16:54.261Z",
+        "endDate": "2025-11-22T19:16:54.261Z"
       },
       "createdAt": "2024-01-15T00:00:00.000Z",
       "resume": {
@@ -128,7 +130,8 @@
         ]
       },
       "members": [
-        "1"
+        "1",
+        "3"
       ],
       "createdBy": "1",
       "createdAt": "2025-10-22T05:44:09.790Z",
@@ -139,6 +142,18 @@
         "role": "Scrum Master",
         "context": "Proyecto de 5 personas",
         "constraints": "Ninguna"
+      },
+      "permissions": {
+        "3": {
+          "userId": "3",
+          "role": "contributor",
+          "permissions": [
+            "read",
+            "write"
+          ],
+          "addedAt": "2025-10-24T00:01:45.390Z",
+          "addedBy": "1"
+        }
       }
     }
   ],
@@ -522,34 +537,6 @@
   ],
   "epics": [],
   "tasks": [
-    {
-      "id": "3c4d",
-      "title": "Diseñar UI para Usuario puede registrarse en la plataforma",
-      "description": "Crear mockups y diseño de interfaz para: Como usuario, quiero registrarme con mi correo electrónico y contraseña para acceder a la plataforma.",
-      "userStoryId": "01e0",
-      "projectId": "b3bc",
-      "assignedTo": null,
-      "status": "todo",
-      "priority": "Alta",
-      "estimatedHours": 2,
-      "createdBy": "1",
-      "createdAt": "2025-10-22T05:44:11.782Z",
-      "aiGenerated": true
-    },
-    {
-      "id": "a6ea",
-      "title": "Implementar backend para Usuario puede registrarse en la plataforma",
-      "description": "Desarrollar lógica de negocio y APIs para: Como usuario, quiero registrarme con mi correo electrónico y contraseña para acceder a la plataforma.",
-      "userStoryId": "01e0",
-      "projectId": "b3bc",
-      "assignedTo": null,
-      "status": "todo",
-      "priority": "Alta",
-      "estimatedHours": 4,
-      "createdBy": "1",
-      "createdAt": "2025-10-22T05:44:11.782Z",
-      "aiGenerated": true
-    },
     {
       "id": "74b1",
       "title": "Implementar frontend para Usuario puede registrarse en la plataforma",

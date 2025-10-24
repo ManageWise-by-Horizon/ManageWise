@@ -29,6 +29,8 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useProjectPermissions } from "@/hooks/use-project-permissions"
 
 interface TaskDetailModalProps {
   open: boolean
@@ -78,6 +80,8 @@ interface Activity {
 
 export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }: TaskDetailModalProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
+  const { hasPermission, userRole } = useProjectPermissions(task?.projectId || '', user?.id || '')
   const [isEditing, setIsEditing] = useState(false)
   const [editedTitle, setEditedTitle] = useState("")
   const [editedDescription, setEditedDescription] = useState("")

@@ -21,11 +21,16 @@ import {
   GanttChart,
   CalendarDays,
   Bot,
+  UserCog,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AddMemberDialog } from "@/components/projects/add-member-dialog"
+import { EditProjectDialog } from "@/components/projects/edit-project-dialog"
+import { ManagePermissionsDialog } from "@/components/projects/manage-permissions-dialog"
+import { ProjectPermissionsSummary } from "@/components/projects/project-permissions-summary"
+import { PermissionGuard, PermissionWrapper } from "@/components/projects/permission-guard"
 import { ProjectChat } from "@/components/projects/project-chat"
 import { ProjectBacklog } from "@/components/projects/project-backlog"
 import { ProjectBoard } from "@/components/projects/project-board"
@@ -65,7 +70,7 @@ interface UserStory {
   id: string
   title: string
   description: string
-  priority: string
+  priority: "high" | "medium" | "low"
   storyPoints: number
   acceptanceCriteria: string[]
   status: string
@@ -110,6 +115,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [isLoading, setIsLoading] = useState(true)
   const [activeView, setActiveView] = useState("summary")
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
+  const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false)
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false)
 
   useEffect(() => {
     fetchProjectDetails()
@@ -176,6 +183,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     return roleMap[role] || { label: role, color: "bg-muted" }
   }
 
+  const checkIsAdmin = (): boolean => {
+    // En un sistema real, aquí se verificaría el rol del usuario en el proyecto
+    // Por ahora, asumimos que el creador del proyecto es admin
+    return project?.createdBy === user?.id
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -234,20 +247,54 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Configuración
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsAddMemberDialogOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Agregar Miembro
-            </DropdownMenuItem>
+            <PermissionWrapper
+              projectId={project.id}
+              userId={user?.id || ""}
+              requiredPermission="manage_project"
+            >
+              {(canManageProject) => (
+                canManageProject && (
+                  <DropdownMenuItem onClick={() => setIsEditProjectDialogOpen(true)}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configuración
+                  </DropdownMenuItem>
+                )
+              )}
+            </PermissionWrapper>
+            <PermissionWrapper
+              projectId={project.id}
+              userId={user?.id || ""}
+              requiredPermission="manage_members"
+            >
+              {(canManageMembers) => (
+                canManageMembers && (
+                  <DropdownMenuItem onClick={() => setIsAddMemberDialogOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Agregar Miembro
+                  </DropdownMenuItem>
+                )
+              )}
+            </PermissionWrapper>
+            <PermissionWrapper
+              projectId={project.id}
+              userId={user?.id || ""}
+              requiredPermission="manage_permissions"
+            >
+              {(canManagePermissions) => (
+                canManagePermissions && (
+                  <DropdownMenuItem onClick={() => setIsPermissionsDialogOpen(true)}>
+                    <UserCog className="mr-2 h-4 w-4" />
+                    Gestionar Permisos
+                  </DropdownMenuItem>
+                )
+              )}
+            </PermissionWrapper>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Timeline</CardTitle>
@@ -286,6 +333,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <p className="text-xs text-muted-foreground">objetivos definidos</p>
           </CardContent>
         </Card>
+
+        {/* Permisos del Usuario */}
+        <ProjectPermissionsSummary
+          projectId={project.id}
+          userId={user?.id || ""}
+        />
       </div>
 
       {/* Views Tabs */}
@@ -349,10 +402,16 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <CardTitle>Miembros del Equipo</CardTitle>
                     <CardDescription>Colaboradores del proyecto</CardDescription>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setIsAddMemberDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
+                  <PermissionGuard
+                    projectId={project.id}
+                    userId={user?.id || ""}
+                    requiredPermission="manage_members"
+                  >
+                    <Button size="sm" variant="outline" onClick={() => setIsAddMemberDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Agregar
+                    </Button>
+                  </PermissionGuard>
                 </div>
               </CardHeader>
               <CardContent>
@@ -386,40 +445,61 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </TabsContent>
 
         <TabsContent value="backlog" className="space-y-4">
-          <ProjectBacklog 
-            projectId={project.id} 
-            projectName={project.name} 
-            externalUserStories={userStories}
-          />
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectBacklog 
+              projectId={project.id} 
+              projectName={project.name} 
+              externalUserStories={userStories}
+            />
+          </PermissionGuard>
         </TabsContent>
 
         <TabsContent value="chat" className="space-y-4">
-          <div className="h-[600px]">
-            <ProjectChat
-              projectId={project.id}
-              projectContext={{
-                projectName: project.name,
-                description: project.description,
-                objectives: project.objectives,
-                timeline: project.timeline,
-                productBacklog: userStories,
-                tasks: tasks,
-                sprints: sprints,
-                teamMembers: members,
-              }}
-              initialPrompt={project.structuredPrompt}
-              onDataUpdate={fetchProjectDetails} // Actualiza sin reload
-            />
-          </div>
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <div className="h-[600px]">
+              <ProjectChat
+                projectId={project.id}
+                projectContext={{
+                  projectName: project.name,
+                  description: project.description,
+                  objectives: project.objectives,
+                  timeline: project.timeline,
+                  productBacklog: userStories,
+                  tasks: tasks,
+                  sprints: sprints,
+                  teamMembers: members,
+                }}
+                initialPrompt={project.structuredPrompt}
+                onDataUpdate={fetchProjectDetails} // Actualiza sin reload
+              />
+            </div>
+          </PermissionGuard>
         </TabsContent>
 
         <TabsContent value="board">
-          <ProjectBoard 
+          <PermissionGuard
             projectId={project.id}
-            tasks={tasks}
-            members={members}
-            onUpdate={fetchProjectDetails}
-          />
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectBoard 
+              projectId={project.id}
+              tasks={tasks}
+              members={members}
+              onUpdate={fetchProjectDetails}
+            />
+          </PermissionGuard>
         </TabsContent>
 
         <TabsContent value="list">
@@ -454,13 +534,49 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       </Tabs>
 
       {/* Add Member Dialog */}
-      <AddMemberDialog
-        open={isAddMemberDialogOpen}
-        onOpenChange={setIsAddMemberDialogOpen}
+      <PermissionGuard
         projectId={project.id}
-        currentMembers={project.members}
-        onMemberAdded={fetchProjectDetails}
-      />
+        userId={user?.id || ""}
+        requiredPermission="manage_members"
+      >
+        <AddMemberDialog
+          open={isAddMemberDialogOpen}
+          onOpenChange={setIsAddMemberDialogOpen}
+          projectId={project.id}
+          currentMembers={project.members}
+          onMemberAdded={fetchProjectDetails}
+        />
+      </PermissionGuard>
+
+      {/* Edit Project Dialog */}
+      <PermissionGuard
+        projectId={project.id}
+        userId={user?.id || ""}
+        requiredPermission="manage_project"
+      >
+        <EditProjectDialog
+          open={isEditProjectDialogOpen}
+          onOpenChange={setIsEditProjectDialogOpen}
+          project={project}
+          onProjectUpdated={fetchProjectDetails}
+        />
+      </PermissionGuard>
+
+      {/* Manage Permissions Dialog */}
+      <PermissionGuard
+        projectId={project.id}
+        userId={user?.id || ""}
+        requiredPermission="manage_permissions"
+      >
+        <ManagePermissionsDialog
+          open={isPermissionsDialogOpen}
+          onOpenChange={setIsPermissionsDialogOpen}
+          projectId={project.id}
+          currentUser={user!}
+          isAdmin={checkIsAdmin()}
+          onPermissionsUpdated={fetchProjectDetails}
+        />
+      </PermissionGuard>
     </div>
   )
 }

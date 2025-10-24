@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -25,11 +35,13 @@ import {
   Calendar,
   Flag,
   Sparkles,
-  Send
+  Send,
+  Trash2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useProjectPermissions } from "@/hooks/use-project-permissions"
 
 interface TaskDetailModalProps {
   open: boolean
@@ -80,6 +92,7 @@ interface Activity {
 export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }: TaskDetailModalProps) {
   const { toast } = useToast()
   const { user } = useAuth()
+  const { hasPermission, userRole } = useProjectPermissions(task?.projectId || '', user?.id || '')
   const [isEditing, setIsEditing] = useState(false)
   const [editedTitle, setEditedTitle] = useState("")
   const [editedDescription, setEditedDescription] = useState("")
@@ -88,6 +101,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const [newComment, setNewComment] = useState("")
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [localTask, setLocalTask] = useState(task)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     if (task && open) {
@@ -132,6 +146,16 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const handleSaveChanges = async () => {
     if (!localTask) return
     
+    // Check permissions before saving
+    if (!hasPermission("write")) {
+      toast({
+        title: "Sin permisos",
+        description: `Tu rol ${userRole} no permite editar tareas`,
+        variant: "destructive",
+      })
+      return
+    }
+    
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${localTask.id}`, {
         method: "PATCH",
@@ -167,6 +191,16 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
 
   const handleAssignUser = async (userId: string) => {
     if (!localTask) return
+    
+    // Check permissions before assigning
+    if (!hasPermission("write")) {
+      toast({
+        title: "Sin permisos",
+        description: `Tu rol ${userRole} no permite asignar tareas`,
+        variant: "destructive",
+      })
+      return
+    }
     
     // Convert "unassigned" back to null/empty for the API
     const assignedToValue = userId === "unassigned" ? null : userId
@@ -205,6 +239,16 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const handleUpdatePriority = async (priority: string) => {
     if (!localTask) return
     
+    // Check permissions before updating priority
+    if (!hasPermission("write")) {
+      toast({
+        title: "Sin permisos",
+        description: `Tu rol ${userRole} no permite cambiar la prioridad`,
+        variant: "destructive",
+      })
+      return
+    }
+    
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${localTask.id}`, {
         method: "PATCH",
@@ -233,6 +277,16 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
 
   const handleAddComment = async () => {
     if (!localTask || !newComment.trim()) return
+    
+    // Check permissions before adding comment
+    if (!hasPermission("write")) {
+      toast({
+        title: "Sin permisos",
+        description: `Tu rol ${userRole} no permite agregar comentarios`,
+        variant: "destructive",
+      })
+      return
+    }
     
     setIsSubmittingComment(true)
     try {
@@ -264,6 +318,41 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
       })
     } finally {
       setIsSubmittingComment(false)
+    }
+  }
+
+  // Función para eliminar la tarea
+  const handleDeleteTask = async () => {
+    if (!localTask) return
+    
+    try {
+      const response = await fetch(`http://localhost:3001/tasks/${localTask.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Tarea eliminada",
+          description: "La tarea se ha eliminado correctamente",
+        })
+        setIsDeleteDialogOpen(false)
+        onOpenChange(false)
+        // Actualizar la lista de tareas
+        onUpdate()
+      } else {
+        throw new Error("Error al eliminar la tarea")
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la tarea",
+        variant: "destructive",
+      })
     }
   }
 
@@ -300,6 +389,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   if (!localTask) return null
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden sm:max-w-7xl md:max-w-7xl lg:max-w-7xl xl:max-w-7xl">
         <DialogHeader>
@@ -326,9 +416,35 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
               ) : (
                 <div className="flex items-center gap-2">
                   <DialogTitle className="text-xl">{localTask.title}</DialogTitle>
-                  <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
-                    <Edit3 className="w-4 h-4" />
-                  </Button>
+                  {hasPermission("write") ? (
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
+                      <Edit3 className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" disabled className="opacity-50 cursor-not-allowed" title={`Sin permisos de edición - Rol: ${userRole}`}>
+                      <Edit3 className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {hasPermission("write") ? (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      disabled 
+                      className="opacity-50 cursor-not-allowed text-red-400" 
+                      title={`Sin permisos de eliminación - Rol: ${userRole}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                   {localTask.aiAssigned && (
                     <Badge variant="secondary" className="gap-1">
                       <Sparkles className="h-3 w-3" />
@@ -353,7 +469,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isEditing ? (
+                {isEditing && hasPermission("write") ? (
                   <Textarea
                     value={editedDescription}
                     onChange={(e) => setEditedDescription(e.target.value)}
@@ -392,18 +508,20 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                   </Avatar>
                   <div className="flex-1 space-y-2">
                     <Textarea
-                      placeholder="Escribe un comentario..."
+                      placeholder={!hasPermission("write") ? `Solo lectura - ${userRole} no puede comentar` : "Escribe un comentario..."}
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       className="min-h-[80px]"
+                      disabled={!hasPermission("write")}
                     />
                     <Button 
                       size="sm" 
                       onClick={handleAddComment}
-                      disabled={!newComment.trim() || isSubmittingComment}
+                      disabled={!newComment.trim() || isSubmittingComment || !hasPermission("write")}
+                      className={!hasPermission("write") ? "opacity-50 cursor-not-allowed" : ""}
                     >
                       <Send className="w-4 h-4 mr-1" />
-                      Comentar
+                      {!hasPermission("write") ? "Sin permisos" : "Comentar"}
                     </Button>
                   </div>
                 </div>
@@ -498,10 +616,14 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Select value={localTask.assignedTo || "unassigned"} onValueChange={handleAssignUser}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin asignar">
-                      {assignedUser && (
+                <Select 
+                  value={localTask.assignedTo || "unassigned"} 
+                  onValueChange={handleAssignUser}
+                  disabled={!hasPermission("write")}
+                >
+                  <SelectTrigger className={!hasPermission("write") ? "opacity-50 cursor-not-allowed" : ""}>
+                    <SelectValue placeholder={!hasPermission("write") ? `Solo lectura - ${userRole}` : "Sin asignar"}>
+                      {assignedUser && hasPermission("read") && (
                         <div className="flex items-center gap-2">
                           <Avatar className="w-5 h-5">
                             <AvatarImage src={assignedUser.avatar} />
@@ -539,13 +661,18 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Select value={localTask.priority} onValueChange={handleUpdatePriority}>
-                  <SelectTrigger>
+                <Select 
+                  value={localTask.priority} 
+                  onValueChange={handleUpdatePriority}
+                  disabled={!hasPermission("write")}
+                >
+                  <SelectTrigger className={!hasPermission("write") ? "opacity-50 cursor-not-allowed" : ""}>
                     <SelectValue>
                       <div className="flex items-center gap-2">
                         <div className={cn("w-3 h-3 rounded-full", getPriorityColor(localTask.priority))} />
                         <span className="text-sm">
-                          {localTask.priority === "high" ? "Alta" : localTask.priority === "medium" ? "Media" : "Baja"}
+                          {!hasPermission("write") ? `Solo lectura - ${localTask.priority === "high" ? "Alta" : localTask.priority === "medium" ? "Media" : "Baja"}` : 
+                           localTask.priority === "high" ? "Alta" : localTask.priority === "medium" ? "Media" : "Baja"}
                         </span>
                       </div>
                     </SelectValue>
@@ -617,5 +744,27 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* AlertDialog para confirmación de eliminación */}
+    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente la tarea "{localTask.title}" y todos sus comentarios.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteTask}
+            className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+          >
+            Eliminar tarea
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
