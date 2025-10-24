@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, Target, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl, apiRequest } from "@/lib/api-config"
 
 interface OKR {
   id: string
@@ -54,8 +55,15 @@ export function DeleteOKRDialog({
 
     setLoading(true)
     try {
-      // En una app real, esto sería una llamada a API
-      // await fetch(`/api/okrs/${okr.id}`, { method: 'DELETE' })
+      // Eliminar el OKR usando la API real
+      const url = createApiUrl(`/okrs/${okr.id}`)
+      const response = await apiRequest(url, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Error al eliminar el OKR')
+      }
       
       console.log("OKR eliminado:", okr.id)
       

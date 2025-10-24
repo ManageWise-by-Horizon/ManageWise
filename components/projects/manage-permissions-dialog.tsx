@@ -70,64 +70,47 @@ export function ManagePermissionsDialog({
     try {
       setIsLoading(true)
       
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Cargar usuarios reales desde la API
+      const usersResponse = await fetch('http://localhost:3001/users')
+      if (!usersResponse.ok) {
+        throw new Error('Error al cargar usuarios')
+      }
+      const allUsers = await usersResponse.json()
       
-      // Mock data para miembros del proyecto
-      const mockMembers: User[] = [
-        {
-          id: "1",
-          name: "Juan Pérez",
-          email: "juan@example.com",
-          role: "scrum_master",
-          avatar: "/avatars/juan.jpg"
-        },
-        {
-          id: "2", 
-          name: "María García",
-          email: "maria@example.com",
-          role: "developer",
-          avatar: "/avatars/maria.jpg"
-        },
-        {
-          id: "3",
-          name: "Carlos López",
-          email: "carlos@example.com", 
-          role: "product_owner",
-          avatar: "/avatars/carlos.jpg"
-        }
-      ]
+      // Cargar proyecto para obtener miembros
+      const projectResponse = await fetch(`http://localhost:3001/projects/${projectId}`)
+      if (!projectResponse.ok) {
+        throw new Error('Error al cargar proyecto')
+      }
+      const project = await projectResponse.json()
+      
+      // Filtrar solo los usuarios que son miembros del proyecto
+      const projectMembers = allUsers.filter((user: User) => 
+        project.members.includes(user.id)
+      )
+      
+      // Cargar permisos reales del proyecto
+      const permissionsResponse = await fetch(`http://localhost:3001/projectPermissions?projectId=${projectId}`)
+      let projectPermissions: UserPermissions[] = []
+      
+      if (permissionsResponse.ok) {
+        projectPermissions = await permissionsResponse.json()
+      }
+      
+      // Si no hay permisos, crear permisos por defecto basados en roles
+      if (projectPermissions.length === 0) {
+        projectPermissions = projectMembers.map((member: User) => ({
+          userId: member.id,
+          read: true,
+          write: member.role !== 'developer',
+          manage_project: member.role === 'scrum_master' || member.role === 'product_owner',
+          manage_members: member.role === 'scrum_master',
+          manage_permissions: member.role === 'scrum_master'
+        }))
+      }
 
-      // Mock data para permisos
-      const mockPermissions: UserPermissions[] = [
-        {
-          userId: "1",
-          read: true,
-          write: true,
-          manage_project: true,
-          manage_members: true,
-          manage_permissions: true
-        },
-        {
-          userId: "2",
-          read: true,
-          write: true,
-          manage_project: false,
-          manage_members: false,
-          manage_permissions: false
-        },
-        {
-          userId: "3",
-          read: true,
-          write: true,
-          manage_project: true,
-          manage_members: false,
-          manage_permissions: false
-        }
-      ]
-
-      setProjectMembers(mockMembers)
-      setPermissions(mockPermissions)
+      setProjectMembers(projectMembers)
+      setPermissions(projectPermissions)
     } catch (error) {
       toast({
         title: "Error",

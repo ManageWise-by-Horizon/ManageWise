@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Target, Plus, X, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl, apiRequest } from "@/lib/api-config"
 
 interface KeyResult {
   id: string
@@ -276,8 +277,19 @@ export function EditOKRDialog({
         keyResults
       }
 
-      // En una app real, esto sería una llamada a API
-      // await fetch(`/api/okrs/${okr.id}`, { method: 'PUT', body: JSON.stringify(updatedOKR) })
+      // Actualizar el OKR usando la API real
+      const url = createApiUrl(`/okrs/${okr.id}`)
+      const response = await apiRequest(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedOKR)
+      })
+      
+      if (!response.ok) {
+        throw new Error('Error al actualizar el OKR')
+      }
       
       console.log("OKR actualizado:", updatedOKR)
       

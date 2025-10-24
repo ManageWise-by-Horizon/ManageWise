@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
+import { PermissionGuard } from '@/components/projects/permission-guard';
 import { 
   Clock, 
   User, 
@@ -111,16 +112,6 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
 
   useEffect(() => {
     if (projectId && user) {
-      // Verificar permisos
-      if (user.role === 'developer') {
-        toast({
-          variant: "destructive",
-          title: "Sin permisos",
-          description: "No tienes permisos para ver el historial de cambios.",
-        });
-        return;
-      }
-
       getHistory({ projectId });
       loadUsers();
     }
@@ -200,24 +191,14 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
     );
   });
 
-  if (!user || user.role === 'developer') {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            Sin permisos
-          </CardTitle>
-          <CardDescription>
-            No tienes permisos para ver el historial de cambios del proyecto.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <PermissionGuard
+      projectId={projectId}
+      userId={user?.id || ""}
+      requiredPermission="read"
+      showError={true}
+    >
+      <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -382,6 +363,7 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PermissionGuard>
   );
 }

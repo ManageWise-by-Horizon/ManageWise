@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Target, Plus, X, Calendar } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl, apiRequest } from "@/lib/api-config"
 
 interface KeyResult {
   id: string
@@ -251,8 +252,19 @@ export function CreateOKRDialog({
         }))
       }
 
-      // En una app real, esto sería una llamada a API
-      // await fetch('/api/okrs', { method: 'POST', body: JSON.stringify(newOKR) })
+      // Crear el OKR usando la API real
+      const url = createApiUrl('/okrs')
+      const response = await apiRequest(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newOKR)
+      })
+      
+      if (!response.ok) {
+        throw new Error('Error al crear el OKR')
+      }
       
       console.log("Nuevo OKR creado:", newOKR)
       

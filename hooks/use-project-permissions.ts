@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { createApiUrl, apiRequest } from "@/lib/api-config"
 
 export type ProjectPermission = "read" | "write" | "manage_project" | "manage_members" | "manage_permissions"
 
@@ -8,34 +9,6 @@ export interface ProjectPermissions {
   manage_project: boolean
   manage_members: boolean
   manage_permissions: boolean
-}
-
-// Mock data - en un sistema real esto vendría de una API
-const mockPermissions: Record<string, ProjectPermissions> = {
-  // Usuario admin/owner tiene todos los permisos
-  "1": {
-    read: true,
-    write: true,
-    manage_project: true,
-    manage_members: true,
-    manage_permissions: true
-  },
-  // Usuario regular tiene permisos básicos
-  "2": {
-    read: true,
-    write: true,
-    manage_project: false,
-    manage_members: false,
-    manage_permissions: false
-  },
-  // Usuario con permisos limitados
-  "3": {
-    read: true,
-    write: false,
-    manage_project: false,
-    manage_members: false,
-    manage_permissions: false
-  }
 }
 
 export function useProjectPermissions(projectId: string, userId: string) {
@@ -53,16 +26,19 @@ export function useProjectPermissions(projectId: string, userId: string) {
       try {
         setIsLoading(true)
         
-        // Simular delay de API
-        await new Promise(resolve => setTimeout(resolve, 300))
+        // Obtener permisos reales desde la API
+        const url = createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${userId}`)
+        const response = await apiRequest(url)
         
-        // En un sistema real, aquí harías una llamada a la API:
-        // const response = await fetch(`/api/projects/${projectId}/permissions/${userId}`)
-        // const userPermissions = await response.json()
+        if (!response.ok) {
+          throw new Error('Error al cargar los permisos')
+        }
         
-        // Por ahora, usar datos mock
-        const userPermissions = mockPermissions[userId] || {
-          read: false,
+        const permissionsData = await response.json()
+        
+        // Si el usuario tiene permisos específicos, usarlos. Si no, usar permisos por defecto (solo lectura)
+        const userPermissions = permissionsData.length > 0 ? permissionsData[0] : {
+          read: true,
           write: false,
           manage_project: false,
           manage_members: false,

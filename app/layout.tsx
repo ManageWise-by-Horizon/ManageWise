@@ -4,6 +4,7 @@ import "./globals.css"
 import { AuthProvider } from "@/lib/auth/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ClientOnly } from "@/components/ui/client-only"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   description: "Plataforma de gestión de proyectos con IA",
 }
 
-// Component to suppress hydration warnings for body
+// Component to suppress hydration warnings for body and prevent extension conflicts
 function NoSSR({ children }: { children: React.ReactNode }) {
   return (
     <body suppressHydrationWarning={true}>
@@ -31,12 +32,21 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${poppins.variable} antialiased`}>
+    <html lang="es" className={`${poppins.variable} antialiased`} suppressHydrationWarning={true}>
       <NoSSR>
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {children}
+            <ClientOnly>
+              <Toaster />
+            </ClientOnly>
+          </AuthProvider>
+        </ThemeProvider>
       </NoSSR>
     </html>
   )

@@ -36,6 +36,7 @@ interface AuthContextType {
   logout: () => void
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>
   isLoading: boolean
+  isMounted: boolean
   checkLimits: (type: "tokens" | "userStories", amount?: number) => boolean
   updateUsage: (type: "tokens" | "userStories", amount: number) => void
   updateUser: (user: User) => void
@@ -46,60 +47,62 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isClient, setIsClient] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
 
+  // Evitar hydration mismatch asegurando que solo renderice después del mount
   useEffect(() => {
-    setIsClient(true)
+    setIsMounted(true)
   }, [])
 
   useEffect(() => {
-    if (!isClient) return
+    if (!isMounted) return
     
-    // Check for stored auth token
-    const token = localStorage.getItem("auth_token")
-    const storedUser = localStorage.getItem("user")
-
-    if (token && storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser)
-        
-        // Migrate old structure to new structure if needed
-        if (parsedUser && !parsedUser.subscription && parsedUser.plan) {
-          // Old structure detected, migrate to new structure
-          const migratedUser: User = {
-            ...parsedUser,
-            subscription: {
-              plan: parsedUser.plan,
-              tokensUsed: parsedUser.tokensUsed || 0,
-              tokensLimit: parsedUser.tokensLimit || 100,
-              userStoriesUsed: parsedUser.userStoriesUsed || 0,
-              userStoriesLimit: parsedUser.userStoriesLimit || 10,
-            },
-          }
-          // Remove old fields
-          delete (migratedUser as any).plan
-          delete (migratedUser as any).tokensUsed
-          delete (migratedUser as any).tokensLimit
-          delete (migratedUser as any).userStoriesUsed
-          delete (migratedUser as any).userStoriesLimit
+    // Verificar si hay un usuario autenticado en localStorage
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem("auth_token")
+      const userData = localStorage.getItem("user")
+      
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData)
           
-          // Save migrated structure
-          localStorage.setItem("user", JSON.stringify(migratedUser))
-          setUser(migratedUser)
-        } else {
-          setUser(parsedUser)
+          // Migrar estructura antigua si es necesaria
+          if (parsedUser.plan || parsedUser.tokensUsed !== undefined) {
+            const migratedUser: User = {
+              ...parsedUser,
+              subscription: {
+                plan: parsedUser.plan || "free",
+                tokensUsed: parsedUser.tokensUsed || 0,
+                tokensLimit: parsedUser.tokensLimit || 100,
+                userStoriesUsed: parsedUser.userStoriesUsed || 0,
+                userStoriesLimit: parsedUser.userStoriesLimit || 10,
+              },
+            }
+            // Remove old fields
+            delete (migratedUser as any).plan
+            delete (migratedUser as any).tokensUsed
+            delete (migratedUser as any).tokensLimit
+            delete (migratedUser as any).userStoriesUsed
+            delete (migratedUser as any).userStoriesLimit
+            
+            // Save migrated structure
+            localStorage.setItem("user", JSON.stringify(migratedUser))
+            setUser(migratedUser)
+          } else {
+            setUser(parsedUser)
+          }
+        } catch (error) {
+          console.error("Error parsing user data:", error)
+          // Clear corrupted data
+          localStorage.removeItem("auth_token")
+          localStorage.removeItem("user")
         }
-      } catch (error) {
-        console.error("Error parsing user data:", error)
-        // Clear corrupted data
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("user")
       }
     }
 
     setIsLoading(false)
-  }, [isClient])
+  }, [isMounted])
 
   const login = async (email: string, password: string) => {
     try {
@@ -238,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, isLoading, checkLimits, updateUsage, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, register, isLoading, isMounted, checkLimits, updateUsage, updateUser }}>
       {children}
     </AuthContext.Provider>
   )
