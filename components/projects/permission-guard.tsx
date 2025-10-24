@@ -3,66 +3,60 @@
 import { ReactNode } from "react"
 import { useProjectPermissions } from "@/hooks/use-project-permissions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ShieldX, Loader2 } from "lucide-react"
+import { Lock } from "lucide-react"
 
 interface PermissionGuardProps {
+  children: ReactNode
   projectId: string
   userId: string
-  requiredPermission: "read" | "write" | "delete" | "manage_members" | "manage_permissions" | "manage_project"
-  children: ReactNode
-  fallback?: ReactNode
+  requiredPermission: "read" | "write" | "manage_project" | "manage_members" | "manage_permissions"
   showError?: boolean
 }
 
-export function PermissionGuard({
-  projectId,
-  userId,
-  requiredPermission,
-  children,
-  fallback,
-  showError = false
+interface PermissionWrapperProps {
+  children: (hasPermission: boolean) => ReactNode
+  projectId: string
+  userId: string
+  requiredPermission: "read" | "write" | "manage_project" | "manage_members" | "manage_permissions"
+}
+
+export function PermissionGuard({ 
+  children, 
+  projectId, 
+  userId, 
+  requiredPermission, 
+  showError = false 
 }: PermissionGuardProps) {
-  const { hasPermission, loading, error } = useProjectPermissions(projectId, userId)
-
-  if (loading) {
-    return fallback || (showError ? <Loader2 className="h-4 w-4 animate-spin" /> : null)
-  }
-
-  if (error || !hasPermission(requiredPermission)) {
+  const { hasPermission } = useProjectPermissions(projectId, userId)
+  
+  const canAccess = hasPermission(requiredPermission)
+  
+  if (!canAccess) {
     if (showError) {
       return (
-        <Alert variant="destructive" className="max-w-md">
-          <ShieldX className="h-4 w-4" />
-          <AlertDescription>
-            No tienes permisos para realizar esta acción.
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <Lock className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            No tienes permisos para acceder a esta sección del proyecto.
           </AlertDescription>
         </Alert>
       )
     }
-    return fallback || null
+    return null
   }
-
+  
   return <>{children}</>
 }
 
-interface PermissionWrapperProps {
-  projectId: string
-  userId: string
-  requiredPermission: "read" | "write" | "delete" | "manage_members" | "manage_permissions" | "manage_project"
-  children: (hasPermission: boolean) => ReactNode
-}
-
-export function PermissionWrapper({
-  projectId,
-  userId,
-  requiredPermission,
-  children
+export function PermissionWrapper({ 
+  children, 
+  projectId, 
+  userId, 
+  requiredPermission 
 }: PermissionWrapperProps) {
-  const { hasPermission, loading } = useProjectPermissions(projectId, userId)
-
-  if (loading) {
-    return children(false)
-  }
-
-  return <>{children(hasPermission(requiredPermission))}</>
+  const { hasPermission } = useProjectPermissions(projectId, userId)
+  
+  const canAccess = hasPermission(requiredPermission)
+  
+  return <>{children(canAccess)}</>
 }

@@ -1,103 +1,129 @@
-import { useState, useEffect, useCallback } from "react"
-import { getUserProjectRole, hasProjectPermission } from "@/lib/project-permissions"
+import { useState, useEffect } from "react"
 
-interface Permission {
+export type ProjectPermission = "read" | "write" | "manage_project" | "manage_members" | "manage_permissions"
+
+export interface ProjectPermissions {
   read: boolean
   write: boolean
-  delete: boolean
+  manage_project: boolean
   manage_members: boolean
   manage_permissions: boolean
-  manage_project: boolean
 }
 
-interface UseProjectPermissionsReturn {
-  userRole: string | null
-  userPermissions: Permission
-  hasPermission: (permission: keyof Permission) => boolean
-  isAdmin: boolean
-  isManager: boolean
-  isContributor: boolean
-  isViewer: boolean
-  loading: boolean
-  error: string | null
-  refetch: () => void
+// Mock data - en un sistema real esto vendría de una API
+const mockPermissions: Record<string, ProjectPermissions> = {
+  // Usuario admin/owner tiene todos los permisos
+  "1": {
+    read: true,
+    write: true,
+    manage_project: true,
+    manage_members: true,
+    manage_permissions: true
+  },
+  // Usuario regular tiene permisos básicos
+  "2": {
+    read: true,
+    write: true,
+    manage_project: false,
+    manage_members: false,
+    manage_permissions: false
+  },
+  // Usuario con permisos limitados
+  "3": {
+    read: true,
+    write: false,
+    manage_project: false,
+    manage_members: false,
+    manage_permissions: false
+  }
 }
 
-const ROLE_PERMISSIONS = {
-  admin: ["read", "write", "delete", "manage_members", "manage_permissions", "manage_project"],
-  manager: ["read", "write", "delete", "manage_members"],
-  contributor: ["read", "write"],
-  viewer: ["read"]
-}
+export function useProjectPermissions(projectId: string, userId: string) {
+  const [permissions, setPermissions] = useState<ProjectPermissions>({
+    read: false,
+    write: false,
+    manage_project: false,
+    manage_members: false,
+    manage_permissions: false
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
-export function useProjectPermissions(
-  projectId: string,
-  userId: string
-): UseProjectPermissionsReturn {
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchUserRole = useCallback(async () => {
-    if (!projectId || !userId) {
-      setLoading(false)
-      return
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Simular delay de API
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // En un sistema real, aquí harías una llamada a la API:
+        // const response = await fetch(`/api/projects/${projectId}/permissions/${userId}`)
+        // const userPermissions = await response.json()
+        
+        // Por ahora, usar datos mock
+        const userPermissions = mockPermissions[userId] || {
+          read: false,
+          write: false,
+          manage_project: false,
+          manage_members: false,
+          manage_permissions: false
+        }
+        
+        setPermissions(userPermissions)
+      } catch (error) {
+        console.error("Error fetching permissions:", error)
+        // En caso de error, denegar todos los permisos
+        setPermissions({
+          read: false,
+          write: false,
+          manage_project: false,
+          manage_members: false,
+          manage_permissions: false
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    setLoading(true)
-    setError(null)
-
-    try {
-      const role = await getUserProjectRole(projectId, userId)
-      setUserRole(role)
-    } catch (err) {
-      console.error("Error fetching user role:", err)
-      setError(err instanceof Error ? err.message : "Error desconocido")
-      setUserRole(null)
-    } finally {
-      setLoading(false)
+    if (userId && projectId) {
+      fetchPermissions()
     }
   }, [projectId, userId])
 
-  useEffect(() => {
-    fetchUserRole()
-  }, [fetchUserRole])
-
-  // Calcular permisos basados en el rol
-  const userPermissions: Permission = {
-    read: false,
-    write: false,
-    delete: false,
-    manage_members: false,
-    manage_permissions: false,
-    manage_project: false
+  const hasPermission = (permission: ProjectPermission): boolean => {
+    return permissions[permission] || false
   }
 
-  if (userRole && ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS]) {
-    const rolePermissions = ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS]
-    rolePermissions.forEach(permission => {
-      if (permission in userPermissions) {
-        userPermissions[permission as keyof Permission] = true
-      }
-    })
+  const hasAnyPermission = (requiredPermissions: ProjectPermission[]): boolean => {
+    return requiredPermissions.some(permission => hasPermission(permission))
   }
 
-  const hasPermissionCheck = (permission: keyof Permission): boolean => {
-    return userPermissions[permission]
+  const hasAllPermissions = (requiredPermissions: ProjectPermission[]): boolean => {
+    return requiredPermissions.every(permission => hasPermission(permission))
+  }
+
+  const getUserRole = (): string => {
+    if (permissions.manage_permissions || permissions.manage_project) {
+      return "Admin"
+    }
+    if (permissions.manage_members) {
+      return "Manager"
+    }
+    if (permissions.write) {
+      return "Miembro"
+    }
+    if (permissions.read) {
+      return "Visualizador"
+    }
+    return "Sin acceso"
   }
 
   return {
-    userRole,
-    userPermissions,
-    hasPermission: hasPermissionCheck,
-    isAdmin: userRole === "admin",
-    isManager: userRole === "manager",
-    isContributor: userRole === "contributor",
-    isViewer: userRole === "viewer",
-    loading,
-    error,
-    refetch: fetchUserRole
+    permissions,
+    isLoading,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    userRole: getUserRole()
   }
 }
-
-export { ROLE_PERMISSIONS }

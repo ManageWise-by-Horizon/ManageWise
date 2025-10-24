@@ -22,6 +22,7 @@ import {
   CalendarDays,
   Bot,
   UserCog,
+  Clock,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -35,6 +36,7 @@ import { ProjectChat } from "@/components/projects/project-chat"
 import { ProjectBacklog } from "@/components/projects/project-backlog"
 import { ProjectBoard } from "@/components/projects/project-board"
 import { ProjectOKRs } from "@/components/projects/project-okrs"
+import { ProjectHistoryDashboard } from "@/components/projects/project-history-dashboard"
 
 interface Project {
   id: string
@@ -369,6 +371,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <GanttChart className="mr-2 h-4 w-4" />
             Timeline
           </TabsTrigger>
+          <TabsTrigger value="history">
+            <Clock className="mr-2 h-4 w-4" />
+            Historial
+          </TabsTrigger>
           <TabsTrigger value="calendar">
             <CalendarDays className="mr-2 h-4 w-4" />
             Calendario
@@ -540,6 +546,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <p className="text-sm text-muted-foreground">Próximamente: Diagrama de Gantt interactivo</p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-4">
+          <ProjectHistoryDashboard projectId={project.id} />
         </TabsContent>
 
         <TabsContent value="calendar">

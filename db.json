@@ -1708,5 +1708,46 @@
         }
       ]
     }
+  ],
+  "projectHistory": [
+    {
+      "id": "hist_001",
+      "projectId": "b3bc",
+      "userId": "1",
+      "changeType": "project_created",
+      "entityType": "project",
+      "entityId": "b3bc",
+      "description": "Proyecto creado: E-commerce Platform",
+      "details": {
+        "projectName": "E-commerce Platform",
+        "description": "Plataforma de comercio electrónico moderna"
+      },
+      "timestamp": "2025-10-22T05:44:10.750Z",
+      "userAgent": "ManageWise Web App",
+      "metadata": {
+        "source": "manual",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "hist_002",
+      "projectId": "b3bc",
+      "userId": "1",
+      "changeType": "user_story_created",
+      "entityType": "userStory",
+      "entityId": "6df8",
+      "description": "Historia de usuario creada: Usuario puede ver el historial de sus pedidos",
+      "details": {
+        "title": "Usuario puede ver el historial de sus pedidos",
+        "priority": "Media",
+        "storyPoints": 2
+      },
+      "timestamp": "2025-10-22T05:44:10.831Z",
+      "userAgent": "ManageWise Web App",
+      "metadata": {
+        "source": "ai_generated",
+        "version": "1.0.0"
+      }
+    }
   ]
 }

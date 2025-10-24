@@ -96,7 +96,7 @@ export function TaskBoard({ tasks, onUpdate, projectId }: TaskBoardProps) {
     if (projectId && !hasPermission("write")) {
       toast({
         title: "Sin permisos",
-        description: `Tu rol ${userRole} no permite cambiar el estado de las tareas`,
+        description: `Tu rol de "${userRole}" no permite cambiar el estado de las tareas. Necesitas permisos de escritura.`,
         variant: "destructive",
       })
       return
