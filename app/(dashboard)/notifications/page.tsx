@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Bell, CheckCircle, AlertCircle, Clock, Trash2, RefreshCw, Filter, Search } from "lucide-react"
+import { Bell, CheckCircle, AlertCircle, Clock, Trash2, RefreshCw, Filter, Search, MessageSquare, UserPlus, Shield } from "lucide-react"
 import { useNotifications } from "@/hooks/use-notifications"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Notification, NotificationType } from "@/lib/types/notifications"
@@ -81,10 +81,22 @@ export default function NotificationsPage() {
       case 'task_updated':
       case 'task_assigned':
       case 'task_completed':
+      case 'task_status_changed':
+      case 'task_priority_changed':
         return <CheckCircle className="h-4 w-4 text-blue-500" />
+      case 'task_commented':
+        return <MessageSquare className="h-4 w-4 text-orange-500" />
       case 'okr_updated':
       case 'okr_created':
         return <Bell className="h-4 w-4 text-purple-500" />
+      case 'project_invitation':
+        return <UserPlus className="h-4 w-4 text-green-600" />
+      case 'project_role_changed':
+      case 'member_role_updated':
+        return <Shield className="h-4 w-4 text-indigo-500" />
+      case 'project_updated':
+      case 'project_status_changed':
+        return <Bell className="h-4 w-4 text-cyan-500" />
       default:
         return <Bell className="h-4 w-4 text-gray-500" />
     }
@@ -96,15 +108,21 @@ export default function NotificationsPage() {
       'task_assigned': 'Tarea Asignada',
       'task_completed': 'Tarea Completada',
       'task_created': 'Tarea Creada',
+      'task_commented': 'Comentario en Tarea',
+      'task_status_changed': 'Estado de Tarea',
+      'task_priority_changed': 'Prioridad de Tarea',
       'okr_updated': 'OKR Actualizado',
       'okr_created': 'OKR Creado',
       'okr_completed': 'OKR Completado',
       'project_updated': 'Proyecto Actualizado',
       'project_status_changed': 'Estado de Proyecto',
+      'project_invitation': 'Invitación a Proyecto',
+      'project_role_changed': 'Cambio de Rol',
       'sprint_created': 'Sprint Creado',
       'sprint_completed': 'Sprint Completado',
       'member_added': 'Miembro Agregado',
       'member_removed': 'Miembro Removido',
+      'member_role_updated': 'Rol de Miembro',
       'system_error': 'Error del Sistema',
       'system_recovery': 'Recuperación del Sistema'
     }
@@ -154,7 +172,7 @@ export default function NotificationsPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualizar
           </Button>
-          <Button onClick={markAllAsRead} variant="outline" size="sm">
+          <Button onClick={() => markAllAsRead()} variant="outline" size="sm">
             <CheckCircle className="h-4 w-4 mr-2" />
             Marcar todas como leídas
           </Button>
@@ -222,7 +240,11 @@ export default function NotificationsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los tipos</SelectItem>
-                  <SelectItem value="task_updated">Tareas</SelectItem>
+                  <SelectItem value="task_assigned">Tareas Asignadas</SelectItem>
+                  <SelectItem value="task_commented">Comentarios</SelectItem>
+                  <SelectItem value="task_status_changed">Estados de Tarea</SelectItem>
+                  <SelectItem value="project_invitation">Invitaciones</SelectItem>
+                  <SelectItem value="project_role_changed">Cambios de Rol</SelectItem>
                   <SelectItem value="okr_updated">OKRs</SelectItem>
                   <SelectItem value="project_updated">Proyectos</SelectItem>
                   <SelectItem value="system_error">Errores del Sistema</SelectItem>

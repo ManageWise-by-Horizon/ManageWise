@@ -79,6 +79,9 @@ export function useNotifications(
       }
 
       const notificationsData = await response.json()
+      console.log('🔔 fetchNotifications: Raw API response:', notificationsData)
+      console.log('🔔 fetchNotifications: Setting notifications to state')
+      
       setNotifications(notificationsData)
 
       // Calcular estadísticas
@@ -229,8 +232,14 @@ export function useNotifications(
         unread: deletedNotification && !deletedNotification.read ? prev.unread - 1 : prev.unread
       } : null)
 
+      toast({
+        title: "Notificación eliminada",
+        description: "La notificación ha sido eliminada exitosamente"
+      })
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+      console.error('Error deleting notification:', err)
       toast({
         title: "Error al eliminar notificación",
         description: errorMessage,
@@ -320,8 +329,7 @@ export function useNotifications(
         data: {
           errorType,
           errorMessage,
-          affectedNotifications: affectedResources,
-          timestamp: new Date().toISOString()
+          affectedNotifications: affectedResources
         }
       })
     } catch (error) {
@@ -410,7 +418,12 @@ export function useNotifications(
   // Cargar notificaciones al montar
   useEffect(() => {
     if (user) {
+      console.log('🔔 useNotifications: Fetching notifications for user:', user.id)
       fetchNotifications()
+    } else {
+      console.log('🔔 useNotifications: No user found, clearing notifications')
+      setNotifications([])
+      setStats(null)
     }
   }, [user, fetchNotifications])
 

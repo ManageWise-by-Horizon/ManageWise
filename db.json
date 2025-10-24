@@ -1784,134 +1784,156 @@
   ],
   "notifications": [
     {
-      "id": "notif_001",
+      "id": "notif_1761346742376",
       "userId": "1",
-      "projectId": "b3bc",
-      "type": "task_updated",
-      "title": "Tarea actualizada",
-      "message": "La tarea 'Implementar autenticación' ha sido actualizada por Admin User",
-      "data": {
-        "taskId": "us_001",
-        "taskTitle": "Implementar autenticación",
-        "changeType": "status_changed",
-        "oldValue": "en_progreso",
-        "newValue": "completada",
-        "changedBy": "1",
-        "changedByName": "Admin User"
-      },
-      "read": false,
-      "createdAt": "2025-10-24T10:30:00.000Z",
-      "readAt": null
-    },
-    {
-      "id": "notif_002",
-      "userId": "2",
-      "projectId": "b3bc",
-      "type": "okr_updated",
-      "title": "OKR actualizado",
-      "message": "El OKR 'Lanzar versión beta funcional' ha sido actualizado - Progreso: 45%",
-      "data": {
-        "okrId": "okr_001",
-        "okrTitle": "Lanzar versión beta funcional",
-        "changeType": "progress_updated",
-        "oldProgress": 35,
-        "newProgress": 45,
-        "changedBy": "1",
-        "changedByName": "Admin User"
-      },
-      "read": false,
-      "createdAt": "2025-10-24T09:15:00.000Z",
-      "readAt": null
-    },
-    {
-      "id": "notif_003",
-      "userId": "3",
       "projectId": "b3bc",
       "type": "task_assigned",
       "title": "Nueva tarea asignada",
-      "message": "Te han asignado la tarea 'Configurar base de datos'",
+      "message": "Te han asignado \"Implementar login\" en E-commerce Platform",
       "data": {
-        "taskId": "us_003",
-        "taskTitle": "Configurar base de datos",
-        "assignedBy": "1",
-        "assignedByName": "Admin User"
+        "taskId": "3d1f",
+        "taskTitle": "Implementar login",
+        "changeType": "assigned",
+        "changedBy": "1",
+        "changedByName": "Admin User",
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform"
       },
       "read": true,
-      "createdAt": "2025-10-24T08:45:00.000Z",
-      "readAt": "2025-10-24T09:00:00.000Z"
+      "createdAt": "2025-10-24T22:54:02.376Z",
+      "readAt": "2025-10-24T23:34:46.278Z",
+      "deliveryStatus": "delivered"
     },
     {
-      "id": "notif_004",
+      "id": "notif_1761346742377",
       "userId": "1",
       "projectId": "b3bc",
-      "type": "project_updated",
-      "title": "Proyecto actualizado",
-      "message": "El estado del proyecto ha cambiado a 'En progreso'",
+      "type": "sprint_completed",
+      "title": "Sprint completado",
+      "message": "El Sprint 1 ha sido completado exitosamente",
+      "data": {
+        "sprintId": "sprint_001",
+        "sprintName": "Sprint 1",
+        "changeType": "completed",
+        "changedBy": "1",
+        "changedByName": "Admin User",
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform"
+      },
+      "read": true,
+      "createdAt": "2025-10-24T20:59:02.376Z",
+      "readAt": "2025-10-24T23:34:41.503Z",
+      "deliveryStatus": "delivered"
+    },
+    {
+      "id": "notif_invite_1761346953089",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "project_invitation",
+      "title": "Invitación a proyecto",
+      "message": "Te han invitado a unirte al proyecto \"E-commerce Platform\"",
       "data": {
         "projectId": "b3bc",
         "projectName": "E-commerce Platform",
-        "changeType": "status_changed",
-        "oldValue": "planificacion",
-        "newValue": "en_progreso",
-        "changedBy": "2",
-        "changedByName": "Product Owner"
-      },
-      "read": false,
-      "createdAt": "2025-10-24T07:30:00.000Z",
-      "readAt": null
-    },
-    {
-      "id": "notif_005",
-      "userId": "2",
-      "projectId": "b3bc",
-      "type": "system_error",
-      "title": "Error de sistema",
-      "message": "Fallo en el envío de notificaciones - Sistema recuperado",
-      "data": {
-        "errorType": "notification_delivery_failed",
-        "errorMessage": "Connection timeout",
-        "recoveredAt": "2025-10-24T06:45:00.000Z",
-        "affectedNotifications": ["notif_006", "notif_007"]
-      },
-      "read": false,
-      "createdAt": "2025-10-24T06:30:00.000Z",
-      "readAt": null
-    },
-    {
-      "id": "notif_006",
-      "userId": "1",
-      "projectId": "b3bc",
-      "type": "system_error",
-      "title": "Error del sistema",
-      "message": "Error en el sistema de notificaciones: Fallo de conexión con la base de datos",
-      "data": {
-        "errorType": "database_connection_error",
-        "errorMessage": "Connection timeout after 30 seconds",
-        "affectedNotifications": ["notif_001", "notif_002"]
-      },
-      "read": false,
-      "createdAt": "2025-10-24T08:00:00.000Z",
-      "readAt": null,
-      "deliveryStatus": "failed",
-      "retryCount": 2,
-      "lastRetryAt": "2025-10-24T08:15:00.000Z",
-      "failureReason": "Database connection timeout"
-    },
-    {
-      "id": "notif_007",
-      "userId": "2",
-      "projectId": "b3bc",
-      "type": "system_error",
-      "title": "Error crítico del sistema",
-      "message": "Se detectó un error crítico en el sistema de notificaciones",
-      "data": {
-        "errorType": "critical_system_error",
-        "errorMessage": "Memory overflow in notification service",
-        "affectedNotifications": ["notif_003", "notif_004", "notif_005"]
+        "invitationId": "inv_001",
+        "invitedBy": "2",
+        "invitedByName": "Jane Smith",
+        "changeType": "invited"
       },
       "read": true,
-      "createdAt": "2025-10-24T07:30:00.000Z",
-      "readAt": "2025-10-24T07:45:00.000Z"
+      "createdAt": "2025-10-24T22:52:33.089Z",
+      "readAt": "2025-10-24T23:34:46.278Z",
+      "deliveryStatus": "delivered"
+    },
+    {
+      "id": "notif_comment_1761346953090",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "task_commented",
+      "title": "Nuevo comentario en tu tarea",
+      "message": "Jane Smith comentó en \"Implementar login\": \"¿Necesitas ayuda con la validación?\"",
+      "data": {
+        "taskId": "3d1f",
+        "taskTitle": "Implementar login",
+        "commentId": "comment_001",
+        "commentText": "¿Necesitas ayuda con la validación?",
+        "changedBy": "2",
+        "changedByName": "Jane Smith",
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform",
+        "changeType": "commented"
+      },
+      "read": true,
+      "createdAt": "2025-10-24T22:47:33.089Z",
+      "readAt": "2025-10-24T23:34:46.277Z",
+      "deliveryStatus": "delivered"
+    },
+    {
+      "id": "notif_status_1761346953090",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "task_status_changed",
+      "title": "Estado de tarea actualizado",
+      "message": "Tu tarea \"Implementar login\" cambió de \"En progreso\" a \"En revisión\"",
+      "data": {
+        "taskId": "3d1f",
+        "taskTitle": "Implementar login",
+        "changeType": "status_changed",
+        "oldValue": "in_progress",
+        "newValue": "in_review",
+        "changedBy": "2",
+        "changedByName": "Jane Smith",
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform"
+      },
+      "read": true,
+      "createdAt": "2025-10-24T22:32:33.089Z",
+      "readAt": "2025-10-24T23:34:46.277Z",
+      "deliveryStatus": "delivered"
+    },
+    {
+      "id": "notif_role_1761346953090",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "project_role_changed",
+      "title": "Tu rol ha sido actualizado",
+      "message": "Tu rol en \"E-commerce Platform\" cambió de \"Developer\" a \"Scrum Master\"",
+      "data": {
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform",
+        "oldRole": "developer",
+        "newRole": "scrum_master",
+        "roleChangedBy": "2",
+        "roleChangedByName": "Jane Smith",
+        "changeType": "role_updated"
+      },
+      "read": true,
+      "createdAt": "2025-10-24T22:02:33.089Z",
+      "readAt": "2025-10-24T23:38:02.823Z",
+      "deliveryStatus": "delivered"
+    },
+    {
+      "id": "notif_priority_1761346953090",
+      "userId": "1",
+      "projectId": "b3bc",
+      "type": "task_priority_changed",
+      "title": "Prioridad de tarea cambiada",
+      "message": "La prioridad de tu tarea \"Implementar login\" cambió de \"Media\" a \"Alta\"",
+      "data": {
+        "taskId": "3d1f",
+        "taskTitle": "Implementar login",
+        "changeType": "priority_changed",
+        "oldValue": "medium",
+        "newValue": "high",
+        "changedBy": "2",
+        "changedByName": "Jane Smith",
+        "projectId": "b3bc",
+        "projectName": "E-commerce Platform"
+      },
+      "read": true,
+      "createdAt": "2025-10-24T21:32:33.089Z",
+      "readAt": "2025-10-24T23:34:46.276Z",
+      "deliveryStatus": "delivered"
     }
   ]
 }

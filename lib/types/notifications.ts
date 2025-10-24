@@ -3,15 +3,21 @@ export type NotificationType =
   | 'task_assigned'
   | 'task_completed'
   | 'task_created'
+  | 'task_commented'
+  | 'task_status_changed'
+  | 'task_priority_changed'
   | 'okr_updated'
   | 'okr_created'
   | 'okr_completed'
   | 'project_updated'
   | 'project_status_changed'
+  | 'project_invitation'
+  | 'project_role_changed'
   | 'sprint_created'
   | 'sprint_completed'
   | 'member_added'
   | 'member_removed'
+  | 'member_role_updated'
   | 'system_error'
   | 'system_recovery'
 
@@ -31,6 +37,8 @@ export interface NotificationData {
   taskTitle?: string
   assignedBy?: string
   assignedByName?: string
+  commentId?: string
+  commentText?: string
   
   // Para OKRs
   okrId?: string
@@ -41,6 +49,15 @@ export interface NotificationData {
   // Para proyectos
   projectId?: string
   projectName?: string
+  invitationId?: string
+  invitedBy?: string
+  invitedByName?: string
+  
+  // Para roles
+  oldRole?: string
+  newRole?: string
+  roleChangedBy?: string
+  roleChangedByName?: string
   
   // Para cambios generales
   changeType?: ChangeType

@@ -1,5 +1,5 @@
 // Configuración de la API
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 // Helper para crear URLs de API
 export function createApiUrl(endpoint: string): string {
