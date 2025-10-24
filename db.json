@@ -1577,5 +1577,136 @@
   "sprints": [],
   "meetings": [],
   "chatHistory": [],
-  "payments": []
+  "payments": [],
+  "okrs": [
+    {
+      "id": "okr_001",
+      "projectId": "b3bc",
+      "title": "Lanzar versión beta funcional",
+      "description": "Desarrollar y lanzar una versión beta de la plataforma de ecommerce con funcionalidades básicas de compra y venta",
+      "type": "objective",
+      "ownerId": "1",
+      "quarter": "Q1 2026",
+      "status": "in_progress",
+      "progress": 35,
+      "startDate": "2025-10-22",
+      "endDate": "2026-02-28",
+      "createdAt": "2025-10-22T05:44:09.790Z",
+      "keyResults": [
+        {
+          "id": "kr_001_1",
+          "title": "Completar 80% de las user stories del MVP",
+          "description": "Implementar las funcionalidades básicas de registro, login, búsqueda y carrito",
+          "targetValue": 80,
+          "currentValue": 25,
+          "unit": "percentage",
+          "status": "in_progress"
+        },
+        {
+          "id": "kr_001_2", 
+          "title": "Realizar pruebas con 50 usuarios beta",
+          "description": "Ejecutar testing con usuarios reales para validar funcionalidades",
+          "targetValue": 50,
+          "currentValue": 0,
+          "unit": "users",
+          "status": "not_started"
+        },
+        {
+          "id": "kr_001_3",
+          "title": "Lograr tiempo de carga inferior a 3 segundos",
+          "description": "Optimizar rendimiento de la aplicación",
+          "targetValue": 3,
+          "currentValue": 5.2,
+          "unit": "seconds",
+          "status": "in_progress"
+        }
+      ]
+    },
+    {
+      "id": "okr_002",
+      "projectId": "b3bc",
+      "title": "Integrar sistema de pagos robusto",
+      "description": "Implementar múltiples pasarelas de pago para facilitar las transacciones",
+      "type": "objective",
+      "ownerId": "3",
+      "quarter": "Q1 2026",
+      "status": "not_started",
+      "progress": 0,
+      "startDate": "2026-01-15",
+      "endDate": "2026-03-31",
+      "createdAt": "2025-10-22T05:44:09.790Z",
+      "keyResults": [
+        {
+          "id": "kr_002_1",
+          "title": "Integrar 3 pasarelas de pago diferentes",
+          "description": "PayPal, Stripe y procesador local",
+          "targetValue": 3,
+          "currentValue": 0,
+          "unit": "integrations",
+          "status": "not_started"
+        },
+        {
+          "id": "kr_002_2",
+          "title": "Lograr 99.9% de disponibilidad del sistema de pagos",
+          "description": "Garantizar alta disponibilidad y confiabilidad",
+          "targetValue": 99.9,
+          "currentValue": 0,
+          "unit": "percentage",
+          "status": "not_started"
+        },
+        {
+          "id": "kr_002_3",
+          "title": "Procesar transacciones en menos de 5 segundos",
+          "description": "Optimizar tiempo de procesamiento de pagos",
+          "targetValue": 5,
+          "currentValue": 0,
+          "unit": "seconds",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "id": "okr_003",
+      "projectId": "b3bc",
+      "title": "Alcanzar métricas de satisfacción del cliente",
+      "description": "Lograr alta satisfacción del cliente medida a través de reseñas y feedback",
+      "type": "objective",
+      "ownerId": "2",
+      "quarter": "Q3 2026",
+      "status": "not_started",
+      "progress": 0,
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-30",
+      "createdAt": "2025-10-22T05:44:09.790Z",
+      "keyResults": [
+        {
+          "id": "kr_003_1",
+          "title": "Obtener rating promedio de 4.5 estrellas",
+          "description": "Medido en reseñas de usuarios en la plataforma",
+          "targetValue": 4.5,
+          "currentValue": 0,
+          "unit": "rating",
+          "status": "not_started"
+        },
+        {
+          "id": "kr_003_2",
+          "title": "Reducir tickets de soporte a menos de 50 por mes",
+          "description": "Mejorar UX para reducir consultas de soporte",
+          "targetValue": 50,
+          "currentValue": 0,
+          "unit": "tickets",
+          "status": "not_started"
+        },
+        {
+          "id": "kr_003_3",
+          "title": "Alcanzar 90% de resolución en primer contacto",
+          "description": "Eficiencia en resolución de problemas de clientes",
+          "targetValue": 90,
+          "currentValue": 0,
+          "unit": "percentage",
+          "status": "not_started"
+        }
+      ]
+    }
+  ]
 }

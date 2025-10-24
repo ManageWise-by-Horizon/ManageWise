@@ -34,6 +34,7 @@ import { PermissionGuard, PermissionWrapper } from "@/components/projects/permis
 import { ProjectChat } from "@/components/projects/project-chat"
 import { ProjectBacklog } from "@/components/projects/project-backlog"
 import { ProjectBoard } from "@/components/projects/project-board"
+import { ProjectOKRs } from "@/components/projects/project-okrs"
 
 interface Project {
   id: string
@@ -360,6 +361,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <LayoutGrid className="mr-2 h-4 w-4" />
             Board
           </TabsTrigger>
+          <TabsTrigger value="okrs">
+            <Target className="mr-2 h-4 w-4" />
+            OKRs
+          </TabsTrigger>
           <TabsTrigger value="timeline">
             <GanttChart className="mr-2 h-4 w-4" />
             Timeline
@@ -498,6 +503,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               tasks={tasks}
               members={members}
               onUpdate={fetchProjectDetails}
+            />
+          </PermissionGuard>
+        </TabsContent>
+
+        <TabsContent value="okrs">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectOKRs 
+              projectId={project.id}
+              projectName={project.name}
+              members={members}
             />
           </PermissionGuard>
         </TabsContent>
