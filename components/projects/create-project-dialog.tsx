@@ -16,13 +16,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Sparkles, Bot, CheckCircle2, AlertCircle, Paperclip, X, Image as ImageIcon, FileText, CalendarIcon } from "lucide-react"
+import { Loader2, Sparkles, Bot, CheckCircle2, AlertCircle, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -51,30 +46,14 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   // Manual form
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [startDate, setStartDate] = useState<Date>()
-  const [endDate, setEndDate] = useState<Date>()
-
-  // Form validation errors
-  const [errors, setErrors] = useState({
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-  })
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   // AI Structured form
   const [objective, setObjective] = useState("")
   const [role, setRole] = useState("")
   const [context, setContext] = useState("")
   const [constraints, setConstraints] = useState("")
-
-  // AI form validation errors
-  const [aiErrors, setAiErrors] = useState({
-    objective: "",
-    role: "",
-    context: "",
-    constraints: "",
-  })
 
   // File attachment state
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
@@ -87,129 +66,8 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   const [generatedProject, setGeneratedProject] = useState<any>(null)
   const [showPreview, setShowPreview] = useState(false)
 
-  // Validation functions
-  const validateManualForm = () => {
-    const newErrors = {
-      name: "",
-      description: "",
-      startDate: "",
-      endDate: "",
-    }
-
-    // Validate name
-    if (!name.trim()) {
-      newErrors.name = "El nombre del proyecto es obligatorio"
-    } else if (name.trim().length < 3) {
-      newErrors.name = "El nombre debe tener al menos 3 caracteres"
-    } else if (name.trim().length > 100) {
-      newErrors.name = "El nombre no puede exceder 100 caracteres"
-    }
-
-    // Validate description
-    if (!description.trim()) {
-      newErrors.description = "La descripción es obligatoria"
-    } else if (description.trim().length < 10) {
-      newErrors.description = "La descripción debe tener al menos 10 caracteres"
-    } else if (description.trim().length > 500) {
-      newErrors.description = "La descripción no puede exceder 500 caracteres"
-    }
-
-    // Validate start date
-    if (!startDate) {
-      newErrors.startDate = "La fecha de inicio es obligatoria"
-    } else {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const selectedStartDate = new Date(startDate)
-      selectedStartDate.setHours(0, 0, 0, 0)
-      
-      if (selectedStartDate < today) {
-        newErrors.startDate = "La fecha de inicio no puede ser en el pasado"
-      }
-    }
-
-    // Validate end date
-    if (!endDate) {
-      newErrors.endDate = "La fecha de fin es obligatoria"
-    } else if (startDate && endDate) {
-      if (endDate <= startDate) {
-        newErrors.endDate = "La fecha de fin debe ser posterior a la fecha de inicio"
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.values(newErrors).every(error => error === "")
-  }
-
-  const validateAIForm = () => {
-    const newErrors = {
-      objective: "",
-      role: "",
-      context: "",
-      constraints: "",
-    }
-
-    // Validate objective
-    if (!objective.trim()) {
-      newErrors.objective = "El objetivo es obligatorio"
-    } else if (objective.trim().length < 20) {
-      newErrors.objective = "El objetivo debe tener al menos 20 caracteres"
-    } else if (objective.trim().length > 300) {
-      newErrors.objective = "El objetivo no puede exceder 300 caracteres"
-    }
-
-    // Validate role
-    if (!role.trim()) {
-      newErrors.role = "El rol del usuario es obligatorio"
-    } else if (role.trim().length < 3) {
-      newErrors.role = "El rol debe tener al menos 3 caracteres"
-    } else if (role.trim().length > 50) {
-      newErrors.role = "El rol no puede exceder 50 caracteres"
-    }
-
-    // Validate context
-    if (!context.trim()) {
-      newErrors.context = "El contexto es obligatorio"
-    } else if (context.trim().length < 30) {
-      newErrors.context = "El contexto debe tener al menos 30 caracteres"
-    } else if (context.trim().length > 500) {
-      newErrors.context = "El contexto no puede exceder 500 caracteres"
-    }
-
-    // Validate constraints
-    if (!constraints.trim()) {
-      newErrors.constraints = "Las restricciones son obligatorias"
-    } else if (constraints.trim().length < 20) {
-      newErrors.constraints = "Las restricciones deben tener al menos 20 caracteres"
-    } else if (constraints.trim().length > 400) {
-      newErrors.constraints = "Las restricciones no pueden exceder 400 caracteres"
-    }
-
-    setAiErrors(newErrors)
-    return Object.values(newErrors).every(error => error === "")
-  }
-
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Clear previous errors
-    setErrors({
-      name: "",
-      description: "",
-      startDate: "",
-      endDate: "",
-    })
-
-    // Validate form
-    if (!validateManualForm()) {
-      toast({
-        title: "Formulario incompleto",
-        description: "Por favor corrige los errores en el formulario antes de continuar",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsLoading(true)
 
     try {
@@ -218,8 +76,8 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         description,
         objectives: [],
         timeline: {
-          start: startDate?.toISOString(),
-          end: endDate?.toISOString(),
+          start: startDate,
+          end: endDate,
         },
         members: [user?.id],
         createdBy: user?.id,
@@ -227,16 +85,32 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         status: "active",
       }
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
+      const projectResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProject),
       })
 
+      const createdProject = await projectResponse.json()
+
+      // Crear permisos de administrador para el creador del proyecto
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectPermissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: createdProject.id,
+          userId: user?.id,
+          read: true,
+          write: true,
+          manage_project: true,
+          manage_members: true,
+          manage_permissions: true,
+        }),
+      })
+
       toast({
-        title: "¡Proyecto creado exitosamente!",
-        description: `${name} ha sido creado y está listo para usar`,
-        className: "bg-green-600 text-white border-green-700",
+        title: "Proyecto creado",
+        description: "El proyecto ha sido creado exitosamente",
       })
 
       resetForm()
@@ -331,19 +205,11 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   const handleAIGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Clear previous errors
-    setAiErrors({
-      objective: "",
-      role: "",
-      context: "",
-      constraints: "",
-    })
-
     // Validate form
-    if (!validateAIForm()) {
+    if (!objective || !role || !context || !constraints) {
       toast({
-        title: "Formulario incompleto",
-        description: "Por favor completa todos los campos del formulario estructurado correctamente",
+        title: "Campos incompletos",
+        description: "Por favor completa todos los campos del formulario estructurado.",
         variant: "destructive",
       })
       return
@@ -443,6 +309,21 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       })
 
       const createdProject = await projectResponse.json()
+
+      // Crear permisos de administrador para el creador del proyecto
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectPermissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: createdProject.id,
+          userId: user?.id,
+          read: true,
+          write: true,
+          manage_project: true,
+          manage_members: true,
+          manage_permissions: true,
+        }),
+      })
 
       // Step 11: Saving backlog
       setGenerationLog((prev) => [...prev, getMessageForStep("saving_backlog")])
@@ -643,24 +524,12 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   const resetForm = () => {
     setName("")
     setDescription("")
-    setStartDate(undefined)
-    setEndDate(undefined)
+    setStartDate("")
+    setEndDate("")
     setObjective("")
     setRole("")
     setContext("")
     setConstraints("")
-    setErrors({
-      name: "",
-      description: "",
-      startDate: "",
-      endDate: "",
-    })
-    setAiErrors({
-      objective: "",
-      role: "",
-      context: "",
-      constraints: "",
-    })
     clearAllFiles()
     setGenerationLog([])
     setGeneratedProject(null)
@@ -687,133 +556,49 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           <TabsContent value="manual">
             <form onSubmit={handleManualSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">
-                  Nombre del Proyecto <span className="text-destructive">*</span>
-                </Label>
+                <Label htmlFor="name">Nombre del Proyecto</Label>
                 <Input
                   id="name"
                   placeholder="E-commerce Platform"
                   value={name}
-                  onChange={(e) => {
-                    setName(e.target.value)
-                    if (errors.name) {
-                      setErrors(prev => ({ ...prev, name: "" }))
-                    }
-                  }}
-                  className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
+                  onChange={(e) => setName(e.target.value)}
+                  required
                 />
-                {errors.name && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.name}</span>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">
-                  Descripción <span className="text-destructive">*</span>
-                </Label>
+                <Label htmlFor="description">Descripción</Label>
                 <Textarea
                   id="description"
                   placeholder="Describe el proyecto..."
                   value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value)
-                    if (errors.description) {
-                      setErrors(prev => ({ ...prev, description: "" }))
-                    }
-                  }}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
                   rows={4}
-                  className={errors.description ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
-                {errors.description && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.description}</span>
-                  </div>
-                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">
-                    Fecha de Inicio <span className="text-destructive">*</span>
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !startDate && "text-muted-foreground",
-                          errors.startDate && "border-destructive focus-visible:ring-destructive"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP", { locale: es }) : "Seleccionar fecha"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={(date) => {
-                          setStartDate(date)
-                          if (errors.startDate) {
-                            setErrors(prev => ({ ...prev, startDate: "" }))
-                          }
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {errors.startDate && (
-                    <div className="flex items-center gap-2 text-sm text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>{errors.startDate}</span>
-                    </div>
-                  )}
+                  <Label htmlFor="startDate">Fecha de Inicio</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">
-                    Fecha de Fin <span className="text-destructive">*</span>
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !endDate && "text-muted-foreground",
-                          errors.endDate && "border-destructive focus-visible:ring-destructive"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP", { locale: es }) : "Seleccionar fecha"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={(date) => {
-                          setEndDate(date)
-                          if (errors.endDate) {
-                            setErrors(prev => ({ ...prev, endDate: "" }))
-                          }
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {errors.endDate && (
-                    <div className="flex items-center gap-2 text-sm text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>{errors.endDate}</span>
-                    </div>
-                  )}
+                  <Label htmlFor="endDate">Fecha de Fin</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
 
@@ -863,21 +648,11 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
                           id="objective"
                           placeholder="Ejemplo: Desarrollar una plataforma de e-commerce que permita a pequeños comerciantes vender sus productos en línea"
                           value={objective}
-                          onChange={(e) => {
-                            setObjective(e.target.value)
-                            if (aiErrors.objective) {
-                              setAiErrors(prev => ({ ...prev, objective: "" }))
-                            }
-                          }}
+                          onChange={(e) => setObjective(e.target.value)}
+                          required
                           rows={2}
-                          className={`text-sm resize-none ${aiErrors.objective ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          className="text-sm resize-none"
                         />
-                        {aiErrors.objective && (
-                          <div className="flex items-center gap-2 text-xs text-destructive">
-                            <AlertCircle className="h-3 w-3" />
-                            <span>{aiErrors.objective}</span>
-                          </div>
-                        )}
                         <p className="text-xs text-muted-foreground">¿Qué quieres lograr con este proyecto?</p>
                       </div>
 
@@ -889,21 +664,11 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
                           id="context"
                           placeholder="Ejemplo: El proyecto se desarrollará con un equipo de 5 personas (2 developers, 1 designer, 1 QA, 1 PO). Tecnologías: React, Node.js, PostgreSQL. Duración estimada: 3 meses"
                           value={context}
-                          onChange={(e) => {
-                            setContext(e.target.value)
-                            if (aiErrors.context) {
-                              setAiErrors(prev => ({ ...prev, context: "" }))
-                            }
-                          }}
+                          onChange={(e) => setContext(e.target.value)}
+                          required
                           rows={3}
-                          className={`text-sm resize-none ${aiErrors.context ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          className="text-sm resize-none"
                         />
-                        {aiErrors.context && (
-                          <div className="flex items-center gap-2 text-xs text-destructive">
-                            <AlertCircle className="h-3 w-3" />
-                            <span>{aiErrors.context}</span>
-                          </div>
-                        )}
                         <p className="text-xs text-muted-foreground">
                           Proporciona contexto sobre el equipo, tecnologías y duración
                         </p>
@@ -920,20 +685,10 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
                           id="role"
                           placeholder="Ejemplo: Scrum Master, Product Owner, Tech Lead"
                           value={role}
-                          onChange={(e) => {
-                            setRole(e.target.value)
-                            if (aiErrors.role) {
-                              setAiErrors(prev => ({ ...prev, role: "" }))
-                            }
-                          }}
-                          className={`text-sm ${aiErrors.role ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          onChange={(e) => setRole(e.target.value)}
+                          required
+                          className="text-sm"
                         />
-                        {aiErrors.role && (
-                          <div className="flex items-center gap-2 text-xs text-destructive">
-                            <AlertCircle className="h-3 w-3" />
-                            <span>{aiErrors.role}</span>
-                          </div>
-                        )}
                         <p className="text-xs text-muted-foreground">¿Cuál es tu rol en el proyecto?</p>
                       </div>
 
@@ -945,21 +700,11 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
                           id="constraints"
                           placeholder="Ejemplo: Presupuesto limitado ($50k), debe lanzarse antes del Q4, cumplir con GDPR, soportar 1000 usuarios concurrentes"
                           value={constraints}
-                          onChange={(e) => {
-                            setConstraints(e.target.value)
-                            if (aiErrors.constraints) {
-                              setAiErrors(prev => ({ ...prev, constraints: "" }))
-                            }
-                          }}
+                          onChange={(e) => setConstraints(e.target.value)}
+                          required
                           rows={4}
-                          className={`text-sm resize-none ${aiErrors.constraints ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          className="text-sm resize-none"
                         />
-                        {aiErrors.constraints && (
-                          <div className="flex items-center gap-2 text-xs text-destructive">
-                            <AlertCircle className="h-3 w-3" />
-                            <span>{aiErrors.constraints}</span>
-                          </div>
-                        )}
                         <p className="text-xs text-muted-foreground">¿Qué limitaciones o restricciones existen?</p>
                       </div>
                     </div>
