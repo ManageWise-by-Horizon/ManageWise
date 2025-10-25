@@ -10,15 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
-import { Loader2, UserPlus, Mail, AlertCircle, CheckCircle } from "lucide-react"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2, UserPlus, Mail, AlertTriangle } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface User {
   id: string
@@ -33,6 +33,7 @@ interface AddMemberDialogProps {
   onOpenChange: (open: boolean) => void
   projectId: string
   currentMembers: string[]
+  currentUserId: string
   onMemberAdded: () => void
 }
 
@@ -41,46 +42,46 @@ export function AddMemberDialog({
   onOpenChange,
   projectId,
   currentMembers,
+  currentUserId,
   onMemberAdded,
 }: AddMemberDialogProps) {
   const { toast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState("")
+  const [emailInvites, setEmailInvites] = useState("")
   const [activeTab, setActiveTab] = useState("existing")
-  
-  // Estados para invitación por email
-  const [inviteEmail, setInviteEmail] = useState("")
-  const [emailError, setEmailError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (open) {
       fetchAvailableUsers()
-      // Reset states cuando se abre el diálogo
-      setInviteEmail("")
-      setEmailError("")
-      setSelectedUsers([])
+      checkAdminPermissions()
     }
   }, [open])
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const checkUserAlreadyMember = async (email: string): Promise<boolean> => {
+  const checkAdminPermissions = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
-      const allUsers = await response.json()
-      const existingUser = allUsers.find((u: User) => u.email.toLowerCase() === email.toLowerCase())
+      // Verificar si el usuario actual es administrador del proyecto
+      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const project = await projectRes.json()
       
-      if (existingUser && currentMembers.includes(existingUser.id)) {
-        return true
-      }
-      return false
+      // Verificar si es el creador del proyecto
+      const isCreator = project.createdBy === currentUserId
+      
+      // Verificar permisos específicos en la tabla de permisos
+      const permissionsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectPermissions?projectId=${projectId}&userId=${currentUserId}`)
+      const permissions = await permissionsRes.json()
+      
+      const hasManagePermission = permissions.some((perm: any) => 
+        perm.userId === currentUserId && perm.manage_members === true
+      )
+      
+      setIsAdmin(isCreator || hasManagePermission)
     } catch (error) {
-      console.error("Error verificando membresía:", error)
-      return false
+      console.error("[v0] Error checking admin permissions:", error)
+      setIsAdmin(false)
     }
   }
 
@@ -99,6 +100,16 @@ export function AddMemberDialog({
   const handleAddMembers = async () => {
     if (selectedUsers.length === 0) return
 
+    // Verificar permisos de administrador
+    if (!isAdmin) {
+      toast({
+        title: "Permisos insuficientes",
+        description: "Solo los administradores del proyecto pueden invitar nuevos miembros",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -116,18 +127,20 @@ export function AddMemberDialog({
       })
 
       toast({
-        title: "Miembros agregados",
-        description: `${selectedUsers.length} miembro(s) agregado(s) al proyecto`,
+        title: "Miembros invitados",
+        description: `${selectedUsers.length} miembro(s) invitado(s) al proyecto`,
       })
 
       setSelectedUsers([])
+      setMessage("")
+      setEmailInvites("")
       onOpenChange(false)
       onMemberAdded()
     } catch (error) {
       console.error("[v0] Error adding members:", error)
       toast({
         title: "Error",
-        description: "No se pudieron agregar los miembros",
+        description: "No se pudieron invitar los miembros",
         variant: "destructive",
       })
     } finally {
@@ -135,68 +148,146 @@ export function AddMemberDialog({
     }
   }
 
-  const handleInviteByEmail = async () => {
-    // Limpiar errores previos
-    setEmailError("")
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
 
-    // Validar formato de email
-    if (!validateEmail(inviteEmail)) {
-      setEmailError("El formato del correo electrónico no es válido")
+  const handleEmailInvites = async () => {
+    // Verificar permisos de administrador
+    if (!isAdmin) {
+      toast({
+        title: "Permisos insuficientes",
+        description: "Solo los administradores del proyecto pueden invitar nuevos miembros",
+        variant: "destructive",
+      })
       return
     }
 
-    // Verificar si ya es miembro
-    const isAlreadyMember = await checkUserAlreadyMember(inviteEmail)
-    if (isAlreadyMember) {
-      setEmailError("Este usuario ya es miembro del proyecto")
+    const emails = emailInvites
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0)
+
+    if (emails.length === 0) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa al menos un email",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Escenario 3: Validación de formato de email
+    const invalidEmails = emails.filter(email => !validateEmail(email))
+    if (invalidEmails.length > 0) {
+      toast({
+        title: "Formato de email inválido",
+        description: `Los siguientes emails no son válidos: ${invalidEmails.join(', ')}`,
+        variant: "destructive",
+      })
       return
     }
 
     setIsLoading(true)
 
     try {
-      // Verificar si el usuario existe en el sistema
-      const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
-      const allUsers = await usersRes.json()
-      const existingUser = allUsers.find((u: User) => u.email.toLowerCase() === inviteEmail.toLowerCase())
+      // Escenario 2: Verificar si los emails ya pertenecen a usuarios del proyecto
+      const allUsersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const allUsers = await allUsersRes.json()
+      
+      // Obtener usuarios actuales del proyecto
+      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const project = await projectRes.json()
+      
+      const projectMemberEmails = allUsers
+        .filter((user: User) => project.members.includes(user.id))
+        .map((user: User) => user.email)
 
-      if (existingUser) {
-        // Usuario existe - agregar directamente al proyecto
-        const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
-        const project = await projectRes.json()
+      const duplicateEmails = emails.filter(email => 
+        projectMemberEmails.includes(email)
+      )
 
-        const updatedMembers = [...project.members, existingUser.id]
-
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ members: updatedMembers }),
-        })
-
+      if (duplicateEmails.length > 0) {
         toast({
-          title: "Miembro agregado exitosamente",
-          description: `${existingUser.name} ha sido agregado al proyecto`,
+          title: "Usuario ya es miembro del proyecto",
+          description: `Los siguientes usuarios ya pertenecen al proyecto: ${duplicateEmails.join(', ')}`,
+          variant: "destructive",
         })
-      } else {
-        // Usuario no existe - simular envío de invitación
-        // En un sistema real, aquí se enviaría un email de invitación
-        toast({
-          title: "Invitación enviada",
-          description: `Se ha enviado una invitación a ${inviteEmail}`,
-        })
-
-        // Simular registro de invitación pendiente
-        console.log(`Invitación enviada a ${inviteEmail} para proyecto ${projectId}`)
+        return
       }
 
-      setInviteEmail("")
+      // Escenario 1: Registrar invitaciones en la base de datos
+      const currentUser = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${currentUserId}`)
+      const user = await currentUser.json()
+
+      const invitations = emails.map(email => ({
+        id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        projectId,
+        email,
+        invitedBy: user.id,
+        invitedByName: user.name,
+        message: message || "Te invitamos a formar parte de nuestro equipo en este proyecto.",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
+      }))
+
+      // Registrar cada invitación
+      for (const invitation of invitations) {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(invitation),
+        })
+
+        // Escenario 1: Crear notificación para el usuario invitado
+        const invitationNotification = {
+          id: `notif_inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          userId: null, // Se enviará por email ya que puede que no tenga cuenta
+          projectId,
+          type: "email_invitation",
+          title: "Invitación a proyecto",
+          message: `Has sido invitado a unirte al proyecto "${project.name}"`,
+          data: {
+            projectId,
+            projectName: project.name,
+            invitationId: invitation.id,
+            invitedBy: invitation.invitedBy,
+            invitedByName: invitation.invitedByName,
+            email: invitation.email,
+            changeType: "invited"
+          },
+          read: false,
+          createdAt: new Date().toISOString(),
+          deliveryStatus: "pending"
+        }
+
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(invitationNotification),
+        })
+      }
+
+      // Simular envío de emails
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      toast({
+        title: "Invitaciones enviadas por email",
+        description: `Se enviaron invitaciones a ${emails.length} email(s)`,
+      })
+
+      setSelectedUsers([])
+      setMessage("")
+      setEmailInvites("")
       onOpenChange(false)
       onMemberAdded()
     } catch (error) {
-      console.error("Error enviando invitación:", error)
+      console.error("[v0] Error sending email invites:", error)
       toast({
         title: "Error",
-        description: "No se pudo enviar la invitación",
+        description: "No se pudieron enviar las invitaciones por email",
         variant: "destructive",
       })
     } finally {
@@ -215,7 +306,7 @@ export function AddMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -226,21 +317,50 @@ export function AddMemberDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {!isAdmin && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 text-amber-800">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Permisos requeridos</span>
+            </div>
+            <p className="mt-1 text-sm text-amber-700">
+              Solo los administradores del proyecto pueden invitar nuevos miembros. 
+              Contacta al administrador si necesitas agregar alguien al proyecto.
+            </p>
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="existing">Usuarios Existentes</TabsTrigger>
-            <TabsTrigger value="invite">Invitar por Email</TabsTrigger>
+            <TabsTrigger value="existing" disabled={!isAdmin}>
+              Usuarios Existentes
+            </TabsTrigger>
+            <TabsTrigger value="email" disabled={!isAdmin}>
+              Invitar por Email
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="existing" className="space-y-3">
-            <div className="max-h-96 overflow-y-auto space-y-3">
+          <TabsContent value="existing" className="space-y-4">
+            {/* Custom Message */}
+            <div className="space-y-2">
+              <Label htmlFor="message" className="text-sm font-medium">
+                Mensaje de invitación <span className="text-muted-foreground">(opcional)</span>
+              </Label>
+              <Textarea
+                id="message"
+                placeholder="Ej: ¡Hola! Te invitamos a formar parte de nuestro equipo en este emocionante proyecto..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+
+            {/* Users List */}
+            <div className="space-y-3 max-h-80 overflow-y-auto">
               {users.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    No hay usuarios disponibles para agregar al proyecto
-                  </AlertDescription>
-                </Alert>
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  No hay usuarios disponibles para invitar
+                </p>
               ) : (
                 users.map((user) => {
                   const roleBadge = getRoleBadge(user.role)
@@ -282,78 +402,85 @@ export function AddMemberDialog({
                 })
               )}
             </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleAddMembers} 
+                disabled={isLoading || selectedUsers.length === 0}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Invitando...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Invitar {selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </TabsContent>
 
-          <TabsContent value="invite" className="space-y-4">
+          <TabsContent value="email" className="space-y-4">
+            {/* Custom Message */}
             <div className="space-y-2">
-              <Label htmlFor="invite-email">Correo Electrónico</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="invite-email"
-                  type="email"
-                  placeholder="usuario@ejemplo.com"
-                  value={inviteEmail}
-                  onChange={(e) => {
-                    setInviteEmail(e.target.value)
-                    if (emailError) setEmailError("")
-                  }}
-                  className={`pl-9 ${emailError ? "border-destructive" : ""}`}
-                />
-              </div>
-              {emailError && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{emailError}</span>
-                </div>
-              )}
+              <Label htmlFor="email-message" className="text-sm font-medium">
+                Mensaje de invitación <span className="text-muted-foreground">(opcional)</span>
+              </Label>
+              <Textarea
+                id="email-message"
+                placeholder="Ej: ¡Hola! Te invitamos a formar parte de nuestro equipo en este emocionante proyecto..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
             </div>
 
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                Si el usuario ya tiene cuenta, será agregado automáticamente. 
-                Si no, recibirá una invitación por correo electrónico.
-              </AlertDescription>
-            </Alert>
+            {/* Email Input */}
+            <div className="space-y-2">
+              <Label htmlFor="emails" className="text-sm font-medium">
+                Direcciones de correo electrónico
+              </Label>
+              <Textarea
+                id="emails"
+                placeholder="usuario1@ejemplo.com, usuario2@ejemplo.com, usuario3@ejemplo.com"
+                value={emailInvites}
+                onChange={(e) => setEmailInvites(e.target.value)}
+                className="min-h-[100px] resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Separa múltiples emails con comas. Se enviará una invitación a cada dirección.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleEmailInvites} 
+                disabled={isLoading || !emailInvites.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando invitaciones...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Enviar Invitaciones por Email
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </TabsContent>
         </Tabs>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          
-          {activeTab === "existing" ? (
-            <Button onClick={handleAddMembers} disabled={isLoading || selectedUsers.length === 0}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Agregando...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Agregar {selectedUsers.length > 0 && `(${selectedUsers.length})`}
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button onClick={handleInviteByEmail} disabled={isLoading || !inviteEmail.trim()}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Enviar Invitación
-                </>
-              )}
-            </Button>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

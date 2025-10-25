@@ -11,12 +11,15 @@ import { Separator } from "@/components/ui/separator"
 import { Bell, CheckCircle, AlertCircle, Clock, Trash2, RefreshCw, Filter, Search, MessageSquare, UserPlus, Shield } from "lucide-react"
 import { useNotifications } from "@/hooks/use-notifications"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { InvitationNotification } from "@/components/notifications/invitation-notification"
 import { Notification, NotificationType } from "@/lib/types/notifications"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
 export default function NotificationsPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const {
     notifications,
     stats,
@@ -33,6 +36,162 @@ export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState<NotificationType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<"all" | "read" | "unread">("all")
   const [searchTerm, setSearchTerm] = useState("")
+
+  // Escenario 2: Función para aceptar invitación
+  const handleAcceptInvitation = async (notificationId: string, projectId: string) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes estar autenticado para aceptar invitaciones",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Obtener el proyecto actual
+      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const project = await projectRes.json()
+
+      // Verificar si el usuario ya es miembro (Escenario 4)
+      if (project.members.includes(user.id)) {
+        toast({
+          title: "Ya eres miembro",
+          description: "Ya perteneces a este proyecto",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Agregar usuario al proyecto
+      const updatedMembers = [...project.members, user.id]
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ members: updatedMembers }),
+      })
+
+      // Marcar notificación como leída
+      await markAsRead(notificationId)
+
+      // Actualizar el estado de la invitación si existe
+      const invitationsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${projectId}&email=${user.email}`)
+      const invitations = await invitationsRes.json()
+      if (invitations.length > 0) {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitations[0].id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "accepted" }),
+        })
+      }
+
+      // Crear notificación de confirmación para el que invitó
+      const notification = notifications.find(n => n.id === notificationId)
+      if (notification?.data?.invitedBy) {
+        const confirmationNotification = {
+          id: `notif_accept_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          userId: notification.data.invitedBy,
+          projectId,
+          type: "invitation_accepted",
+          title: "Invitación aceptada",
+          message: `${user.name} ha aceptado tu invitación al proyecto "${notification.data.projectName}"`,
+          data: {
+            projectId,
+            projectName: notification.data.projectName,
+            acceptedBy: user.id,
+            acceptedByName: user.name,
+            changeType: "accepted"
+          },
+          read: false,
+          createdAt: new Date().toISOString(),
+          deliveryStatus: "delivered"
+        }
+
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(confirmationNotification),
+        })
+      }
+
+    } catch (error) {
+      console.error("Error accepting invitation:", error)
+      throw error
+    }
+  }
+
+  // Escenario 3: Función para rechazar invitación
+  const handleDeclineInvitation = async (notificationId: string, invitationId?: string) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes estar autenticado para rechazar invitaciones",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Marcar notificación como leída
+      await markAsRead(notificationId)
+
+      // Actualizar el estado de la invitación si existe
+      if (invitationId) {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "declined" }),
+        })
+      } else {
+        // Buscar invitación por email del usuario y projectId
+        const notification = notifications.find(n => n.id === notificationId)
+        if (notification?.data?.projectId) {
+          const invitationsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${notification.data.projectId}&email=${user.email}`)
+          const invitations = await invitationsRes.json()
+          if (invitations.length > 0) {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitations[0].id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "declined" }),
+            })
+          }
+        }
+      }
+
+      // Crear notificación de confirmación para el que invitó
+      const notification = notifications.find(n => n.id === notificationId)
+      if (notification?.data?.invitedBy) {
+        const confirmationNotification = {
+          id: `notif_decline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          userId: notification.data.invitedBy,
+          projectId: notification.data.projectId,
+          type: "invitation_declined",
+          title: "Invitación rechazada",
+          message: `${user.name} ha rechazado tu invitación al proyecto "${notification.data.projectName}"`,
+          data: {
+            projectId: notification.data.projectId,
+            projectName: notification.data.projectName,
+            declinedBy: user.id,
+            declinedByName: user.name,
+            changeType: "declined"
+          },
+          read: false,
+          createdAt: new Date().toISOString(),
+          deliveryStatus: "delivered"
+        }
+
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(confirmationNotification),
+        })
+      }
+
+    } catch (error) {
+      console.error("Error declining invitation:", error)
+      throw error
+    }
+  }
 
   // Filtrar notificaciones basado en los filtros activos
   useEffect(() => {
@@ -117,6 +276,9 @@ export default function NotificationsPage() {
       'project_updated': 'Proyecto Actualizado',
       'project_status_changed': 'Estado de Proyecto',
       'project_invitation': 'Invitación a Proyecto',
+      'email_invitation': 'Invitación por Email',
+      'invitation_accepted': 'Invitación Aceptada',
+      'invitation_declined': 'Invitación Rechazada',
       'project_role_changed': 'Cambio de Rol',
       'sprint_created': 'Sprint Creado',
       'sprint_completed': 'Sprint Completado',
@@ -243,7 +405,10 @@ export default function NotificationsPage() {
                   <SelectItem value="task_assigned">Tareas Asignadas</SelectItem>
                   <SelectItem value="task_commented">Comentarios</SelectItem>
                   <SelectItem value="task_status_changed">Estados de Tarea</SelectItem>
-                  <SelectItem value="project_invitation">Invitaciones</SelectItem>
+                  <SelectItem value="project_invitation">Invitaciones a Proyecto</SelectItem>
+                  <SelectItem value="email_invitation">Invitaciones por Email</SelectItem>
+                  <SelectItem value="invitation_accepted">Invitaciones Aceptadas</SelectItem>
+                  <SelectItem value="invitation_declined">Invitaciones Rechazadas</SelectItem>
                   <SelectItem value="project_role_changed">Cambios de Rol</SelectItem>
                   <SelectItem value="okr_updated">OKRs</SelectItem>
                   <SelectItem value="project_updated">Proyectos</SelectItem>
@@ -305,80 +470,97 @@ export default function NotificationsPage() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {filteredNotifications.map((notification) => (
-                <Card 
-                  key={notification.id} 
-                  className={`transition-all hover:shadow-md ${
-                    !notification.read ? 'border-l-4 border-l-blue-500 bg-blue-50/50' : ''
-                  } ${
-                    notification.deliveryStatus === 'failed' ? 'border-l-4 border-l-red-500 bg-red-50/50' : ''
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3 flex-1">
-                        {getNotificationIcon(notification.type, notification.deliveryStatus)}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <h3 className={`font-medium ${!notification.read ? 'font-semibold' : ''}`}>
-                              {notification.title}
-                            </h3>
-                            <Badge variant="outline" className="text-xs">
-                              {getNotificationTypeLabel(notification.type)}
-                            </Badge>
-                            {notification.deliveryStatus === 'failed' && (
-                              <Badge variant="destructive" className="text-xs">
-                                Fallo de entrega
+              {filteredNotifications.map((notification) => {
+                // Usar componente especializado para invitaciones
+                if (notification.type === 'project_invitation' || notification.type === 'email_invitation') {
+                  return (
+                    <InvitationNotification
+                      key={notification.id}
+                      notification={notification}
+                      onAccept={handleAcceptInvitation}
+                      onDecline={handleDeclineInvitation}
+                      onMarkAsRead={markAsRead}
+                      compact={false}
+                    />
+                  )
+                }
+
+                // Renderizado normal para otros tipos de notificación
+                return (
+                  <Card 
+                    key={notification.id} 
+                    className={`transition-all hover:shadow-md ${
+                      !notification.read ? 'border-l-4 border-l-blue-500 bg-blue-50/50' : ''
+                    } ${
+                      notification.deliveryStatus === 'failed' ? 'border-l-4 border-l-red-500 bg-red-50/50' : ''
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3 flex-1">
+                          {getNotificationIcon(notification.type, notification.deliveryStatus)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h3 className={`font-medium ${!notification.read ? 'font-semibold' : ''}`}>
+                                {notification.title}
+                              </h3>
+                              <Badge variant="outline" className="text-xs">
+                                {getNotificationTypeLabel(notification.type)}
                               </Badge>
-                            )}
-                            {notification.retryCount && notification.retryCount > 0 && (
-                              <Badge variant="secondary" className="text-xs">
-                                Reintentos: {notification.retryCount}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {notification.message}
-                          </p>
-                          <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                            <span>
-                              {format(new Date(notification.createdAt), 'PPp', { locale: es })}
-                            </span>
-                            {notification.readAt && (
+                              {notification.deliveryStatus === 'failed' && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Fallo de entrega
+                                </Badge>
+                              )}
+                              {notification.retryCount && notification.retryCount > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Reintentos: {notification.retryCount}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                               <span>
-                                Leída: {format(new Date(notification.readAt), 'PPp', { locale: es })}
+                                {format(new Date(notification.createdAt), 'PPp', { locale: es })}
                               </span>
-                            )}
-                            {notification.failureReason && (
-                              <span className="text-red-600">
-                                Error: {notification.failureReason}
-                              </span>
-                            )}
+                              {notification.readAt && (
+                                <span>
+                                  Leída: {format(new Date(notification.readAt), 'PPp', { locale: es })}
+                                </span>
+                              )}
+                              {notification.failureReason && (
+                                <span className="text-red-600">
+                                  Error: {notification.failureReason}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        {!notification.read && (
+                        <div className="flex items-center space-x-2 ml-4">
+                          {!notification.read && (
+                            <Button
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
-                            onClick={() => handleMarkAsRead(notification.id)}
+                            onClick={() => handleDelete(notification.id)}
                             variant="outline"
                             size="sm"
                           >
-                            <CheckCircle className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          onClick={() => handleDelete(notification.id)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </TabsContent>

@@ -12,6 +12,9 @@ export type NotificationType =
   | 'project_updated'
   | 'project_status_changed'
   | 'project_invitation'
+  | 'email_invitation'
+  | 'invitation_accepted'
+  | 'invitation_declined'
   | 'project_role_changed'
   | 'sprint_created'
   | 'sprint_completed'
@@ -52,6 +55,7 @@ export interface NotificationData {
   invitationId?: string
   invitedBy?: string
   invitedByName?: string
+  email?: string
   
   // Para roles
   oldRole?: string
@@ -77,6 +81,12 @@ export interface NotificationData {
   sprintName?: string
   memberId?: string
   memberName?: string
+  
+  // Para aceptación/rechazo de invitaciones
+  acceptedBy?: string
+  acceptedByName?: string
+  declinedBy?: string
+  declinedByName?: string
 }
 
 export interface Notification {

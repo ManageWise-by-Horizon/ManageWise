@@ -574,6 +574,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           onOpenChange={setIsAddMemberDialogOpen}
           projectId={project.id}
           currentMembers={project.members}
+          currentUserId={user?.id || ""}
           onMemberAdded={fetchProjectDetails}
         />
       </PermissionGuard>
