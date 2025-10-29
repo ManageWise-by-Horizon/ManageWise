@@ -13,6 +13,7 @@ import { TaskDetailModal } from "@/components/projects/task-detail-modal"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useProjectPermissions } from "@/hooks/use-project-permissions"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl } from "@/lib/api-config"
 
 interface Task {
   id: string
@@ -83,7 +84,7 @@ export function TaskBoard({ tasks, onUpdate, projectId }: TaskBoardProps) {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const response = await fetch(createApiUrl('/users'))
       const data = await response.json()
       setUsers(data)
     } catch (error) {
@@ -103,7 +104,7 @@ export function TaskBoard({ tasks, onUpdate, projectId }: TaskBoardProps) {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${taskId}`, {
+      const response = await fetch(createApiUrl(`/tasks/${taskId}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

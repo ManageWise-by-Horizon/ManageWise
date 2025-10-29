@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Trash2, AlertTriangle, CheckCircle } from "lucide-react"
+import { createApiUrl } from "@/lib/api-config"
 
 interface CleanupResult {
   success: boolean;
@@ -25,7 +26,7 @@ export function DatabaseCleanupWidget() {
   const handleCleanup = async () => {
     setIsLoading(true)
     try {
-      const result = await cleanupOrphanedData(process.env.NEXT_PUBLIC_API_URL!)
+      const result = await cleanupOrphanedData(createApiUrl(""))
       setLastResult(result)
 
       const totalCleaned = Object.values(result.cleaned).reduce((sum, count) => sum + count, 0)

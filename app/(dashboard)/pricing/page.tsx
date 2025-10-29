@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, Sparkles, Zap, Crown } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl } from "@/lib/api-config"
 
 export default function PricingPage() {
   const { user, updateUser } = useAuth()
@@ -84,7 +85,7 @@ export default function PricingPage() {
       updateUser(updatedUser)
 
       // Actualizar en db.json (simulado)
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`, {
+      await fetch(createApiUrl(`/users/${user.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: updatedUser.subscription }),

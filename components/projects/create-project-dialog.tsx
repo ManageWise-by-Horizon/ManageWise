@@ -24,6 +24,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { generateProjectWithGemini, type StructuredPrompt } from "@/lib/gemini"
 import { getMessageForStep } from "@/lib/generation-messages"
+import { createApiUrl } from "@/lib/api-config"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,7 +86,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         status: "active",
       }
 
-      const projectResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
+      const projectResponse = await fetch(createApiUrl('/projects'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProject),
@@ -94,12 +95,13 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       const createdProject = await projectResponse.json()
 
       // Crear permisos de administrador para el creador del proyecto
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectPermissions`, {
+      await fetch(createApiUrl('/projectPermissions'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: createdProject.id,
           userId: user?.id,
+          role: 'product_owner', // Rol por defecto para el creador del proyecto
           read: true,
           write: true,
           manage_project: true,
@@ -302,7 +304,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         structuredPrompt,
       }
 
-      const projectResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
+      const projectResponse = await fetch(createApiUrl('/projects'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(projectData),
@@ -311,12 +313,13 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       const createdProject = await projectResponse.json()
 
       // Crear permisos de administrador para el creador del proyecto
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectPermissions`, {
+      await fetch(createApiUrl('/projectPermissions'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: createdProject.id,
           userId: user?.id,
+          role: 'product_owner', // Rol por defecto para el creador del proyecto
           read: true,
           write: true,
           manage_project: true,
@@ -336,7 +339,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       if (result.productBacklog && result.productBacklog.length > 0) {
         for (const backlogItem of result.productBacklog) {
           // Save as individual user story - let backend generate ID
-          const userStoryResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`, {
+          const userStoryResponse = await fetch(createApiUrl('/userStories'), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -372,7 +375,6 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Diseñar UI para ${backlogItem.title}`,
               description: `Crear mockups y diseño de interfaz para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              projectId: createdProject.id,
               assignedTo: null, // Sin asignar por defecto
               status: "todo",
               priority: backlogItem.priority,
@@ -385,7 +387,6 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Implementar backend para ${backlogItem.title}`,
               description: `Desarrollar lógica de negocio y APIs para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              projectId: createdProject.id,
               assignedTo: null,
               status: "todo",
               priority: backlogItem.priority,
@@ -398,7 +399,6 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Implementar frontend para ${backlogItem.title}`,
               description: `Desarrollar componentes y vistas para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              projectId: createdProject.id,
               assignedTo: null,
               status: "todo",
               priority: backlogItem.priority,
@@ -411,7 +411,6 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Testing para ${backlogItem.title}`,
               description: `Pruebas unitarias e integración para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              projectId: createdProject.id,
               assignedTo: null,
               status: "todo",
               priority: backlogItem.priority,
@@ -425,7 +424,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           // Create tasks for this user story
           for (const task of tasksForStory) {
             try {
-              const taskResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+              const taskResponse = await fetch(createApiUrl('/tasks'), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(task),
@@ -442,7 +441,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         }
 
         // Create a backlog container with references to all user stories
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs`, {
+        await fetch(createApiUrl('/backlogs'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

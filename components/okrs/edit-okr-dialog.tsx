@@ -336,7 +336,6 @@ export function EditOKRDialog({
                   oldProgress: originalProgress,
                   newProgress: newProgress,
                   changedBy: user.id,
-                  changedByName: user.name,
                   projectId: okr.projectId,
                   projectName: projectName
                 }

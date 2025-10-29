@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Eye, ListTodo } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl } from "@/lib/api-config"
 
 interface Backlog {
   id: string
@@ -28,7 +29,7 @@ export function BacklogCard({ backlog, onUpdate }: BacklogCardProps) {
 
   const handleDelete = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs/${backlog.id}`, {
+      await fetch(createApiUrl(`/backlogs/${backlog.id}`), {
         method: "DELETE",
       })
 

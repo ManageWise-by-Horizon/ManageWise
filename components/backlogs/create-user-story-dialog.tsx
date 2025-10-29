@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Plus, X } from "lucide-react"
+import { createApiUrl } from "@/lib/api-config"
 
 interface CreateUserStoryDialogProps {
   open: boolean
@@ -63,7 +64,7 @@ export function CreateUserStoryDialog({
         aiGenerated: false,
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`, {
+      const response = await fetch(createApiUrl('/userStories'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newStory),
@@ -72,10 +73,10 @@ export function CreateUserStoryDialog({
       const createdStory = await response.json()
 
       // Update backlog items
-      const backlogRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs/${backlogId}`)
+      const backlogRes = await fetch(createApiUrl(`/backlogs/${backlogId}`))
       const backlog = await backlogRes.json()
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs/${backlogId}`, {
+      await fetch(createApiUrl(`/backlogs/${backlogId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

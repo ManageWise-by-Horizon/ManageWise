@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreVertical, Trash2, Edit, Sparkles, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl } from "@/lib/api-config"
 
 interface UserStory {
   id: string
@@ -32,7 +33,7 @@ export function UserStoryCard({ story, onUpdate }: UserStoryCardProps) {
 
   const handleDelete = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories/${story.id}`, {
+      await fetch(createApiUrl(`/userStories/${story.id}`), {
         method: "DELETE",
       })
 

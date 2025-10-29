@@ -18,6 +18,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl } from "@/lib/api-config"
 
 interface UserStory {
   id: string
@@ -89,19 +90,18 @@ export function UserStoryDetailModal({
     setIsLoading(true)
     try {
       // Fetch tasks related to this user story
-      const tasksRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`)
+      const tasksRes = await fetch(createApiUrl('/tasks'))
       const allTasks = await tasksRes.json()
       
       // Filter tasks that belong to this user story
       const relatedTasks = allTasks.filter((task: Task) => 
-        task.userStoryId === userStory.id || 
-        (task.projectId === projectId && !task.userStoryId) // Tasks without US assignment
+        task.userStoryId === userStory.id
       )
       
       setTasks(relatedTasks)
 
       // Fetch users for assigned members
-      const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const usersRes = await fetch(createApiUrl('/users'))
       const usersData = await usersRes.json()
       setUsers(usersData)
     } catch (error) {

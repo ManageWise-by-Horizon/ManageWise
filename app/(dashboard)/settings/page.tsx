@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { User, CreditCard, Shield, Crown, Zap, TrendingUp, Upload, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { uploadToImgBB } from "@/lib/imgbb"
+import { createApiUrl } from "@/lib/api-config"
 
 export default function SettingsPage() {
   const { user, updateUser, logout } = useAuth()
@@ -48,7 +49,7 @@ export default function SettingsPage() {
       localStorage.setItem("user", JSON.stringify(updatedUser))
       updateUser(updatedUser)
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user!.id}`, {
+      await fetch(createApiUrl(`/users/${user!.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: formData.name, email: formData.email }),
@@ -108,7 +109,7 @@ export default function SettingsPage() {
       localStorage.setItem("user", JSON.stringify(updatedUser))
       updateUser(updatedUser)
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user!.id}`, {
+      await fetch(createApiUrl(`/users/${user!.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatar: imageUrl }),
@@ -290,10 +291,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Rol</Label>
+                  <Label htmlFor="role">Rol de Perfil</Label>
                   <Input id="role" value={user.role} disabled className="bg-muted" />
                   <p className="text-xs text-muted-foreground">
-                    El rol no puede ser modificado. Contacta al administrador.
+                    Este es tu rol de perfil. Los roles y permisos específicos se asignan en cada proyecto.
                   </p>
                 </div>
 

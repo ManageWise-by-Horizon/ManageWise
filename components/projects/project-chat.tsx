@@ -10,7 +10,7 @@ import { Send, Bot, User, Loader2, CheckCircle2, AlertCircle, Paperclip, X, Imag
 import { chatWithGemini, ChatMessage, ProjectContext } from "@/lib/gemini"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { useProjectPermissions } from "@/hooks/use-project-permissions"
+import { createApiUrl } from "@/lib/api-config"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,9 +42,6 @@ export function ProjectChat({ projectId, projectContext, initialPrompt, onDataUp
   const documentInputRef = useRef<HTMLInputElement>(null)
   const { user, checkLimits, updateUsage } = useAuth()
   const { toast } = useToast()
-  
-  // Verificar permisos del usuario
-  const { hasPermission, userRole, loading: permissionsLoading } = useProjectPermissions(projectId, user?.id || "")
 
   // Load chat history from localStorage
   useEffect(() => {
@@ -95,16 +92,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'document') => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Check permissions first
-    if (!hasPermission("write")) {
-      toast({
-        title: "Sin permisos",
-        description: `Tu rol ${userRole} no permite adjuntar archivos`,
-        variant: "destructive",
-      })
-      return
-    }
 
     // Check if file already exists
     if (attachedFiles.some(f => f.name === file.name && f.size === file.size)) {
@@ -335,7 +322,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
           aiGenerated: true,
         }
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`, {
+        const response = await fetch(createApiUrl('/userStories'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(userStory),
@@ -350,7 +337,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Diseñar UI para ${item.title}`,
             description: `Crear mockups y diseño de interfaz para: ${item.description}`,
             userStoryId: created.id,
-            projectId: projectId,
             assignedTo: null,
             status: "todo",
             priority: item.priority,
@@ -363,7 +349,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Implementar backend para ${item.title}`,
             description: `Desarrollar lógica de negocio y APIs para: ${item.description}`,
             userStoryId: created.id,
-            projectId: projectId,
             assignedTo: null,
             status: "todo",
             priority: item.priority,
@@ -376,7 +361,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Implementar frontend para ${item.title}`,
             description: `Desarrollar componentes y vistas para: ${item.description}`,
             userStoryId: created.id,
-            projectId: projectId,
             assignedTo: null,
             status: "todo",
             priority: item.priority,
@@ -389,7 +373,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Testing para ${item.title}`,
             description: `Pruebas unitarias e integración para: ${item.description}`,
             userStoryId: created.id,
-            projectId: projectId,
             assignedTo: null,
             status: "todo",
             priority: item.priority,
@@ -403,7 +386,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
         // Create all tasks for this user story
         for (const task of tasksForStory) {
           try {
-            const taskResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+            const taskResponse = await fetch(createApiUrl('/tasks'), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(task),
@@ -550,7 +533,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             }
           }
 
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs/${userStoryId}`, {
+          const response = await fetch(createApiUrl(`/backlogs/${userStoryId}`), {
             method: 'DELETE',
           })
 
@@ -650,16 +633,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
 
   const handleSend = async () => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return
-
-    // Verificar permisos antes de enviar
-    if (!hasPermission("write")) {
-      toast({
-        title: "Acceso denegado",
-        description: `Como ${userRole === "viewer" ? "Observador" : userRole}, no puedes interactuar con el chat IA para crear contenido.`,
-        variant: "destructive",
-      })
-      return
-    }
 
     // Check limits (10 tokens per file + 5 base)
     const tokensRequired = attachedFiles.length > 0 ? 5 + (attachedFiles.length * 10) : 5
@@ -929,7 +902,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             accept="image/*"
             onChange={(e) => handleFileSelect(e, 'image')}
             className="hidden"
-            disabled={!hasPermission("write")}
           />
           <input
             ref={documentInputRef}
@@ -937,7 +909,6 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={(e) => handleFileSelect(e, 'document')}
             className="hidden"
-            disabled={!hasPermission("write")}
           />
           
           {/* Dropdown menu for file attachment */}
@@ -946,15 +917,8 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
               <Button
                 variant="outline"
                 size="icon"
-                disabled={isLoading || attachedFiles.length >= 5 || !hasPermission("write")}
-                title={
-                  !hasPermission("write") 
-                    ? `Sin permisos de escritura - Rol: ${userRole}` 
-                    : attachedFiles.length >= 5 
-                      ? "Máximo 5 archivos" 
-                      : "Adjuntar archivo"
-                }
-                className={!hasPermission("write") ? "opacity-50 cursor-not-allowed" : ""}
+                disabled={isLoading || attachedFiles.length >= 5}
+                title={attachedFiles.length >= 5 ? "Máximo 5 archivos" : "Adjuntar archivo"}
               >
                 <Paperclip className="h-4 w-4" />
                 {attachedFiles.length > 0 && (
@@ -965,21 +929,13 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem 
-                onClick={() => imageInputRef.current?.click()}
-                disabled={!hasPermission("write")}
-                className={!hasPermission("write") ? "opacity-50 cursor-not-allowed" : ""}
-              >
+              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
                 <ImageIcon className="mr-2 h-4 w-4" />
-                {!hasPermission("write") ? "Sin permisos - Imagen" : "Adjuntar imagen"}
+                Adjuntar imagen
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => documentInputRef.current?.click()}
-                disabled={!hasPermission("write")}
-                className={!hasPermission("write") ? "opacity-50 cursor-not-allowed" : ""}
-              >
+              <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
                 <FileText className="mr-2 h-4 w-4" />
-                {!hasPermission("write") ? "Sin permisos - Documento" : "Adjuntar documento"}
+                Adjuntar documento
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -988,20 +944,11 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={
-              !hasPermission("write") 
-                ? `Solo lectura - ${userRole === "viewer" ? "Observador" : userRole} no puede crear contenido`
-                : attachedFiles.length > 0 
-                  ? "Describe los archivos (opcional)..." 
-                  : "Escribe tu mensaje..."
-            }
-            disabled={isLoading || !hasPermission("write")}
+            placeholder={attachedFiles.length > 0 ? "Describe los archivos (opcional)..." : "Escribe tu mensaje..."}
+            disabled={isLoading}
             className="flex-1"
           />
-          <Button 
-            onClick={handleSend} 
-            disabled={isLoading || (!input.trim() && attachedFiles.length === 0) || !hasPermission("write")}
-          >
+          <Button onClick={handleSend} disabled={isLoading || (!input.trim() && attachedFiles.length === 0)}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

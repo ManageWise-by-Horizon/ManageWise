@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Sparkles } from "lucide-react"
+import { createApiUrl } from "@/lib/api-config"
 
 interface CreateBacklogDialogProps {
   open: boolean
@@ -176,7 +177,7 @@ export function CreateBacklogDialog({ open, onOpenChange, projects, onBacklogCre
       // Create user stories
       const createdStories = await Promise.all(
         mockUserStories.map((story) =>
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories`, {
+          fetch(createApiUrl('/userStories'), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(story),
@@ -194,7 +195,7 @@ export function CreateBacklogDialog({ open, onOpenChange, projects, onBacklogCre
         status: "active",
       }
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backlogs`, {
+      await fetch(createApiUrl('/backlogs'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newBacklog),

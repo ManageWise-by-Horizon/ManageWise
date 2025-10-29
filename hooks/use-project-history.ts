@@ -162,7 +162,6 @@ export function useProjectHistory(): UseProjectHistoryReturn {
             oldValue: details.oldValue,
             newValue: details.newValue,
             changedBy: context.userId,
-            changedByName: details.changedByName || 'Usuario desconocido',
             sprintId: entityType === 'sprint' ? entityId : undefined,
             sprintName: entityType === 'sprint' ? details.name : undefined
           }

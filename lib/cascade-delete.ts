@@ -6,6 +6,7 @@
 interface CascadeDeleteOptions {
   projectId: string;
   apiUrl: string;
+  currentUserId?: string; // Usuario que está eliminando el proyecto
   onProgress?: (entity: string, count: number) => void;
   onError?: (entity: string, error: any) => void;
 }
@@ -18,7 +19,11 @@ interface CascadeDeleteResult {
     tasks: number;
     sprints: number;
     meetings: number;
+    okrs: number;
+    invitations: number;
+    notifications: number;
   };
+  notifiedMembers: number;
   errors: Array<{
     entity: string;
     error: any;
@@ -31,6 +36,7 @@ interface CascadeDeleteResult {
 export async function cascadeDeleteProject({
   projectId,
   apiUrl,
+  currentUserId,
   onProgress,
   onError
 }: CascadeDeleteOptions): Promise<CascadeDeleteResult> {
@@ -41,12 +47,68 @@ export async function cascadeDeleteProject({
       userStories: 0,
       tasks: 0,
       sprints: 0,
-      meetings: 0
+      meetings: 0,
+      okrs: 0,
+      invitations: 0,
+      notifications: 0
     },
+    notifiedMembers: 0,
     errors: []
   };
 
   try {
+    // Primero obtener información del proyecto y crear notificaciones para los miembros
+    try {
+      const projectResponse = await fetch(`${apiUrl}/projects/${projectId}`);
+      if (projectResponse.ok) {
+        const project = await projectResponse.json();
+        
+        // Crear notificaciones para todos los miembros (excepto el que eliminó)
+        for (const memberId of project.members || []) {
+          if (memberId !== currentUserId) {
+            try {
+              const notification = {
+                id: `notif_project_deleted_${Date.now()}_${memberId}`,
+                userId: memberId,
+                projectId: projectId,
+                type: 'project_deleted',
+                title: 'Proyecto eliminado',
+                message: `El proyecto "${project.name}" ha sido eliminado`,
+                data: {
+                  projectId: projectId,
+                  projectName: project.name,
+                  deletedBy: currentUserId || 'unknown',
+                  deletedAt: new Date().toISOString(),
+                  changeType: 'deleted'
+                },
+                read: false,
+                createdAt: new Date().toISOString(),
+                deliveryStatus: 'delivered'
+              };
+
+              const notifResponse = await fetch(`${apiUrl}/notifications`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(notification),
+              });
+
+              if (notifResponse.ok) {
+                result.notifiedMembers++;
+                console.log(`✅ Notificación creada para usuario ${memberId}`);
+              }
+            } catch (error) {
+              console.error(`Error creando notificación para usuario ${memberId}:`, error);
+              onError?.('notification', error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error obteniendo información del proyecto:', error);
+      // Continuar con la eliminación aunque falle la notificación
+    }
     // 1. Eliminar backlogs relacionados
     await deleteRelatedEntities({
       entity: 'backlogs',
@@ -97,7 +159,37 @@ export async function cascadeDeleteProject({
       onError
     });
 
-    // 6. Finalmente eliminar el proyecto
+    // 6. Eliminar OKRs relacionados
+    await deleteRelatedEntities({
+      entity: 'okrs',
+      projectId,
+      apiUrl,
+      result,
+      onProgress,
+      onError
+    });
+
+    // 7. Eliminar invitaciones relacionadas
+    await deleteRelatedEntities({
+      entity: 'invitations',
+      projectId,
+      apiUrl,
+      result,
+      onProgress,
+      onError
+    });
+
+    // 8. Eliminar notificaciones relacionadas al proyecto
+    await deleteRelatedEntities({
+      entity: 'notifications',
+      projectId,
+      apiUrl,
+      result,
+      onProgress,
+      onError
+    });
+
+    // 9. Finalmente eliminar el proyecto
     try {
       const response = await fetch(`${apiUrl}/projects/${projectId}`, {
         method: 'DELETE',
@@ -201,6 +293,9 @@ export async function cleanupOrphanedData(apiUrl: string): Promise<{
     tasks: number;
     sprints: number;
     meetings: number;
+    okrs: number;
+    invitations: number;
+    notifications: number;
   };
   errors: Array<{
     entity?: string;
@@ -216,7 +311,10 @@ export async function cleanupOrphanedData(apiUrl: string): Promise<{
       userStories: 0,
       tasks: 0,
       sprints: 0,
-      meetings: 0
+      meetings: 0,
+      okrs: 0,
+      invitations: 0,
+      notifications: 0
     },
     errors: [] as Array<{
       entity?: string;
@@ -233,7 +331,7 @@ export async function cleanupOrphanedData(apiUrl: string): Promise<{
     const validProjectIds = new Set(projects.map((p: any) => p.id));
 
     // Limpiar cada tipo de entidad
-    const entities = ['backlogs', 'userStories', 'tasks', 'sprints', 'meetings'] as const;
+    const entities = ['backlogs', 'userStories', 'tasks', 'sprints', 'meetings', 'okrs', 'invitations', 'notifications'] as const;
     
     for (const entityType of entities) {
       try {

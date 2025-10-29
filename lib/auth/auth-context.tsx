@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { createApiUrl } from "@/lib/api-config"
 
 export type UserRole = "scrum_master" | "product_owner" | "developer"
 export type Plan = "free" | "premium"
@@ -107,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       // Mock API call to JSON Server
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users?email=${email}`)
+      const response = await fetch(createApiUrl(`/users?email=${email}`))
       const users = await response.json()
 
       if (users.length === 0) {
@@ -142,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string, role: UserRole) => {
     try {
       // Check if user already exists
-      const checkResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users?email=${email}`)
+      const checkResponse = await fetch(createApiUrl(`/users?email=${email}`))
       const existingUsers = await checkResponse.json()
 
       if (existingUsers.length > 0) {
@@ -171,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
+      const response = await fetch(createApiUrl('/users'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newUser),
@@ -219,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Update in JSON Server
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`, {
+    await fetch(createApiUrl(`/users/${user.id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

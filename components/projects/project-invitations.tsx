@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Trash2, RefreshCw, Mail, Clock, User } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+import { createApiUrl } from "@/lib/api-config"
 
 interface ProjectInvitation {
   id: string
@@ -38,7 +39,7 @@ export function ProjectInvitations({ projectId, onInvitationUpdated }: ProjectIn
   const fetchInvitations = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${projectId}`)
+      const response = await fetch(createApiUrl(`/projectInvitations?projectId=${projectId}`))
       const data = await response.json()
       setInvitations(data)
     } catch (error) {
@@ -74,7 +75,7 @@ export function ProjectInvitations({ projectId, onInvitationUpdated }: ProjectIn
 
   const cancelInvitation = async (invitationId: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitationId}`, {
+      await fetch(createApiUrl(`/projectInvitations/${invitationId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "cancelled" }),

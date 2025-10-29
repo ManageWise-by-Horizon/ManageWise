@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,13 +24,15 @@ import {
   Bot,
   UserCog,
   Clock,
+  Trash2,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { AddMemberDialog } from "@/components/projects/add-member-dialog"
 import { EditProjectDialog } from "@/components/projects/edit-project-dialog"
 import { ManagePermissionsDialog } from "@/components/projects/manage-permissions-dialog"
+import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog"
 import { ProjectPermissionsSummary } from "@/components/projects/project-permissions-summary"
 import { PermissionGuard, PermissionWrapper } from "@/components/projects/permission-guard"
 import { ProjectChat } from "@/components/projects/project-chat"
@@ -37,6 +40,8 @@ import { ProjectBacklog } from "@/components/projects/project-backlog"
 import { ProjectBoard } from "@/components/projects/project-board"
 import { ProjectOKRs } from "@/components/projects/project-okrs"
 import { ProjectHistoryDashboard } from "@/components/projects/project-history-dashboard"
+import { createApiUrl } from "@/lib/api-config"
+import { enrichTasks } from "@/lib/data-helpers"
 
 interface Project {
   id: string
@@ -61,12 +66,26 @@ interface Project {
   }
 }
 
+type ProjectRole = 'scrum_master' | 'product_owner' | 'developer' | 'tester' | 'designer' | 'stakeholder'
+
 interface User {
   id: string
   name: string
   email: string
   role: string
   avatar: string
+}
+
+interface ProjectPermission {
+  id: string
+  projectId: string
+  userId: string
+  role: ProjectRole
+  read: boolean
+  write: boolean
+  manage_project: boolean
+  manage_members: boolean
+  manage_permissions: boolean
 }
 
 interface UserStory {
@@ -108,10 +127,12 @@ interface Sprint {
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
+  const router = useRouter()
   const { user } = useAuth()
   const { toast } = useToast()
   const [project, setProject] = useState<Project | null>(null)
   const [members, setMembers] = useState<User[]>([])
+  const [memberPermissions, setMemberPermissions] = useState<Record<string, ProjectPermission>>({})
   const [userStories, setUserStories] = useState<UserStory[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [sprints, setSprints] = useState<Sprint[]>([])
@@ -120,6 +141,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false)
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     fetchProjectDetails()
@@ -127,34 +149,62 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const fetchProjectDetails = async () => {
     try {
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${resolvedParams.id}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${resolvedParams.id}`))
+      if (!projectRes.ok) throw new Error('Proyecto no encontrado')
       const projectData = await projectRes.json()
       setProject(projectData)
 
       // Fetch members
-      const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const usersRes = await fetch(createApiUrl('/users'))
+      if (!usersRes.ok) throw new Error('Error al cargar usuarios')
       const usersData = await usersRes.json()
       const projectMembers = usersData.filter((u: User) => projectData.members.includes(u.id))
       setMembers(projectMembers)
 
+      // Fetch permissions for all members
+      const permissionsPromises = projectMembers.map(async (member: User) => {
+        const permRes = await fetch(
+          createApiUrl(`/projectPermissions?projectId=${resolvedParams.id}&userId=${member.id}`)
+        )
+        const perms = await permRes.json()
+        return { userId: member.id, permission: perms[0] }
+      })
+
+      const permissionsResults = await Promise.all(permissionsPromises)
+      const permissionsMap = permissionsResults.reduce((acc, { userId, permission }) => {
+        if (permission) {
+          acc[userId] = permission
+        }
+        return acc
+      }, {} as Record<string, ProjectPermission>)
+
+      setMemberPermissions(permissionsMap)
+
       // Fetch user stories
-      const userStoriesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories?projectId=${resolvedParams.id}`)
+      const userStoriesRes = await fetch(createApiUrl(`/userStories?projectId=${resolvedParams.id}`))
+      if (!userStoriesRes.ok) throw new Error('Error al cargar user stories')
       const userStoriesData = await userStoriesRes.json()
       setUserStories(userStoriesData)
 
-      // Fetch tasks for this project
-      const tasksRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks?projectId=${resolvedParams.id}`)
-      const tasksData = await tasksRes.json()
-      setTasks(tasksData)
+      // Fetch ALL tasks y filtrar por projectId usando el helper
+      const allTasksRes = await fetch(createApiUrl('/tasks'))
+      if (!allTasksRes.ok) throw new Error('Error al cargar tasks')
+      const allTasksData = await allTasksRes.json()
+      
+      // Enriquecer tasks con projectId y filtrar por este proyecto
+      const enrichedTasks = await enrichTasks(allTasksData)
+      const projectTasks = enrichedTasks.filter(task => task.projectId === resolvedParams.id) as Task[]
+      setTasks(projectTasks)
 
       // Fetch sprints for this project
-      const sprintsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sprints?projectId=${resolvedParams.id}`)
+      const sprintsRes = await fetch(createApiUrl(`/sprints?projectId=${resolvedParams.id}`))
+      if (!sprintsRes.ok) throw new Error('Error al cargar sprints')
       const sprintsData = await sprintsRes.json()
       setSprints(sprintsData)
       
       console.log("🎯 Contexto completo cargado:")
       console.log("  - User Stories:", userStoriesData.length)
-      console.log("  - Tasks:", tasksData.length)
+      console.log("  - Tasks:", projectTasks.length)
       console.log("  - Sprints:", sprintsData.length)
       console.log("  - Members:", projectMembers.length)
     } catch (error) {
@@ -169,6 +219,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  const handleDeleteSuccess = () => {
+    // Redirect to projects page after successful deletion
+    router.push('/projects')
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-ES", {
       year: "numeric",
@@ -177,11 +232,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     })
   }
 
-  const getRoleBadge = (role: string) => {
-    const roleMap: Record<string, { label: string; color: string }> = {
-      scrum_master: { label: "Scrum Master", color: "bg-chart-1" },
-      product_owner: { label: "Product Owner", color: "bg-chart-2" },
-      developer: { label: "Developer", color: "bg-chart-3" },
+  const getRoleBadge = (role: ProjectRole) => {
+    const roleMap: Record<ProjectRole, { label: string; color: string }> = {
+      scrum_master: { label: "Scrum Master", color: "bg-chart-1 text-white" },
+      product_owner: { label: "Product Owner", color: "bg-chart-2 text-white" },
+      developer: { label: "Developer", color: "bg-chart-3 text-white" },
+      tester: { label: "Tester", color: "bg-chart-4 text-white" },
+      designer: { label: "Designer", color: "bg-chart-5 text-white" },
+      stakeholder: { label: "Stakeholder", color: "bg-blue-100 text-blue-800" },
     }
     return roleMap[role] || { label: role, color: "bg-muted" }
   }
@@ -289,6 +347,26 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <UserCog className="mr-2 h-4 w-4" />
                     Gestionar Permisos
                   </DropdownMenuItem>
+                )
+              )}
+            </PermissionWrapper>
+            <PermissionWrapper
+              projectId={project.id}
+              userId={user?.id || ""}
+              requiredPermission="manage_project"
+            >
+              {(canManageProject) => (
+                canManageProject && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Eliminar Proyecto
+                    </DropdownMenuItem>
+                  </>
                 )
               )}
             </PermissionWrapper>
@@ -428,7 +506,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <CardContent>
                 <div className="space-y-3">
                   {members.map((member) => {
-                    const roleBadge = getRoleBadge(member.role)
+                    const memberPerm = memberPermissions[member.id]
+                    const roleBadge = memberPerm ? getRoleBadge(memberPerm.role) : null
                     return (
                       <div key={member.id} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -443,7 +522,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           </Avatar>
                           <div>
                             <p className="text-sm font-medium">{member.name}</p>
-                            <Badge className={`mt-1 text-xs ${roleBadge.color}`}>{roleBadge.label}</Badge>
+                            {roleBadge && (
+                              <Badge className={`mt-1 text-xs ${roleBadge.color}`}>{roleBadge.label}</Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -606,6 +687,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           currentUser={user!}
           isAdmin={checkIsAdmin()}
           onPermissionsUpdated={fetchProjectDetails}
+        />
+      </PermissionGuard>
+
+      {/* Delete Project Dialog */}
+      <PermissionGuard
+        projectId={project.id}
+        userId={user?.id || ""}
+        requiredPermission="manage_project"
+      >
+        <DeleteProjectDialog
+          project={{
+            id: project.id,
+            name: project.name,
+          }}
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onSuccess={handleDeleteSuccess}
         />
       </PermissionGuard>
     </div>

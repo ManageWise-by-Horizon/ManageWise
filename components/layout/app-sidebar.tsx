@@ -49,17 +49,6 @@ export function AppSidebar() {
 
   if (!user) return null
 
-  const getRoleBadge = () => {
-    const roleMap = {
-      scrum_master: { label: "Scrum Master", color: "bg-chart-1" },
-      product_owner: { label: "Product Owner", color: "bg-chart-2" },
-      developer: { label: "Developer", color: "bg-chart-3" },
-    }
-    return roleMap[user.role]
-  }
-
-  const roleBadge = getRoleBadge()
-
   return (
     <div className="flex h-screen w-64 flex-col border-r border-border bg-sidebar">
       {/* Logo */}
@@ -110,7 +99,7 @@ export function AppSidebar() {
               </Avatar>
               <div className="flex flex-1 flex-col items-start text-left">
                 <span className="text-sm font-medium text-sidebar-foreground">{user.name}</span>
-                <Badge className={cn("mt-1 text-xs", roleBadge.color)}>{roleBadge.label}</Badge>
+                <span className="text-xs text-muted-foreground">{user.email}</span>
               </div>
               <ChevronDown className="h-4 w-4 text-sidebar-foreground" />
             </Button>

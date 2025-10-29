@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast"
 import { InvitationNotification } from "@/components/notifications/invitation-notification"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+import { createApiUrl } from "@/lib/api-config"
 
 export function AppHeader() {
   const { user } = useAuth()
@@ -56,7 +57,7 @@ export function AppHeader() {
 
     try {
       // Obtener el proyecto actual
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
 
       // Verificar si el usuario ya es miembro (Escenario 4)
@@ -71,7 +72,7 @@ export function AppHeader() {
 
       // Agregar usuario al proyecto
       const updatedMembers = [...project.members, user.id]
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`, {
+      await fetch(createApiUrl(`/projects/${projectId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ members: updatedMembers }),
@@ -81,10 +82,10 @@ export function AppHeader() {
       await markAsRead(notificationId)
 
       // Actualizar el estado de la invitación si existe
-      const invitationsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${projectId}&email=${user.email}`)
+      const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${projectId}&email=${user.email}`))
       const invitations = await invitationsRes.json()
       if (invitations.length > 0) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitations[0].id}`, {
+        await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "accepted" }),
@@ -105,7 +106,6 @@ export function AppHeader() {
             projectId,
             projectName: notification.data.projectName,
             acceptedBy: user.id,
-            acceptedByName: user.name,
             changeType: "accepted"
           },
           read: false,
@@ -113,7 +113,7 @@ export function AppHeader() {
           deliveryStatus: "delivered"
         }
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+        await fetch(createApiUrl('/notifications'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(confirmationNotification),
@@ -143,7 +143,7 @@ export function AppHeader() {
 
       // Actualizar el estado de la invitación si existe
       if (invitationId) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitationId}`, {
+        await fetch(createApiUrl(`/projectInvitations/${invitationId}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "declined" }),
@@ -152,10 +152,10 @@ export function AppHeader() {
         // Buscar invitación por email del usuario y projectId
         const notification = notifications.find(n => n.id === notificationId)
         if (notification?.data?.projectId) {
-          const invitationsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${notification.data.projectId}&email=${user.email}`)
+          const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${notification.data.projectId}&email=${user.email}`))
           const invitations = await invitationsRes.json()
           if (invitations.length > 0) {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitations[0].id}`, {
+            await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ status: "declined" }),
@@ -178,7 +178,6 @@ export function AppHeader() {
             projectId: notification.data.projectId,
             projectName: notification.data.projectName,
             declinedBy: user.id,
-            declinedByName: user.name,
             changeType: "declined"
           },
           read: false,
@@ -186,7 +185,7 @@ export function AppHeader() {
           deliveryStatus: "delivered"
         }
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+        await fetch(createApiUrl('/notifications'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(confirmationNotification),

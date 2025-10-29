@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useAuth, type UserRole } from "@/lib/auth/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
-  const [role, setRole] = useState<UserRole>("developer")
   const [isLoading, setIsLoading] = useState(false)
   const { register, user, isLoading: authLoading } = useAuth()
   const { toast } = useToast()
@@ -53,7 +52,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await register(email, password, name, role)
+      await register(email, password, name, "developer")
       toast({
         title: "¡Cuenta creada!",
         description: "Tu cuenta ha sido creada exitosamente",
@@ -147,19 +146,6 @@ export default function RegisterPage() {
                   minLength={8}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Rol</Label>
-                <Select value={role} onValueChange={(value) => setRole(value as UserRole)} disabled={isLoading}>
-                  <SelectTrigger id="role">
-                    <SelectValue placeholder="Selecciona tu rol" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scrum_master">Scrum Master</SelectItem>
-                    <SelectItem value="product_owner">Product Owner</SelectItem>
-                    <SelectItem value="developer">Developer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
@@ -174,7 +160,7 @@ export default function RegisterPage() {
               </Button>
               <p className="text-sm text-center text-muted-foreground">
                 ¿Ya tienes cuenta?{" "}
-                <Link href="/login" className="text-accent hover:underline">
+                <Link href="/login" className="text-primary font-medium hover:underline">
                   Inicia sesión aquí
                 </Link>
               </p>

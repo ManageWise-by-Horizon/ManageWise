@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { FolderKanban, ListTodo, CheckCircle2, TrendingUp, Users, Zap, ArrowRight, Calendar } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { createApiUrl } from "@/lib/api-config"
 
 interface Project {
   id: string
@@ -56,22 +57,45 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      try {
-        const projectsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`)
-        const projectsData = await projectsRes.json()
-        setProjects(projectsData)
+      if (!user) return
 
-        const tasksRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`)
+      try {
+        const projectsRes = await fetch(createApiUrl('/projects'))
+        const projectsData = await projectsRes.json()
+        
+        // Filtrar solo proyectos donde el usuario es miembro
+        const userProjects = projectsData.filter((p: Project) => p.members.includes(user.id))
+        setProjects(userProjects)
+
+        const tasksRes = await fetch(createApiUrl('/tasks'))
         const tasksData = await tasksRes.json()
 
-        const meetingsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meetings`)
+        // Obtener user stories para relacionar tareas con proyectos
+        const userStoriesRes = await fetch(createApiUrl('/userStories'))
+        const userStoriesData = await userStoriesRes.json()
+
+        // Obtener los IDs de los proyectos del usuario
+        const userProjectIds = userProjects.map((p: Project) => p.id)
+
+        // Filtrar user stories de los proyectos del usuario
+        const userProjectUserStories = userStoriesData.filter((us: any) => 
+          userProjectIds.includes(us.projectId)
+        )
+        const userStoryIds = userProjectUserStories.map((us: any) => us.id)
+
+        // Filtrar tareas que están asignadas al usuario y pertenecen a user stories de sus proyectos
+        const userTasks = tasksData.filter((t: any) => 
+          userStoryIds.includes(t.userStoryId) && t.assignedTo === user.id
+        )
+
+        const meetingsRes = await fetch(createApiUrl('/meetings'))
         const meetingsData = await meetingsRes.json()
 
         setStats({
-          totalProjects: projectsData.length,
-          activeProjects: projectsData.filter((p: Project) => p.status === "active").length,
-          totalTasks: tasksData.length,
-          completedTasks: tasksData.filter((t: any) => t.status === "done").length,
+          totalProjects: userProjects.length,
+          activeProjects: userProjects.filter((p: Project) => p.status === "active").length,
+          totalTasks: userTasks.length,
+          completedTasks: userTasks.filter((t: any) => t.status === "done").length,
           upcomingMeetings: meetingsData.filter((m: any) => new Date(m.date) > new Date()).length,
           tokensUsed: user?.subscription.tokensUsed || 0,
           tokensLimit: user?.subscription.tokensLimit || 100,
@@ -236,10 +260,10 @@ export default function DashboardPage() {
                 Generar con IA
               </Button>
             </Link>
-            <Link href="/projects">
+            <Link href="/backlogs">
               <Button className="w-full justify-start bg-transparent" variant="outline">
                 <ListTodo className="mr-2 h-4 w-4" />
-                Ver Proyectos
+                Ver Backlogs
               </Button>
             </Link>
             <Link href="/calendar">

@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Eye, Calendar, ListTodo } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { createApiUrl } from "@/lib/api-config"
 
 interface Sprint {
   id: string
@@ -29,7 +30,7 @@ export function SprintCard({ sprint, onUpdate }: SprintCardProps) {
 
   const handleDelete = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sprints/${sprint.id}`, {
+      await fetch(createApiUrl(`/sprints/${sprint.id}`), {
         method: "DELETE",
       })
 

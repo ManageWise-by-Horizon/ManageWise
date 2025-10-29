@@ -32,67 +32,101 @@ Visualización en vivo del proceso de generación con **Google Gemini AI** (esti
 
 ## 🚀 Características Principales
 
-### Autenticación y Roles
-- ✅ Sistema de autenticación mockeado con localStorage
+### 🔐 Autenticación y Roles
+- ✅ Sistema de autenticación con JSON Server
 - ✅ Tres roles: Scrum Master, Product Owner, Developer
-- ✅ Protección de rutas con middleware
+- ✅ Protección de rutas con middleware Next.js
 - ✅ Gestión de sesiones y perfiles de usuario
+- ✅ Actualización de foto de perfil con ImgBB
 
-### Gestión de Proyectos
+### 📋 Gestión de Proyectos
 - ✅ CRUD completo de proyectos
-- ✅ Generación de proyectos con IA (objetivos SMART automáticos)
-- ✅ Gestión de miembros del equipo
-- ✅ Múltiples vistas: Summary, Board, List, Timeline, Calendar
-- ✅ Estadísticas y métricas por proyecto
+- ✅ Generación de proyectos con **Google Gemini AI** (prompts estructurados)
+- ✅ Gestión de miembros del equipo con permisos granulares
+- ✅ Sistema de invitaciones por email
+- ✅ Vistas múltiples: Board, Backlog, Chat, History, OKRs
+- ✅ Estadísticas y métricas en tiempo real
+- ✅ Historial de cambios del proyecto (audit trail)
 
-### Backlogs y User Stories
-- ✅ Generación automática de backlogs con IA
-- ✅ Creación de user stories con formato "Como/Quiero/Para"
+### 📝 Backlogs y User Stories
+- ✅ Generación automática con IA real (Google Gemini)
+- ✅ Creación manual con formato "Como/Quiero/Para"
 - ✅ Criterios de aceptación detallados
-- ✅ Métricas BLEU/ROUGE simuladas (>85% calidad)
 - ✅ Priorización (Alta/Media/Baja) y Story Points
-- ✅ Organización por Epics
+- ✅ Drag & drop para reordenar
+- ✅ Visualización detallada con modales
 
-### Sprints y Tasks
+### 🏃 Sprints y Tasks
 - ✅ Generación de sprints con IA
 - ✅ Descomposición automática de user stories en tareas
-- ✅ Asignación inteligente basada en roles y habilidades
-- ✅ Tablero Kanban visual (Por Hacer, En Progreso, Completado)
+- ✅ Asignación inteligente basada en roles
+- ✅ Tablero Kanban visual con Pragmatic Drag & Drop
 - ✅ Estadísticas de progreso del sprint
+- ✅ Estados: todo, in_progress, done, blocked
 
-### Asistente IA
-- ✅ Chatbot conversacional especializado en Scrum
-- ✅ Respuestas contextuales sobre metodologías ágiles
-- ✅ Generación de contenido (backlogs, user stories, criterios)
-- ✅ Prompts sugeridos para consultas comunes
-- ✅ Historial de conversaciones
+### 🎯 OKRs (Objectives & Key Results)
+- ✅ Creación y gestión de OKRs por proyecto
+- ✅ Key Results con progreso trackeable
+- ✅ Estados: not_started, on_track, at_risk, achieved
+- ✅ Períodos trimestrales (Q1-Q4)
+- ✅ Visualización de progreso con gráficos
 
-### Dashboards Predictivos (Premium)
-- ✅ Métricas predictivas con Machine Learning simulado
-- ✅ Predicción de completitud de sprints
-- ✅ Análisis de velocidad del equipo
-- ✅ Nivel de riesgo y recomendaciones
-- ✅ Análisis de sentimiento en retrospectivas
-- ✅ Performance individual del equipo
-- ✅ Burndown charts y velocity trends
+### 💬 Chat del Proyecto
+- ✅ Chat en tiempo real por proyecto
+- ✅ Mensajes de texto y sistema
+- ✅ Indicadores de usuario online
+- ✅ Historial persistente
 
-### Sistema de Suscripciones
+### 📊 Analytics y Dashboards
+- ✅ Dashboard principal con métricas clave
+- ✅ Gráficos de progreso de proyectos
+- ✅ Estadísticas de equipo
+- ✅ Análisis de velocidad
+
+### 🔔 Notificaciones
+- ✅ Sistema de notificaciones en tiempo real
+- ✅ Notificaciones de invitaciones a proyectos
+- ✅ Notificaciones de asignación de tareas
+- ✅ Marcado de leído/no leído
+- ✅ Acciones directas desde notificaciones
+
+### 💳 Sistema de Suscripciones
 - ✅ Plan Gratuito: 100 tokens IA, 10 user stories/mes
-- ✅ Plan Premium: Ilimitado + dashboards predictivos
+- ✅ Plan Premium: Ilimitado + funcionalidades avanzadas
 - ✅ Página de planes y precios
 - ✅ Upgrade/downgrade instantáneo
 - ✅ Monitoreo de uso y límites
-- ✅ Notificaciones cuando se acercan a límites
+- ✅ Alertas cuando se acercan a límites
 
 ## 🛠️ Stack Tecnológico
 
-- **Framework**: Next.js 15 (App Router)
-- **Lenguaje**: TypeScript
-- **Estilos**: Tailwind CSS v4
-- **Componentes**: Shadcn/UI (Radix UI)
-- **API Mock**: JSON Server
-- **Fuente**: Poppins (Google Fonts)
+### Frontend
+- **Framework**: Next.js 15.2.4 (App Router)
+- **Lenguaje**: TypeScript 5
+- **UI**: React 19
+- **Estilos**: Tailwind CSS v4.1.9
+- **Componentes**: Shadcn/UI + Radix UI
 - **Iconos**: Lucide React
+- **Fuente**: Geist (Vercel)
+
+### Librerías Clave
+- **IA**: @google/generative-ai (Google Gemini)
+- **Forms**: React Hook Form + Zod
+- **Drag & Drop**: @atlaskit/pragmatic-drag-and-drop
+- **Gráficos**: Recharts
+- **Dates**: date-fns
+- **Notificaciones**: Sonner
+- **Temas**: next-themes
+
+### Backend
+- **API Mock**: JSON Server v1.0.0-beta.3
+- **Base de datos**: db.json (normalizada, sin redundancia)
+- **Storage**: ImgBB API (imágenes de perfil)
+
+### DevOps
+- **Build**: Next.js Compiler
+- **Package Manager**: npm
+- **Version Control**: Git
 
 ## 📦 Instalación y Setup
 
@@ -113,13 +147,35 @@ cd manage-wize
 npm install
 \`\`\`
 
-### 3. Instalar JSON Server globalmente
+### 3. Configurar variables de entorno
+
+Crea un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
+
+\`\`\`bash
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# ImgBB API Key for image uploads
+# Obtén tu API key en: https://api.imgbb.com/
+NEXT_PUBLIC_IMGBB_API_KEY=tu_imgbb_api_key_aqui
+
+# Google Gemini API Key for AI generation
+# Obtén tu API key en: https://makersuite.google.com/app/apikey
+NEXT_PUBLIC_GEMINI_API_KEY=tu_gemini_api_key_aqui
+\`\`\`
+
+> **⚠️ Importante**: 
+> - **ImgBB API Key**: Necesaria para subir fotos de perfil. Regístrate gratis en [ImgBB API](https://api.imgbb.com/) para obtener tu key.
+> - **Gemini API Key**: Necesaria para la generación de proyectos, backlogs y user stories con IA. Obtén tu key en [Google AI Studio](https://makersuite.google.com/app/apikey).
+> - No compartas estas keys públicamente ni las subas al repositorio.
+
+### 4. Instalar JSON Server globalmente
 
 \`\`\`bash
 npm install -g json-server
 \`\`\`
 
-### 4. Iniciar JSON Server (Terminal 1)
+### 5. Iniciar JSON Server (Terminal 1)
 
 \`\`\`bash
 json-server --watch db.json --port 3001
@@ -127,13 +183,28 @@ json-server --watch db.json --port 3001
 
 El servidor JSON estará disponible en `http://localhost:3001`
 
-### 5. Iniciar el servidor de desarrollo (Terminal 2)
+### 6. Iniciar el servidor de desarrollo (Terminal 2)
 
 \`\`\`bash
 npm run dev
 \`\`\`
 
 La aplicación estará disponible en `http://localhost:3000`
+
+## 🔑 Obtener API Keys
+
+### ImgBB API Key (Gratis)
+1. Visita [https://api.imgbb.com/](https://api.imgbb.com/)
+2. Haz clic en "Get API Key"
+3. Regístrate o inicia sesión
+4. Copia tu API key y pégala en `.env.local`
+
+### Google Gemini API Key (Gratis)
+1. Visita [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
+2. Inicia sesión con tu cuenta de Google
+3. Haz clic en "Create API Key"
+4. Copia tu API key y pégala en `.env.local`
+5. La cuota gratuita incluye 60 requests/minuto
 
 ## 👤 Usuarios de Prueba
 
@@ -177,43 +248,98 @@ Todos los componentes están construidos con Shadcn/UI y personalizados con el t
 \`\`\`
 manage-wize/
 ├── app/
-│   ├── (auth)/                    # Rutas de autenticación
-│   │   ├── login/page.tsx
-│   │   └── register/page.tsx
-│   ├── (dashboard)/               # Rutas protegidas
-│   │   ├── dashboard/page.tsx     # Dashboard principal
-│   │   ├── projects/              # Gestión de proyectos
-│   │   │   ├── page.tsx
-│   │   │   └── [id]/page.tsx
-│   │   ├── backlogs/              # Backlogs y user stories
-│   │   │   ├── page.tsx
-│   │   │   └── [id]/page.tsx
-│   │   ├── sprints/               # Sprints y tasks
-│   │   │   ├── page.tsx
-│   │   │   └── [id]/page.tsx
-│   │   ├── ai-assistant/page.tsx  # Chatbot IA
-│   │   ├── analytics/page.tsx     # Dashboards predictivos
-│   │   ├── pricing/page.tsx       # Planes y precios
-│   │   ├── settings/page.tsx      # Configuración
-│   │   └── layout.tsx             # Layout con sidebar
-│   ├── globals.css                # Estilos globales + Tailwind
-│   ├── layout.tsx                 # Root layout
-│   └── page.tsx                   # Landing page
+│   ├── (auth)/                         # Rutas de autenticación
+│   │   ├── login/page.tsx              # Login
+│   │   └── register/page.tsx           # Registro
+│   ├── (dashboard)/                    # Rutas protegidas
+│   │   ├── dashboard/page.tsx          # Dashboard principal
+│   │   ├── projects/                   # Gestión de proyectos
+│   │   │   ├── page.tsx                # Lista de proyectos
+│   │   │   └── [id]/                   # Detalles del proyecto
+│   │   │       ├── page.tsx            # Vista principal (tabs)
+│   │   │       └── history/page.tsx    # Historial de cambios
+│   │   ├── analytics/page.tsx          # Analytics y métricas
+│   │   ├── okrs/page.tsx               # Gestión de OKRs
+│   │   ├── notifications/page.tsx      # Centro de notificaciones
+│   │   ├── invitations/page.tsx        # Invitaciones recibidas
+│   │   ├── pricing/page.tsx            # Planes y precios
+│   │   ├── settings/page.tsx           # Configuración de usuario
+│   │   └── layout.tsx                  # Layout con sidebar
+│   ├── globals.css                     # Estilos globales + Tailwind
+│   ├── layout.tsx                      # Root layout
+│   └── page.tsx                        # Landing page
 ├── components/
 │   ├── layout/
-│   │   ├── app-sidebar.tsx        # Sidebar de navegación
-│   │   └── app-header.tsx         # Header con búsqueda
-│   ├── projects/                  # Componentes de proyectos
-│   ├── backlogs/                  # Componentes de backlogs
-│   ├── sprints/                   # Componentes de sprints
-│   └── ui/                        # Componentes Shadcn/UI
+│   │   ├── app-sidebar.tsx             # Sidebar de navegación
+│   │   └── app-header.tsx              # Header con notificaciones
+│   ├── projects/
+│   │   ├── create-project-dialog.tsx   # Crear proyecto con IA
+│   │   ├── edit-project-dialog.tsx     # Editar proyecto
+│   │   ├── project-board.tsx           # Vista Kanban
+│   │   ├── project-backlog.tsx         # Vista Backlog
+│   │   ├── project-chat.tsx            # Chat del proyecto
+│   │   ├── project-history-dashboard.tsx # Historial
+│   │   ├── project-okrs.tsx            # OKRs del proyecto
+│   │   ├── project-invitations.tsx     # Invitaciones
+│   │   ├── add-member-dialog.tsx       # Agregar miembros
+│   │   ├── manage-permissions-dialog.tsx # Permisos
+│   │   ├── task-detail-modal.tsx       # Modal de tarea
+│   │   └── permission-guard.tsx        # Guard de permisos
+│   ├── backlogs/
+│   │   ├── backlog-card.tsx            # Card de backlog
+│   │   ├── create-backlog-dialog.tsx   # Crear backlog
+│   │   ├── create-user-story-dialog.tsx # Crear user story con IA
+│   │   ├── user-story-card.tsx         # Card de user story
+│   │   └── user-story-detail-modal.tsx # Detalles de user story
+│   ├── sprints/
+│   │   ├── sprint-card.tsx             # Card de sprint
+│   │   ├── create-sprint-dialog.tsx    # Crear sprint
+│   │   └── task-board.tsx              # Tablero de tareas
+│   ├── okrs/
+│   │   ├── okr-card.tsx                # Card de OKR
+│   │   ├── create-okr-dialog.tsx       # Crear OKR
+│   │   ├── edit-okr-dialog.tsx         # Editar OKR
+│   │   ├── delete-okr-dialog.tsx       # Eliminar OKR
+│   │   ├── okr-filters.tsx             # Filtros
+│   │   └── okr-states.tsx              # Estados
+│   ├── notifications/
+│   │   └── invitation-notification.tsx # Notificación de invitación
+│   ├── admin/
+│   │   └── database-cleanup-widget.tsx # Limpieza de BD
+│   └── ui/                             # Componentes Shadcn/UI (50+)
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── dialog.tsx
+│       ├── input.tsx
+│       └── ...
 ├── lib/
 │   ├── auth/
-│   │   └── auth-context.tsx       # Context de autenticación
-│   └── utils.ts                   # Utilidades (cn, etc.)
-├── db.json                        # Base de datos JSON Server
-├── middleware.ts                  # Protección de rutas
+│   │   └── auth-context.tsx            # Context de autenticación
+│   ├── api-config.ts                   # Configuración centralizada de API
+│   ├── data-helpers.ts                 # Helpers para JOINs normalizados
+│   ├── gemini.ts                       # Cliente de Google Gemini
+│   ├── imgbb.ts                        # Cliente de ImgBB
+│   ├── cascade-delete.ts               # Borrado en cascada
+│   ├── generation-messages.ts          # Mensajes de IA
+│   ├── types/                          # TypeScript types
+│   │   └── index.ts
+│   └── utils.ts                        # Utilidades (cn, etc.)
+├── hooks/
+│   ├── use-mobile.ts                   # Hook para mobile detection
+│   ├── use-toast.ts                    # Hook para toasts
+│   ├── use-notifications.ts            # Hook para notificaciones
+│   ├── use-project-permissions.ts      # Hook para permisos
+│   └── use-project-history.ts          # Hook para historial
+├── docs/
+│   ├── database-diagram.puml           # Diagrama PlantUML de BD
+│   └── project-history-system.md      # Doc del sistema de historial
+├── db.json                             # Base de datos JSON Server (normalizada)
+├── middleware.ts                       # Protección de rutas
+├── .env.local                          # Variables de entorno (NO subir a git)
 ├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+├── next.config.mjs
 └── README.md
 \`\`\`
 
@@ -238,80 +364,196 @@ manage-wize/
 - **Exportación**: Reportes (PDF, Excel)
 - **Soporte**: Prioritario 24/7
 
-## 🤖 Funcionalidades de IA Simulada
+## 🤖 Funcionalidades de IA con Google Gemini
 
-### Generación de Proyectos
-- Objetivos SMART automáticos
-- Descripción contextual
-- Sugerencias de equipo
-- Consumo: 20 tokens
+### ✨ Generación de Proyectos
+Utiliza **Google Gemini 1.5 Flash** para generar proyectos completos:
+- ✅ Prompt estructurado (Objetivo + Rol + Contexto + Restricciones)
+- ✅ Generación en tiempo real con streaming
+- ✅ Objetivos SMART automáticos
+- ✅ Timeline con milestones
+- ✅ Descripción contextual profesional
+- ✅ Consumo: ~50 tokens
 
-### Generación de Backlogs
-- 5 user stories priorizadas
-- Formato "Como/Quiero/Para"
-- Criterios de aceptación detallados
-- Métricas BLEU/ROUGE >85%
-- Consumo: 30 tokens
+### 📝 Generación de User Stories
+Crea user stories profesionales con IA:
+- ✅ Formato "Como [rol], quiero [acción] para [beneficio]"
+- ✅ Criterios de aceptación detallados (3-5 por story)
+- ✅ Priorización automática (Alta/Media/Baja)
+- ✅ Estimación de Story Points
+- ✅ Múltiples user stories por backlog
+- ✅ Consumo: ~30 tokens por story
 
-### Generación de Sprints
-- Descomposición en 4 tareas por user story
-- Asignación inteligente por rol
-- Estimación de horas
-- Identificación de dependencias
-- Consumo: 25 tokens
+### 🎯 Características de la Integración
+- ✅ API de Google Gemini integrada
+- ✅ Visualización en tiempo real (estilo v0/Figma)
+- ✅ Manejo de errores y timeouts
+- ✅ Retry automático en caso de fallo
+- ✅ Límites de rate limiting respetados (60 req/min)
 
-### Asistente IA
-- Respuestas contextuales sobre Scrum
-- Generación de contenido
-- Asesoría en metodologías
-- Consumo: 15 tokens por mensaje
+## 📊 API REST (JSON Server)
 
-## 📊 Endpoints de JSON Server
+### Base URL
+\`\`\`
+http://localhost:3001
+\`\`\`
 
+### Endpoints Principales
+
+#### 👤 Users
 \`\`\`
 GET    /users              # Listar usuarios
 GET    /users/:id          # Obtener usuario
 POST   /users              # Crear usuario
-PATCH  /users/:id          # Actualizar usuario
+PATCH  /users/:id          # Actualizar usuario (perfil, foto, subscription)
+\`\`\`
 
+#### 📋 Projects
+\`\`\`
 GET    /projects           # Listar proyectos
 GET    /projects/:id       # Obtener proyecto
-POST   /projects           # Crear proyecto
+POST   /projects           # Crear proyecto (con IA o manual)
 PATCH  /projects/:id       # Actualizar proyecto
-DELETE /projects/:id       # Eliminar proyecto
-
-GET    /backlogs           # Listar backlogs
-GET    /backlogs/:id       # Obtener backlog
-POST   /backlogs           # Crear backlog
-PATCH  /backlogs/:id       # Actualizar backlog
-
-GET    /sprints            # Listar sprints
-GET    /sprints/:id        # Obtener sprint
-POST   /sprints            # Crear sprint
-PATCH  /sprints/:id        # Actualizar sprint
+DELETE /projects/:id       # Eliminar proyecto (cascade delete)
 \`\`\`
+
+#### 📝 Backlogs
+\`\`\`
+GET    /backlogs                    # Listar backlogs
+GET    /backlogs?projectId=:id      # Backlogs de un proyecto
+GET    /backlogs/:id                # Obtener backlog
+POST   /backlogs                    # Crear backlog
+PATCH  /backlogs/:id                # Actualizar backlog (reordenar items)
+\`\`\`
+
+#### 📖 User Stories
+\`\`\`
+GET    /userStories                 # Listar user stories
+GET    /userStories?projectId=:id   # User stories de un proyecto
+GET    /userStories/:id             # Obtener user story
+POST   /userStories                 # Crear user story (con IA o manual)
+PATCH  /userStories/:id             # Actualizar user story
+DELETE /userStories/:id             # Eliminar user story
+\`\`\`
+
+#### ✅ Tasks
+\`\`\`
+GET    /tasks                       # Listar tareas
+GET    /tasks?userStoryId=:id       # Tareas de una user story
+GET    /tasks/:id                   # Obtener tarea
+POST   /tasks                       # Crear tarea
+PATCH  /tasks/:id                   # Actualizar tarea (estado, asignación)
+DELETE /tasks/:id                   # Eliminar tarea
+\`\`\`
+
+#### 🏃 Sprints
+\`\`\`
+GET    /sprints                     # Listar sprints
+GET    /sprints?projectId=:id       # Sprints de un proyecto
+GET    /sprints/:id                 # Obtener sprint
+POST   /sprints                     # Crear sprint
+PATCH  /sprints/:id                 # Actualizar sprint
+DELETE /sprints/:id                 # Eliminar sprint
+\`\`\`
+
+#### 🎯 OKRs
+\`\`\`
+GET    /okrs                        # Listar OKRs
+GET    /okrs?projectId=:id          # OKRs de un proyecto
+GET    /okrs/:id                    # Obtener OKR
+POST   /okrs                        # Crear OKR
+PATCH  /okrs/:id                    # Actualizar OKR (progreso)
+DELETE /okrs/:id                    # Eliminar OKR
+\`\`\`
+
+#### 🔔 Notifications
+\`\`\`
+GET    /notifications               # Listar notificaciones
+GET    /notifications?userId=:id    # Notificaciones de un usuario
+PATCH  /notifications/:id           # Marcar como leída
+DELETE /notifications/:id           # Eliminar notificación
+\`\`\`
+
+#### 📧 Invitations
+\`\`\`
+GET    /invitations                 # Listar invitaciones
+GET    /invitations?projectId=:id   # Invitaciones de un proyecto
+GET    /invitations?email=:email    # Invitaciones por email
+POST   /invitations                 # Crear invitación
+PATCH  /invitations/:id             # Aceptar/rechazar invitación
+\`\`\`
+
+#### 💬 Chat Messages
+\`\`\`
+GET    /chatMessages?projectId=:id  # Mensajes de chat de un proyecto
+POST   /chatMessages                # Enviar mensaje
+\`\`\`
+
+#### 📜 Project History
+\`\`\`
+GET    /projectHistory?projectId=:id # Historial de cambios de un proyecto
+\`\`\`
+
+### Query Parameters Disponibles
+- `_sort`: Ordenar por campo (ej: `_sort=createdAt`)
+- `_order`: Orden ascendente/descendente (`asc`/`desc`)
+- `_limit`: Limitar resultados (ej: `_limit=10`)
+- `_page`: Paginación (ej: `_page=1`)
+- Filtros por campo: `?status=active`, `?role=developer`, etc.
 
 ## 🚀 Scripts Disponibles
 
 \`\`\`bash
-npm run dev          # Iniciar servidor de desarrollo
-npm run build        # Construir para producción
-npm run start        # Iniciar servidor de producción
-npm run lint         # Ejecutar linter
+npm run dev           # Iniciar servidor de desarrollo (localhost:3000)
+npm run build         # Construir para producción
+npm run start         # Iniciar servidor de producción
+npm run lint          # Ejecutar ESLint
+npm run json-server   # Iniciar JSON Server (localhost:3001)
 \`\`\`
+
+### Desarrollo Recomendado
+Usa dos terminales simultáneamente:
+
+**Terminal 1 - JSON Server:**
+\`\`\`bash
+npm run json-server
+# O manualmente:
+json-server --watch db.json --port 3001
+\`\`\`
+
+**Terminal 2 - Next.js Dev Server:**
+\`\`\`bash
+npm run dev
+\`\`\`
+
+## �️ Base de Datos
+
+### Normalización y Arquitectura
+- ✅ **100% normalizada** - Sin redundancia de datos
+- ✅ No hay campos `projectId` redundantes en tasks
+- ✅ Acceso a datos via relationships: `Task → UserStory → Project`
+- ✅ Helpers en `lib/data-helpers.ts` para JOINs eficientes
+- ✅ Cascade delete implementado (eliminar proyecto elimina todo lo relacionado)
+
+### Diagrama de Base de Datos
+Ver el diagrama PlantUML completo en `docs/database-diagram.puml` que incluye:
+- 11 entidades principales (User, Project, UserStory, Task, Sprint, OKR, etc.)
+- Todas las relaciones (1:N, N:M)
+- Campos y tipos de datos
+- Constraints y validaciones
 
 ## 📝 Roadmap Futuro
 
-- [ ] Integración con APIs reales de IA (OpenAI, Anthropic)
-- [ ] Base de datos real (PostgreSQL, MongoDB)
-- [ ] Autenticación real (NextAuth, Clerk)
-- [ ] Notificaciones en tiempo real (WebSockets)
-- [ ] Exportación de reportes (PDF, Excel)
-- [ ] Integraciones (Jira, GitHub, Slack)
-- [ ] Modo offline con PWA
-- [ ] Tests unitarios y E2E
-- [ ] Internacionalización (i18n)
-- [ ] Tema claro/oscuro
+### Completado ✅
+- [x] Integración con Google Gemini AI
+- [x] Subida de imágenes con ImgBB
+- [x] Base de datos normalizada
+- [x] Sistema de permisos granulares
+- [x] Historial de cambios (audit trail)
+- [x] Chat por proyecto
+- [x] OKRs y Key Results
+- [x] Sistema de notificaciones
+- [x] Invitaciones por email
 
 ## 🤝 Contribuir
 
@@ -333,13 +575,36 @@ Desarrollado con ❤️ por el equipo de Manage Wize
 
 ## 🙏 Agradecimientos
 
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Shadcn/UI](https://ui.shadcn.com/)
-- [Radix UI](https://www.radix-ui.com/)
-- [Lucide Icons](https://lucide.dev/)
-- [JSON Server](https://github.com/typicode/json-server)
+- [Next.js](https://nextjs.org/) - Framework React
+- [Tailwind CSS](https://tailwindcss.com/) - Framework CSS
+- [Shadcn/UI](https://ui.shadcn.com/) - Componentes UI
+- [Radix UI](https://www.radix-ui.com/) - Primitivas accesibles
+- [Lucide Icons](https://lucide.dev/) - Iconos
+- [JSON Server](https://github.com/typicode/json-server) - Mock API REST
+- [Google Gemini](https://ai.google.dev/) - IA Generativa
+- [ImgBB](https://imgbb.com/) - Hosting de imágenes
+- [Vercel](https://vercel.com/) - Hosting y deployment
+
+## 🐛 Reporte de Bugs
+
+Si encuentras algún bug, por favor abre un issue en GitHub con:
+1. Descripción del problema
+2. Pasos para reproducirlo
+3. Comportamiento esperado vs actual
+4. Screenshots si es posible
+5. Versión de Node.js y navegador
+
+## 📮 Contacto
+
+- **GitHub**: [@ManageWise-by-Horizon](https://github.com/ManageWise-by-Horizon)
+- **Email**: contact@managewize.com
+- **Website**: [managewize.com](https://managewize.com)
 
 ---
 
-**Nota**: Este proyecto utiliza datos mockeados y simulaciones de IA para propósitos de demostración. Para un entorno de producción, se recomienda integrar servicios reales de autenticación, base de datos y APIs de IA.
+**Nota Importante**: Este proyecto utiliza **Google Gemini AI real** y **ImgBB** para funcionalidades de IA y upload de imágenes. La base de datos es JSON Server para propósitos de demostración. Para un entorno de producción, se recomienda:
+- Base de datos relacional (PostgreSQL, MySQL)
+- Autenticación robusta (NextAuth, Auth0, Clerk)
+- Backend escalable (Node.js, Python FastAPI)
+- CI/CD pipeline (GitHub Actions, Vercel)
+- Monitoreo y analytics (Sentry, PostHog)

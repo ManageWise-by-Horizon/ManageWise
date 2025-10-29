@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Sparkles } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { createApiUrl } from "@/lib/api-config"
 
 interface CreateSprintDialogProps {
   open: boolean
@@ -49,7 +50,7 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
 
   const fetchUserStories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories?projectId=${projectId}`)
+      const response = await fetch(createApiUrl(`/userStories?projectId=${projectId}`))
       const data = await response.json()
       setUserStories(data.filter((s: any) => s.status === "todo"))
     } catch (error) {
@@ -86,10 +87,10 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
       // Fetch team members for task assignment
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
 
-      const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const usersRes = await fetch(createApiUrl('/users'))
       const allUsers = await usersRes.json()
       const teamMembers = allUsers.filter((u: any) => project.members.includes(u.id))
 
@@ -105,7 +106,6 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
             title: `Diseñar UI para ${story.title}`,
             description: `Crear mockups y diseño de interfaz`,
             userStoryId: storyId,
-            projectId,
             assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[0]?.id,
             status: "todo",
             priority: story.priority,
@@ -118,7 +118,6 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
             title: `Implementar backend para ${story.title}`,
             description: `Desarrollar lógica de negocio y APIs`,
             userStoryId: storyId,
-            projectId,
             assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[0]?.id,
             status: "todo",
             priority: story.priority,
@@ -131,7 +130,6 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
             title: `Implementar frontend para ${story.title}`,
             description: `Desarrollar componentes y vistas`,
             userStoryId: storyId,
-            projectId,
             assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[1]?.id,
             status: "todo",
             priority: story.priority,
@@ -144,7 +142,6 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
             title: `Testing para ${story.title}`,
             description: `Pruebas unitarias e integración`,
             userStoryId: storyId,
-            projectId,
             assignedTo: teamMembers[teamMembers.length - 1]?.id,
             status: "todo",
             priority: story.priority,
@@ -162,9 +159,6 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
       const createdTasks = await Promise.all(
         allTasks.map(async (task) => {
           // Validate required fields before creating
-          if (!task.projectId) {
-            throw new Error(`Task "${task.title}" missing projectId`)
-          }
           if (!task.userStoryId) {
             throw new Error(`Task "${task.title}" missing userStoryId`)
           }
@@ -173,7 +167,7 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
             task.status = "todo" // Force correct status
           }
 
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+          const response = await fetch(createApiUrl('/tasks'), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(task),
@@ -201,7 +195,7 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
         createdAt: new Date().toISOString(),
       }
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sprints`, {
+      await fetch(createApiUrl('/sprints'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSprint),

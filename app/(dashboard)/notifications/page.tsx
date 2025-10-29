@@ -16,6 +16,7 @@ import { InvitationNotification } from "@/components/notifications/invitation-no
 import { Notification, NotificationType } from "@/lib/types/notifications"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { createApiUrl } from "@/lib/api-config"
 
 export default function NotificationsPage() {
   const { user } = useAuth()
@@ -50,7 +51,7 @@ export default function NotificationsPage() {
 
     try {
       // Obtener el proyecto actual
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
 
       // Verificar si el usuario ya es miembro (Escenario 4)
@@ -65,20 +66,39 @@ export default function NotificationsPage() {
 
       // Agregar usuario al proyecto
       const updatedMembers = [...project.members, user.id]
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`, {
+      await fetch(createApiUrl(`/projects/${projectId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ members: updatedMembers }),
+      })
+
+      // Crear permisos por defecto para el nuevo miembro
+      const defaultPermission = {
+        id: `perm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        projectId,
+        userId: user.id,
+        role: 'developer', // Rol por defecto
+        read: true,
+        write: true,
+        manage_project: false,
+        manage_members: false,
+        manage_permissions: false
+      }
+
+      await fetch(createApiUrl('/projectPermissions'), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(defaultPermission),
       })
 
       // Marcar notificación como leída
       await markAsRead(notificationId)
 
       // Actualizar el estado de la invitación si existe
-      const invitationsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${projectId}&email=${user.email}`)
+      const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${projectId}&email=${user.email}`))
       const invitations = await invitationsRes.json()
       if (invitations.length > 0) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitations[0].id}`, {
+        await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "accepted" }),
@@ -107,12 +127,15 @@ export default function NotificationsPage() {
           deliveryStatus: "delivered"
         }
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+        await fetch(createApiUrl('/notifications'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(confirmationNotification),
         })
       }
+
+      // Eliminar la notificación de invitación aceptada (ya no es necesaria)
+      await deleteNotification(notificationId)
 
     } catch (error) {
       console.error("Error accepting invitation:", error)
@@ -132,24 +155,23 @@ export default function NotificationsPage() {
     }
 
     try {
-      // Marcar notificación como leída
-      await markAsRead(notificationId)
+      // Obtener la notificación antes de eliminarla
+      const notification = notifications.find(n => n.id === notificationId)
 
       // Actualizar el estado de la invitación si existe
       if (invitationId) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitationId}`, {
+        await fetch(createApiUrl(`/projectInvitations/${invitationId}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "declined" }),
         })
       } else {
         // Buscar invitación por email del usuario y projectId
-        const notification = notifications.find(n => n.id === notificationId)
         if (notification?.data?.projectId) {
-          const invitationsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations?projectId=${notification.data.projectId}&email=${user.email}`)
+          const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${notification.data.projectId}&email=${user.email}`))
           const invitations = await invitationsRes.json()
           if (invitations.length > 0) {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations/${invitations[0].id}`, {
+            await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ status: "declined" }),
@@ -159,7 +181,6 @@ export default function NotificationsPage() {
       }
 
       // Crear notificación de confirmación para el que invitó
-      const notification = notifications.find(n => n.id === notificationId)
       if (notification?.data?.invitedBy) {
         const confirmationNotification = {
           id: `notif_decline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -180,12 +201,15 @@ export default function NotificationsPage() {
           deliveryStatus: "delivered"
         }
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+        await fetch(createApiUrl('/notifications'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(confirmationNotification),
         })
       }
+
+      // Eliminar la notificación de invitación rechazada (ya no es necesaria)
+      await deleteNotification(notificationId)
 
     } catch (error) {
       console.error("Error declining invitation:", error)

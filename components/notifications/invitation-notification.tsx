@@ -118,8 +118,13 @@ export function InvitationNotification({
               )}
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Invitado por {notification.data.invitedByName || 'Usuario desconocido'} al proyecto "{notification.data.projectName || 'Proyecto desconocido'}"
+              {notification.data.invitedByName || 'Un usuario'} te ha invitado al proyecto "{notification.data.projectName || 'Proyecto desconocido'}"
             </p>
+            {notification.message && !notification.message.includes("te ha invitado") && !notification.message.includes("Te invitamos") && (
+              <p className="text-xs text-foreground italic mt-1">
+                💬 "{notification.message}"
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(notification.createdAt), { 
                 addSuffix: true, 
@@ -184,12 +189,12 @@ export function InvitationNotification({
           <UserPlus className="h-6 w-6" />
         </div>
         
-        <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-base font-semibold">{notification.title}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {notification.data.invitedByName} te ha invitado a unirte al proyecto
+                {notification.data.invitedByName || 'Un usuario'} te ha invitado a unirte al proyecto
               </p>
             </div>
             {!notification.read && (
@@ -197,19 +202,23 @@ export function InvitationNotification({
             )}
           </div>
           
-            <div className="bg-muted/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
             <h4 className="font-medium text-sm">Proyecto: {notification.data.projectName || 'Proyecto desconocido'}</h4>
-            <p className="text-xs text-muted-foreground mt-1">
-              Invitado por {notification.data.invitedByName || 'Usuario desconocido'}
+            <p className="text-xs text-muted-foreground">
+              Invitado por: {notification.data.invitedByName || 'Usuario desconocido'}
             </p>
             {isEmailInvitation && notification.data.email && (
               <p className="text-xs text-muted-foreground">
                 Enviado a: {notification.data.email}
               </p>
             )}
-          </div>
-          
-          <div className="flex items-center justify-between">
+            {notification.message && !notification.message.includes("te ha invitado") && (
+              <div className="mt-2 pt-2 border-t">
+                <p className="text-sm font-medium mb-1">Mensaje:</p>
+                <p className="text-sm text-foreground italic">"{notification.message}"</p>
+              </div>
+            )}
+          </div>          <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(notification.createdAt), { 
                 addSuffix: true, 

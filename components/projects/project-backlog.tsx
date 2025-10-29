@@ -9,8 +9,7 @@ import { Plus, Target, TrendingUp, MoreVertical, Edit, Trash2, Sparkles } from "
 import { useToast } from "@/hooks/use-toast"
 import { CreateUserStoryDialog } from "@/components/backlogs/create-user-story-dialog"
 import { UserStoryDetailModal } from "@/components/backlogs/user-story-detail-modal"
-import { PermissionGuard, PermissionWrapper } from "@/components/projects/permission-guard"
-import { useAuth } from "@/lib/auth/auth-context"
+import { createApiUrl } from "@/lib/api-config"
 
 interface UserStory {
   id: string
@@ -43,7 +42,6 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
   const [selectedUserStory, setSelectedUserStory] = useState<UserStory | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const { toast } = useToast()
-  const { user } = useAuth()
 
   // Si hay User Stories externas (del padre), usarlas en lugar de fetch
   useEffect(() => {
@@ -57,7 +55,7 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
 
   const fetchUserStories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories?projectId=${projectId}`)
+      const response = await fetch(createApiUrl(`/userStories?projectId=${projectId}`))
       const data = await response.json()
       setUserStories(data)
     } catch (error) {
@@ -134,7 +132,7 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
 
   const handleDeleteUserStory = async (storyId: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/userStories/${storyId}`, {
+      await fetch(createApiUrl(`/userStories/${storyId}`), {
         method: "DELETE",
       })
       toast({
@@ -216,16 +214,10 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
           <h2 className="text-2xl font-bold">Product Backlog</h2>
           <p className="text-muted-foreground">User Stories priorizadas para {projectName}</p>
         </div>
-        <PermissionGuard
-          projectId={projectId}
-          userId={user?.id || ""}
-          requiredPermission="write"
-        >
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva User Story
-          </Button>
-        </PermissionGuard>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nueva User Story
+        </Button>
       </div>
 
       {/* User Stories Table */}
@@ -237,16 +229,10 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
             <p className="text-sm text-muted-foreground mb-4">
               Comienza agregando user stories a tu backlog
             </p>
-            <PermissionGuard
-              projectId={projectId}
-              userId={user?.id || ""}
-              requiredPermission="write"
-            >
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Crear Primera User Story
-              </Button>
-            </PermissionGuard>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Crear Primera User Story
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -332,37 +318,17 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <PermissionWrapper
-                              projectId={projectId}
-                              userId={user?.id || ""}
-                              requiredPermission="write"
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteUserStory(story.id)}
+                              className="text-destructive"
                             >
-                              {(canWrite) => (
-                                canWrite && (
-                                  <DropdownMenuItem>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Editar
-                                  </DropdownMenuItem>
-                                )
-                              )}
-                            </PermissionWrapper>
-                            <PermissionWrapper
-                              projectId={projectId}
-                              userId={user?.id || ""}
-                              requiredPermission="delete"
-                            >
-                              {(canDelete) => (
-                                canDelete && (
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteUserStory(story.id)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Eliminar
-                                  </DropdownMenuItem>
-                                )
-                              )}
-                            </PermissionWrapper>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>

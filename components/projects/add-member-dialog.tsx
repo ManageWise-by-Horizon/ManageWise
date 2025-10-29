@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, UserPlus, Mail, AlertTriangle } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { createApiUrl } from "@/lib/api-config"
 
 interface User {
   id: string
@@ -64,14 +65,14 @@ export function AddMemberDialog({
   const checkAdminPermissions = async () => {
     try {
       // Verificar si el usuario actual es administrador del proyecto
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
       
       // Verificar si es el creador del proyecto
       const isCreator = project.createdBy === currentUserId
       
       // Verificar permisos específicos en la tabla de permisos
-      const permissionsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectPermissions?projectId=${projectId}&userId=${currentUserId}`)
+      const permissionsRes = await fetch(createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${currentUserId}`))
       const permissions = await permissionsRes.json()
       
       const hasManagePermission = permissions.some((perm: any) => 
@@ -87,7 +88,7 @@ export function AddMemberDialog({
 
   const fetchAvailableUsers = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const response = await fetch(createApiUrl('/users'))
       const data = await response.json()
       // Filter out users already in the project
       const availableUsers = data.filter((u: User) => !currentMembers.includes(u.id))
@@ -114,21 +115,86 @@ export function AddMemberDialog({
 
     try {
       // Fetch current project
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
 
-      // Update project with new members
-      const updatedMembers = [...project.members, ...selectedUsers]
+      // Obtener información de los usuarios seleccionados
+      const usersRes = await fetch(createApiUrl('/users'))
+      const allUsers = await usersRes.json()
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ members: updatedMembers }),
+      // Obtener información del usuario actual (quien invita)
+      const currentUserData = allUsers.find((u: User) => u.id === currentUserId)
+
+      // Crear invitaciones para cada usuario (NO agregar directamente al proyecto)
+      const invitationsPromises = selectedUsers.map(async (userId) => {
+        const invitedUser = allUsers.find((u: User) => u.id === userId)
+        if (!invitedUser) return
+
+        // Verificar si ya tiene una invitación pendiente
+        const existingInvitationsRes = await fetch(
+          createApiUrl(`/projectInvitations?projectId=${projectId}&email=${invitedUser.email}&status=pending`)
+        )
+        const existingInvitations = await existingInvitationsRes.json()
+
+        if (existingInvitations.length > 0) {
+          return // Ya tiene invitación pendiente
+        }
+
+        // Preparar el mensaje personalizado o por defecto
+        const invitationMessage = message || `Te invitamos a formar parte del proyecto "${project.name}"`
+        
+        // Crear invitación
+        const invitation = {
+          id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          projectId,
+          email: invitedUser.email,
+          invitedBy: currentUserId,
+          message: invitationMessage,
+          status: "pending",
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
+        }
+
+        await fetch(createApiUrl('/projectInvitations'), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(invitation),
+        })
+
+        // Crear notificación para el usuario invitado
+        const notification = {
+          id: `notif_inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          userId: invitedUser.id,
+          projectId,
+          type: "project_invitation",
+          title: "Invitación a proyecto",
+          message: invitationMessage, // Usar el mismo mensaje de la invitación
+          data: {
+            projectId,
+            projectName: project.name,
+            invitationId: invitation.id,
+            invitedBy: currentUserId,
+            invitedByName: currentUserData?.name || 'Usuario desconocido',
+            email: invitedUser.email,
+            changeType: "invited"
+          },
+          read: false,
+          createdAt: new Date().toISOString(),
+          deliveryStatus: "pending"
+        }
+
+        await fetch(createApiUrl('/notifications'), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(notification),
+        })
       })
 
+      await Promise.all(invitationsPromises)
+
       toast({
-        title: "Miembros invitados",
-        description: `${selectedUsers.length} miembro(s) invitado(s) al proyecto`,
+        title: "Invitaciones enviadas",
+        description: `Se enviaron ${selectedUsers.length} invitación(es). Los usuarios deben aceptar para unirse al proyecto.`,
       })
 
       setSelectedUsers([])
@@ -137,10 +203,10 @@ export function AddMemberDialog({
       onOpenChange(false)
       onMemberAdded()
     } catch (error) {
-      console.error("[v0] Error adding members:", error)
+      console.error("[v0] Error sending invitations:", error)
       toast({
         title: "Error",
-        description: "No se pudieron invitar los miembros",
+        description: "No se pudieron enviar las invitaciones",
         variant: "destructive",
       })
     } finally {
@@ -193,11 +259,11 @@ export function AddMemberDialog({
 
     try {
       // Escenario 2: Verificar si los emails ya pertenecen a usuarios del proyecto
-      const allUsersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+      const allUsersRes = await fetch(createApiUrl('/users'))
       const allUsers = await allUsersRes.json()
       
       // Obtener usuarios actuales del proyecto
-      const projectRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}`)
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
       
       const projectMemberEmails = allUsers
@@ -218,7 +284,7 @@ export function AddMemberDialog({
       }
 
       // Escenario 1: Registrar invitaciones en la base de datos
-      const currentUser = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${currentUserId}`)
+      const currentUser = await fetch(createApiUrl(`/users/${currentUserId}`))
       const user = await currentUser.json()
 
       const invitations = emails.map(email => ({
@@ -226,7 +292,6 @@ export function AddMemberDialog({
         projectId,
         email,
         invitedBy: user.id,
-        invitedByName: user.name,
         message: message || "Te invitamos a formar parte de nuestro equipo en este proyecto.",
         status: "pending",
         createdAt: new Date().toISOString(),
@@ -235,7 +300,7 @@ export function AddMemberDialog({
 
       // Registrar cada invitación
       for (const invitation of invitations) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projectInvitations`, {
+        await fetch(createApiUrl('/projectInvitations'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(invitation),
@@ -254,7 +319,6 @@ export function AddMemberDialog({
             projectName: project.name,
             invitationId: invitation.id,
             invitedBy: invitation.invitedBy,
-            invitedByName: invitation.invitedByName,
             email: invitation.email,
             changeType: "invited"
           },
@@ -263,7 +327,7 @@ export function AddMemberDialog({
           deliveryStatus: "pending"
         }
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`, {
+        await fetch(createApiUrl('/notifications'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(invitationNotification),

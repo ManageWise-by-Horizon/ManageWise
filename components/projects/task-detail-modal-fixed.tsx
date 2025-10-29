@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useProjectPermissions } from "@/hooks/use-project-permissions"
+import { createApiUrl } from "@/lib/api-config"
 
 interface TaskDetailModalProps {
   open: boolean
@@ -102,7 +103,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const fetchComments = async () => {
     if (!task) return
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${task.id}/comments`)
+      const response = await fetch(createApiUrl(`/tasks/${task.id}/comments`))
       if (response.ok) {
         const data = await response.json()
         setComments(data)
@@ -115,7 +116,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const fetchActivities = async () => {
     if (!task) return
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${task.id}/activities`)
+      const response = await fetch(createApiUrl(`/tasks/${task.id}/activities`))
       if (response.ok) {
         const data = await response.json()
         setActivities(data)
@@ -129,7 +130,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     if (!task) return
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${task.id}`, {
+      const response = await fetch(createApiUrl(`/tasks/${task.id}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -165,7 +166,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     const assignedToValue = userId === "unassigned" ? null : userId
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${task.id}`, {
+      const response = await fetch(createApiUrl(`/tasks/${task.id}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -196,7 +197,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     if (!task) return
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${task.id}`, {
+      const response = await fetch(createApiUrl(`/tasks/${task.id}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -223,7 +224,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     
     setIsSubmittingComment(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${task.id}/comments`, {
+      const response = await fetch(createApiUrl(`/tasks/${task.id}/comments`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

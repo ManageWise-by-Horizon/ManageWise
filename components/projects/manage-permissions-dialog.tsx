@@ -10,6 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Shield, Users, Settings, Lock, UserX } from "lucide-react"
+import { createApiUrl } from "@/lib/api-config"
 
 interface User {
   id: string
@@ -28,8 +39,11 @@ interface User {
   avatar: string
 }
 
+type ProjectRole = 'scrum_master' | 'product_owner' | 'developer' | 'tester' | 'designer' | 'stakeholder'
+
 interface UserPermissions {
   userId: string
+  role: ProjectRole
   read: boolean
   write: boolean
   manage_project: boolean
@@ -59,6 +73,8 @@ export function ManagePermissionsDialog({
   const [searchTerm, setSearchTerm] = useState("")
   const [projectMembers, setProjectMembers] = useState<User[]>([])
   const [permissions, setPermissions] = useState<UserPermissions[]>([])
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const [userToRemove, setUserToRemove] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -71,14 +87,14 @@ export function ManagePermissionsDialog({
       setIsLoading(true)
       
       // Cargar usuarios reales desde la API
-      const usersResponse = await fetch('http://localhost:3001/users')
+      const usersResponse = await fetch(createApiUrl('/users'))
       if (!usersResponse.ok) {
         throw new Error('Error al cargar usuarios')
       }
       const allUsers = await usersResponse.json()
       
       // Cargar proyecto para obtener miembros
-      const projectResponse = await fetch(`http://localhost:3001/projects/${projectId}`)
+      const projectResponse = await fetch(createApiUrl(`/projects/${projectId}`))
       if (!projectResponse.ok) {
         throw new Error('Error al cargar proyecto')
       }
@@ -90,22 +106,23 @@ export function ManagePermissionsDialog({
       )
       
       // Cargar permisos reales del proyecto
-      const permissionsResponse = await fetch(`http://localhost:3001/projectPermissions?projectId=${projectId}`)
+      const permissionsResponse = await fetch(createApiUrl(`/projectPermissions?projectId=${projectId}`))
       let projectPermissions: UserPermissions[] = []
       
       if (permissionsResponse.ok) {
         projectPermissions = await permissionsResponse.json()
       }
       
-      // Si no hay permisos, crear permisos por defecto basados en roles
+      // Si no hay permisos, crear permisos por defecto
       if (projectPermissions.length === 0) {
         projectPermissions = projectMembers.map((member: User) => ({
           userId: member.id,
+          role: 'developer' as ProjectRole,
           read: true,
-          write: member.role !== 'developer',
-          manage_project: member.role === 'scrum_master' || member.role === 'product_owner',
-          manage_members: member.role === 'scrum_master',
-          manage_permissions: member.role === 'scrum_master'
+          write: true,
+          manage_project: false,
+          manage_members: false,
+          manage_permissions: false
         }))
       }
 
@@ -122,11 +139,21 @@ export function ManagePermissionsDialog({
     }
   }
 
-  const updatePermission = (userId: string, permission: keyof Omit<UserPermissions, 'userId'>, value: boolean) => {
+  const updatePermission = (userId: string, permission: keyof Omit<UserPermissions, 'userId' | 'role'>, value: boolean) => {
     setPermissions(prev => 
       prev.map(p => 
         p.userId === userId 
           ? { ...p, [permission]: value }
+          : p
+      )
+    )
+  }
+
+  const updateRole = (userId: string, role: ProjectRole) => {
+    setPermissions(prev => 
+      prev.map(p => 
+        p.userId === userId 
+          ? { ...p, role }
           : p
       )
     )
@@ -160,12 +187,154 @@ export function ManagePermissionsDialog({
     return { label: "Visualizador", color: "bg-gray-100 text-gray-800" }
   }
 
+  const getRoleLabel = (role: ProjectRole) => {
+    const roleLabels: Record<ProjectRole, string> = {
+      scrum_master: 'Scrum Master',
+      product_owner: 'Product Owner',
+      developer: 'Developer',
+      tester: 'Tester',
+      designer: 'Designer',
+      stakeholder: 'Stakeholder'
+    }
+    return roleLabels[role] || role
+  }
+
+  const handleRemoveMember = (userId: string, userName: string) => {
+    if (userId === currentUser.id) {
+      toast({
+        title: "Acción no permitida",
+        description: "No puedes eliminarte a ti mismo del proyecto",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Abrir diálogo de confirmación
+    setUserToRemove({ id: userId, name: userName })
+    setRemoveDialogOpen(true)
+  }
+
+  const confirmRemoveMember = async () => {
+    if (!userToRemove) return
+
+    const { id: userId, name: userName } = userToRemove
+
+    try {
+      setIsLoading(true)
+      setRemoveDialogOpen(false)
+
+      // 1. Obtener el proyecto
+      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
+      const project = await projectRes.json()
+
+      // 2. Remover usuario del array de miembros
+      const updatedMembers = project.members.filter((id: string) => id !== userId)
+      await fetch(createApiUrl(`/projects/${projectId}`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: updatedMembers })
+      })
+
+      // 3. Eliminar permisos del usuario
+      const permsRes = await fetch(
+        createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${userId}`)
+      )
+      const userPerms = await permsRes.json()
+      
+      if (userPerms.length > 0) {
+        await fetch(createApiUrl(`/projectPermissions/${userPerms[0].id}`), {
+          method: 'DELETE'
+        })
+      }
+
+      // 4. Crear notificación para el usuario eliminado
+      const notification = {
+        id: `notif_removed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId: userId,
+        projectId: projectId,
+        type: "member_removed",
+        title: "Has sido removido del proyecto",
+        message: `Has sido eliminado del proyecto "${project.name}" por ${currentUser.name}`,
+        data: {
+          projectId: projectId,
+          projectName: project.name,
+          removedBy: currentUser.id,
+          removedByName: currentUser.name,
+          changeType: "removed"
+        },
+        read: false,
+        createdAt: new Date().toISOString(),
+        deliveryStatus: "delivered"
+      }
+
+      await fetch(createApiUrl('/notifications'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notification)
+      })
+
+      toast({
+        title: "Miembro eliminado",
+        description: `${userName} ha sido eliminado del proyecto`,
+      })
+
+      // Recargar la lista de miembros
+      setUserToRemove(null)
+      await fetchMembersAndPermissions()
+      onPermissionsUpdated()
+    } catch (error) {
+      console.error('Error removing member:', error)
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar al miembro del proyecto",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSave = async () => {
     try {
       setIsLoading(true)
       
-      // Simular guardado
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Actualizar permisos de cada usuario
+      const updatePromises = permissions.map(async (perm) => {
+        // Buscar si ya existe un registro de permisos
+        const existingPermsResponse = await fetch(
+          createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${perm.userId}`)
+        )
+        const existingPerms = await existingPermsResponse.json()
+        
+        const permissionData = {
+          projectId,
+          userId: perm.userId,
+          role: perm.role,
+          read: perm.read,
+          write: perm.write,
+          manage_project: perm.manage_project,
+          manage_members: perm.manage_members,
+          manage_permissions: perm.manage_permissions
+        }
+        
+        if (existingPerms.length > 0) {
+          // Actualizar permisos existentes
+          return fetch(createApiUrl(`/projectPermissions/${existingPerms[0].id}`), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(permissionData)
+          })
+        } else {
+          // Crear nuevos permisos
+          return fetch(createApiUrl('/projectPermissions'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(permissionData)
+          })
+        }
+      })
+      
+      await Promise.all(updatePromises)
       
       toast({
         title: "Permisos actualizados",
@@ -191,6 +360,7 @@ export function ManagePermissionsDialog({
   )
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-hidden">
         <DialogHeader>
@@ -233,12 +403,17 @@ export function ManagePermissionsDialog({
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <CardTitle className="text-base">{member.name}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base">{member.name}</CardTitle>
+                            {isCurrentUser && (
+                              <Badge variant="outline" className="text-xs">Tú</Badge>
+                            )}
+                            <Badge variant="secondary" className="text-xs">
+                              {getRoleLabel(userPerms.role)}
+                            </Badge>
+                          </div>
                           <CardDescription>{member.email}</CardDescription>
                         </div>
-                        {isCurrentUser && (
-                          <Badge variant="outline">Tú</Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={permissionLevel.color}>
@@ -260,10 +435,44 @@ export function ManagePermissionsDialog({
                             <SelectItem value="viewer">Visualizador</SelectItem>
                           </SelectContent>
                         </Select>
+                        {!isCurrentUser && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveMember(member.id, member.name)}
+                            disabled={isLoading}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Eliminar del proyecto"
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-0">
+                  <CardContent className="pt-0 space-y-4">
+                    <div>
+                      <Label htmlFor={`role-${member.id}`} className="text-sm font-medium mb-2 block">
+                        Rol en el Proyecto
+                      </Label>
+                      <Select 
+                        value={userPerms.role}
+                        onValueChange={(value: ProjectRole) => updateRole(member.id, value)}
+                        disabled={isCurrentUser}
+                      >
+                        <SelectTrigger id={`role-${member.id}`} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="scrum_master">Scrum Master</SelectItem>
+                          <SelectItem value="product_owner">Product Owner</SelectItem>
+                          <SelectItem value="developer">Developer</SelectItem>
+                          <SelectItem value="tester">Tester</SelectItem>
+                          <SelectItem value="designer">Designer</SelectItem>
+                          <SelectItem value="stakeholder">Stakeholder</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div className="flex items-center justify-between">
                         <Label htmlFor={`read-${member.id}`} className="text-sm">Leer</Label>
@@ -328,5 +537,25 @@ export function ManagePermissionsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Diálogo de confirmación para eliminar miembro */}
+    <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Estás seguro de que deseas eliminar a {userToRemove?.name} del proyecto?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. El usuario será eliminado del proyecto y perderá todos sus permisos. 
+            Se le enviará una notificación informándole de la eliminación.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmRemoveMember} className="bg-red-600 text-white hover:bg-red-700">
+            Aceptar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   )
 }

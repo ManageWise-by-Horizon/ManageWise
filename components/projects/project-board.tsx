@@ -9,6 +9,7 @@ import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-d
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { TaskDetailModal } from "./task-detail-modal"
+import { createApiUrl } from "@/lib/api-config"
 
 interface ProjectTask {
   id: string
@@ -81,7 +82,7 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${taskId}`, {
+      const response = await fetch(createApiUrl(`/tasks/${taskId}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
