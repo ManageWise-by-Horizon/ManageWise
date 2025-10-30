@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl } from "@/lib/api-config"
+import { getPriorityColor, getStatusColor, getStatusLabel } from "@/lib/ui-helpers"
 
 interface UserStory {
   id: string
@@ -89,9 +90,16 @@ export function UserStoryDetailModal({
     
     setIsLoading(true)
     try {
-      // Fetch tasks related to this user story
-      const tasksRes = await fetch(createApiUrl('/tasks'))
-      const allTasks = await tasksRes.json()
+      // Fetch tasks and users in parallel
+      const [tasksRes, usersRes] = await Promise.all([
+        fetch(createApiUrl('/tasks')),
+        fetch(createApiUrl('/users'))
+      ])
+      
+      const [allTasks, usersData] = await Promise.all([
+        tasksRes.json(),
+        usersRes.json()
+      ])
       
       // Filter tasks that belong to this user story
       const relatedTasks = allTasks.filter((task: Task) => 
@@ -99,10 +107,6 @@ export function UserStoryDetailModal({
       )
       
       setTasks(relatedTasks)
-
-      // Fetch users for assigned members
-      const usersRes = await fetch(createApiUrl('/users'))
-      const usersData = await usersRes.json()
       setUsers(usersData)
     } catch (error) {
       console.error("Error fetching related data:", error)
@@ -118,36 +122,6 @@ export function UserStoryDetailModal({
 
   const getUser = (userId: string) => {
     return users.find(u => u.id === userId)
-  }
-
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-red-500 text-white",
-      Alta: "bg-red-500 text-white",
-      medium: "bg-yellow-500 text-white",
-      Media: "bg-yellow-500 text-white", 
-      low: "bg-green-500 text-white",
-      Baja: "bg-green-500 text-white",
-    }
-    return colors[priority as keyof typeof colors] || "bg-muted"
-  }
-
-  const getStatusColor = (status: string) => {
-    const colors = {
-      todo: "border-gray-500 text-gray-700 bg-gray-50",
-      in_progress: "border-blue-500 text-blue-700 bg-blue-50",
-      done: "border-green-500 text-green-700 bg-green-50",
-    }
-    return colors[status as keyof typeof colors] || "border-gray-500 text-gray-700 bg-gray-50"
-  }
-
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      todo: "Por Hacer",
-      in_progress: "En Progreso", 
-      done: "Completado",
-    }
-    return labels[status as keyof typeof labels] || status
   }
 
   const tasksByStatus = {

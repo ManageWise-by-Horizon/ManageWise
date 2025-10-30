@@ -341,14 +341,6 @@ export function AppHeader() {
                 Mostrando {recentNotifications.length} de {notifications.length} notificaciones
               </div>
               {recentNotifications.map((notification, index) => {
-                console.log(`🔔 RENDERING notification ${index}:`, {
-                  id: notification.id,
-                  title: notification.title,
-                  message: notification.message,
-                  createdAt: notification.createdAt,
-                  read: notification.read
-                })
-                
                 // Usar componente especializado para invitaciones de proyecto
                 if (notification.type === 'project_invitation' || notification.type === 'email_invitation') {
                   return (

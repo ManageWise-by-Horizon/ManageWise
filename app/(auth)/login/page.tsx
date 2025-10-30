@@ -22,11 +22,11 @@ export default function LoginPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // If user is already logged in, redirect to dashboard
+    // If user is already logged in, redirect immediately using window.location
     if (!authLoading && user) {
-      router.push("/dashboard")
+      window.location.href = "/dashboard"
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading])
 
   // Show loading while checking auth status
   if (authLoading) {

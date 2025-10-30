@@ -17,7 +17,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Sparkles, Bot, CheckCircle2, AlertCircle, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react"
+import { Loader2, Sparkles, Bot, CheckCircle2, AlertCircle, Paperclip, X, Image as ImageIcon, FileText, CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -47,14 +52,16 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   // Manual form
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startDate, setStartDate] = useState<Date>()
+  const [endDate, setEndDate] = useState<Date>()
 
   // AI Structured form
   const [objective, setObjective] = useState("")
   const [role, setRole] = useState("")
   const [context, setContext] = useState("")
   const [constraints, setConstraints] = useState("")
+  const [aiStartDate, setAiStartDate] = useState<Date>()
+  const [aiEndDate, setAiEndDate] = useState<Date>()
 
   // File attachment state
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
@@ -67,8 +74,76 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   const [generatedProject, setGeneratedProject] = useState<any>(null)
   const [showPreview, setShowPreview] = useState(false)
 
+  // Helper function: Crear permisos de administrador para el creador del proyecto
+  const createProjectOwnerPermissions = async (projectId: string) => {
+    return fetch(createApiUrl('/projectPermissions'), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        userId: user?.id,
+        role: 'product_owner',
+        read: true,
+        write: true,
+        manage_project: true,
+        manage_members: true,
+        manage_permissions: true,
+      }),
+    })
+  }
+
+  // Helper function: Generar tareas para una user story
+  const generateTasksForUserStory = (userStoryId: string, backlogItem: any) => {
+    const taskTemplates = [
+      {
+        prefix: "Diseñar UI para",
+        description: "Crear mockups y diseño de interfaz para:",
+        hoursMultiplier: 0.5,
+      },
+      {
+        prefix: "Implementar backend para",
+        description: "Desarrollar lógica de negocio y APIs para:",
+        hoursMultiplier: 0.8,
+      },
+      {
+        prefix: "Implementar frontend para",
+        description: "Desarrollar componentes y vistas para:",
+        hoursMultiplier: 0.6,
+      },
+      {
+        prefix: "Testing para",
+        description: "Pruebas unitarias e integración para:",
+        hoursMultiplier: 0.4,
+      },
+    ]
+
+    return taskTemplates.map(template => ({
+      title: `${template.prefix} ${backlogItem.title}`,
+      description: `${template.description} ${backlogItem.description}`,
+      userStoryId,
+      assignedTo: null,
+      status: "todo",
+      priority: backlogItem.priority,
+      estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * template.hoursMultiplier)),
+      createdBy: user?.id,
+      createdAt: new Date().toISOString(),
+      aiGenerated: true,
+    }))
+  }
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validación de fechas
+    if (startDate && endDate && startDate >= endDate) {
+      toast({
+        title: "Error de validación",
+        description: "La fecha de finalización debe ser posterior a la fecha de inicio",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -77,8 +152,8 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         description,
         objectives: [],
         timeline: {
-          start: startDate,
-          end: endDate,
+          start: startDate?.toISOString(),
+          end: endDate?.toISOString(),
         },
         members: [user?.id],
         createdBy: user?.id,
@@ -92,23 +167,19 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         body: JSON.stringify(newProject),
       })
 
+      if (!projectResponse.ok) {
+        throw new Error(`Error al crear el proyecto: ${projectResponse.statusText}`)
+      }
+
       const createdProject = await projectResponse.json()
 
+      // Validar que el proyecto tenga un ID válido
+      if (!createdProject || !createdProject.id) {
+        throw new Error("El proyecto se creó pero no se recibió un ID válido")
+      }
+
       // Crear permisos de administrador para el creador del proyecto
-      await fetch(createApiUrl('/projectPermissions'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: createdProject.id,
-          userId: user?.id,
-          role: 'product_owner', // Rol por defecto para el creador del proyecto
-          read: true,
-          write: true,
-          manage_project: true,
-          manage_members: true,
-          manage_permissions: true,
-        }),
-      })
+      await createProjectOwnerPermissions(createdProject.id)
 
       toast({
         title: "Proyecto creado",
@@ -217,6 +288,25 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       return
     }
 
+    // Validar fechas
+    if (!aiStartDate || !aiEndDate) {
+      toast({
+        title: "Fechas requeridas",
+        description: "Por favor selecciona las fechas de inicio y finalización del proyecto.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (aiStartDate >= aiEndDate) {
+      toast({
+        title: "Error de validación",
+        description: "La fecha de finalización debe ser posterior a la fecha de inicio",
+        variant: "destructive",
+      })
+      return
+    }
+
     // Check limits - include file count in token calculation
     const tokensNeeded = 50 + (attachedFiles.length * 10)
     if (!checkLimits("tokens", tokensNeeded)) {
@@ -241,11 +331,15 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       setGenerationLog((prev) => [...prev, getMessageForStep("analyzing")])
       await new Promise((resolve) => setTimeout(resolve, 500))
 
+      // Agregar las fechas a las restricciones para que la IA las tome en cuenta
+      const dateConstraint = `IMPORTANTE: El proyecto debe iniciar el ${format(aiStartDate!, "dd/MM/yyyy", { locale: es })} y finalizar el ${format(aiEndDate!, "dd/MM/yyyy", { locale: es })}. Todos los sprints, tareas y entregas deben ajustarse a este rango de fechas.`
+      const enhancedConstraints = `${constraints}\n\n${dateConstraint}`
+
       const structuredPrompt: StructuredPrompt = {
         objective,
         role,
         context,
-        constraints,
+        constraints: enhancedConstraints,
       }
 
       // Step 3: Creating structure
@@ -290,12 +384,18 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       // Step 10: Creating project
       setGenerationLog((prev) => [...prev, getMessageForStep("creating_project")])
 
+      // Usar las fechas proporcionadas por el usuario en lugar de las generadas por la IA
+      const userTimeline = {
+        start: aiStartDate?.toISOString(),
+        end: aiEndDate?.toISOString(),
+      }
+
       // Save project to backend
       const projectData = {
         name: result.projectName,
         description: result.description,
         objectives: result.objectives,
-        timeline: result.timeline,
+        timeline: userTimeline, // Usar las fechas del usuario
         members: [user?.id],
         createdBy: user?.id,
         createdAt: new Date().toISOString(),
@@ -310,23 +410,19 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         body: JSON.stringify(projectData),
       })
 
+      if (!projectResponse.ok) {
+        throw new Error(`Error al crear el proyecto: ${projectResponse.statusText}`)
+      }
+
       const createdProject = await projectResponse.json()
 
+      // Validar que el proyecto tenga un ID válido
+      if (!createdProject || !createdProject.id) {
+        throw new Error("El proyecto se creó pero no se recibió un ID válido")
+      }
+
       // Crear permisos de administrador para el creador del proyecto
-      await fetch(createApiUrl('/projectPermissions'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: createdProject.id,
-          userId: user?.id,
-          role: 'product_owner', // Rol por defecto para el creador del proyecto
-          read: true,
-          write: true,
-          manage_project: true,
-          manage_members: true,
-          manage_permissions: true,
-        }),
-      })
+      await createProjectOwnerPermissions(createdProject.id)
 
       // Step 11: Saving backlog
       setGenerationLog((prev) => [...prev, getMessageForStep("saving_backlog")])
@@ -369,57 +465,8 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           const backlogItem = result.productBacklog[i]
           const userStoryId = userStoryIds[i]
           
-          // Generate tasks based on user story complexity and type
-          const tasksForStory = [
-            {
-              title: `Diseñar UI para ${backlogItem.title}`,
-              description: `Crear mockups y diseño de interfaz para: ${backlogItem.description}`,
-              userStoryId: userStoryId,
-              assignedTo: null, // Sin asignar por defecto
-              status: "todo",
-              priority: backlogItem.priority,
-              estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * 0.5)),
-              createdBy: user?.id,
-              createdAt: new Date().toISOString(),
-              aiGenerated: true,
-            },
-            {
-              title: `Implementar backend para ${backlogItem.title}`,
-              description: `Desarrollar lógica de negocio y APIs para: ${backlogItem.description}`,
-              userStoryId: userStoryId,
-              assignedTo: null,
-              status: "todo",
-              priority: backlogItem.priority,
-              estimatedHours: Math.max(4, Math.floor(backlogItem.storyPoints * 0.8)),
-              createdBy: user?.id,
-              createdAt: new Date().toISOString(),
-              aiGenerated: true,
-            },
-            {
-              title: `Implementar frontend para ${backlogItem.title}`,
-              description: `Desarrollar componentes y vistas para: ${backlogItem.description}`,
-              userStoryId: userStoryId,
-              assignedTo: null,
-              status: "todo",
-              priority: backlogItem.priority,
-              estimatedHours: Math.max(3, Math.floor(backlogItem.storyPoints * 0.6)),
-              createdBy: user?.id,
-              createdAt: new Date().toISOString(),
-              aiGenerated: true,
-            },
-            {
-              title: `Testing para ${backlogItem.title}`,
-              description: `Pruebas unitarias e integración para: ${backlogItem.description}`,
-              userStoryId: userStoryId,
-              assignedTo: null,
-              status: "todo",
-              priority: backlogItem.priority,
-              estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * 0.4)),
-              createdBy: user?.id,
-              createdAt: new Date().toISOString(),
-              aiGenerated: true,
-            },
-          ]
+          // Generate tasks usando helper function
+          const tasksForStory = generateTasksForUserStory(userStoryId, backlogItem)
 
           // Create tasks for this user story
           for (const task of tasksForStory) {
@@ -523,12 +570,14 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
   const resetForm = () => {
     setName("")
     setDescription("")
-    setStartDate("")
-    setEndDate("")
+    setStartDate(undefined)
+    setEndDate(undefined)
     setObjective("")
     setRole("")
     setContext("")
     setConstraints("")
+    setAiStartDate(undefined)
+    setAiEndDate(undefined)
     clearAllFiles()
     setGenerationLog([])
     setGeneratedProject(null)
@@ -580,24 +629,54 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="startDate">Fecha de Inicio</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP", { locale: es }) : "Selecciona una fecha"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="endDate">Fecha de Fin</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP", { locale: es }) : "Selecciona una fecha"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
@@ -807,6 +886,65 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
                     <p className="text-[11px] text-muted-foreground leading-tight">
                       📷 📄 Gemini AI puede extraer texto de imágenes y documentos. Max 10 archivos, 20MB c/u.
                     </p>
+                  </div>
+
+                  {/* Fechas del proyecto */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="ai-start-date" className="text-sm">
+                        Fecha de Inicio <span className="text-destructive">*</span>
+                      </Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal text-sm",
+                              !aiStartDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {aiStartDate ? format(aiStartDate, "PPP", { locale: es }) : "Selecciona fecha"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={aiStartDate}
+                            onSelect={setAiStartDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ai-end-date" className="text-sm">
+                        Fecha de Finalización <span className="text-destructive">*</span>
+                      </Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal text-sm",
+                              !aiEndDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {aiEndDate ? format(aiEndDate, "PPP", { locale: es }) : "Selecciona fecha"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={aiEndDate}
+                            onSelect={setAiEndDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
 
                   <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5">

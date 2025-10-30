@@ -178,10 +178,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(newUser),
       })
 
+      if (!response.ok) {
+        throw new Error("Error al crear la cuenta")
+      }
+
       const createdUser = await response.json()
 
-      // Auto login after registration
-      await login(email, password)
+      // Auto login inmediato sin hacer otra petición
+      // Crear token directamente con el usuario que acabamos de crear
+      const token = btoa(JSON.stringify({ userId: createdUser.id, exp: Date.now() + 86400000 }))
+
+      // Remove password from user object
+      const { password: _, ...userWithoutPassword } = createdUser
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("auth_token", token)
+        localStorage.setItem("user", JSON.stringify(userWithoutPassword))
+      }
+
+      // Primero actualizamos el estado
+      setUser(userWithoutPassword)
+      
+      // Luego redirigimos de forma imperativa usando window.location para evitar renders adicionales
+      if (typeof window !== 'undefined') {
+        window.location.href = "/dashboard"
+      }
     } catch (error) {
       console.error("[v0] Registration error:", error)
       throw error

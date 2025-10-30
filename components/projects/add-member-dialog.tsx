@@ -29,6 +29,11 @@ interface User {
   avatar: string
 }
 
+// Función helper para generar IDs únicos
+const generateUniqueId = (prefix: string) => {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
 interface AddMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -98,10 +103,73 @@ export function AddMemberDialog({
     }
   }
 
+  // Función helper para crear invitación y notificación
+  const createInvitationAndNotification = async (
+    invitedUser: User,
+    project: any,
+    currentUserData: User | undefined,
+    invitationMessage: string
+  ) => {
+    // Verificar si ya tiene una invitación pendiente
+    const existingInvitationsRes = await fetch(
+      createApiUrl(`/projectInvitations?projectId=${projectId}&email=${invitedUser.email}&status=pending`)
+    )
+    const existingInvitations = await existingInvitationsRes.json()
+
+    if (existingInvitations.length > 0) {
+      return // Ya tiene invitación pendiente
+    }
+
+    // Crear invitación
+    const invitation = {
+      id: generateUniqueId('inv'),
+      projectId,
+      email: invitedUser.email,
+      invitedBy: currentUserId,
+      message: invitationMessage,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+    }
+
+    await fetch(createApiUrl('/projectInvitations'), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(invitation),
+    })
+
+    // Crear notificación para el usuario invitado
+    const notification = {
+      id: generateUniqueId('notif_inv'),
+      userId: invitedUser.id,
+      projectId,
+      type: "project_invitation",
+      title: "Invitación a proyecto",
+      message: invitationMessage,
+      data: {
+        projectId,
+        projectName: project.name,
+        invitationId: invitation.id,
+        invitedBy: currentUserId,
+        invitedByName: currentUserData?.name || 'Usuario desconocido',
+        email: invitedUser.email,
+        changeType: "invited"
+      },
+      read: false,
+      createdAt: new Date().toISOString(),
+      deliveryStatus: "pending"
+    }
+
+    await fetch(createApiUrl('/notifications'), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(notification),
+    })
+  }
+
   const handleAddMembers = async () => {
     if (selectedUsers.length === 0) return
 
-    // Verificar permisos de administrador
     if (!isAdmin) {
       toast({
         title: "Permisos insuficientes",
@@ -114,80 +182,20 @@ export function AddMemberDialog({
     setIsLoading(true)
 
     try {
-      // Fetch current project
       const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
       const project = await projectRes.json()
 
-      // Obtener información de los usuarios seleccionados
       const usersRes = await fetch(createApiUrl('/users'))
       const allUsers = await usersRes.json()
-
-      // Obtener información del usuario actual (quien invita)
       const currentUserData = allUsers.find((u: User) => u.id === currentUserId)
+      const invitationMessage = message || `Te invitamos a formar parte del proyecto "${project.name}"`
 
-      // Crear invitaciones para cada usuario (NO agregar directamente al proyecto)
+      // Crear invitaciones para cada usuario
       const invitationsPromises = selectedUsers.map(async (userId) => {
         const invitedUser = allUsers.find((u: User) => u.id === userId)
         if (!invitedUser) return
-
-        // Verificar si ya tiene una invitación pendiente
-        const existingInvitationsRes = await fetch(
-          createApiUrl(`/projectInvitations?projectId=${projectId}&email=${invitedUser.email}&status=pending`)
-        )
-        const existingInvitations = await existingInvitationsRes.json()
-
-        if (existingInvitations.length > 0) {
-          return // Ya tiene invitación pendiente
-        }
-
-        // Preparar el mensaje personalizado o por defecto
-        const invitationMessage = message || `Te invitamos a formar parte del proyecto "${project.name}"`
         
-        // Crear invitación
-        const invitation = {
-          id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          projectId,
-          email: invitedUser.email,
-          invitedBy: currentUserId,
-          message: invitationMessage,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
-        }
-
-        await fetch(createApiUrl('/projectInvitations'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitation),
-        })
-
-        // Crear notificación para el usuario invitado
-        const notification = {
-          id: `notif_inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          userId: invitedUser.id,
-          projectId,
-          type: "project_invitation",
-          title: "Invitación a proyecto",
-          message: invitationMessage, // Usar el mismo mensaje de la invitación
-          data: {
-            projectId,
-            projectName: project.name,
-            invitationId: invitation.id,
-            invitedBy: currentUserId,
-            invitedByName: currentUserData?.name || 'Usuario desconocido',
-            email: invitedUser.email,
-            changeType: "invited"
-          },
-          read: false,
-          createdAt: new Date().toISOString(),
-          deliveryStatus: "pending"
-        }
-
-        await fetch(createApiUrl('/notifications'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(notification),
-        })
+        await createInvitationAndNotification(invitedUser, project, currentUserData, invitationMessage)
       })
 
       await Promise.all(invitationsPromises)
@@ -219,8 +227,53 @@ export function AddMemberDialog({
     return emailRegex.test(email)
   }
 
+  // Función helper para crear invitación por email
+  const createEmailInvitation = async (email: string, project: any, userInviter: User) => {
+    const invitation = {
+      id: generateUniqueId('inv'),
+      projectId,
+      email,
+      invitedBy: userInviter.id,
+      message: message || "Te invitamos a formar parte de nuestro equipo en este proyecto.",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+    }
+
+    await fetch(createApiUrl('/projectInvitations'), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(invitation),
+    })
+
+    const invitationNotification = {
+      id: generateUniqueId('notif_inv'),
+      userId: null,
+      projectId,
+      type: "email_invitation",
+      title: "Invitación a proyecto",
+      message: `Has sido invitado a unirte al proyecto "${project.name}"`,
+      data: {
+        projectId,
+        projectName: project.name,
+        invitationId: invitation.id,
+        invitedBy: invitation.invitedBy,
+        email: invitation.email,
+        changeType: "invited"
+      },
+      read: false,
+      createdAt: new Date().toISOString(),
+      deliveryStatus: "pending"
+    }
+
+    await fetch(createApiUrl('/notifications'), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(invitationNotification),
+    })
+  }
+
   const handleEmailInvites = async () => {
-    // Verificar permisos de administrador
     if (!isAdmin) {
       toast({
         title: "Permisos insuficientes",
@@ -283,55 +336,12 @@ export function AddMemberDialog({
         return
       }
 
-      // Escenario 1: Registrar invitaciones en la base de datos
-      const currentUser = await fetch(createApiUrl(`/users/${currentUserId}`))
-      const user = await currentUser.json()
+      // Registrar invitaciones
+      const currentUserRes = await fetch(createApiUrl(`/users/${currentUserId}`))
+      const userInviter = await currentUserRes.json()
 
-      const invitations = emails.map(email => ({
-        id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId,
-        email,
-        invitedBy: user.id,
-        message: message || "Te invitamos a formar parte de nuestro equipo en este proyecto.",
-        status: "pending",
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
-      }))
-
-      // Registrar cada invitación
-      for (const invitation of invitations) {
-        await fetch(createApiUrl('/projectInvitations'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitation),
-        })
-
-        // Escenario 1: Crear notificación para el usuario invitado
-        const invitationNotification = {
-          id: `notif_inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          userId: null, // Se enviará por email ya que puede que no tenga cuenta
-          projectId,
-          type: "email_invitation",
-          title: "Invitación a proyecto",
-          message: `Has sido invitado a unirte al proyecto "${project.name}"`,
-          data: {
-            projectId,
-            projectName: project.name,
-            invitationId: invitation.id,
-            invitedBy: invitation.invitedBy,
-            email: invitation.email,
-            changeType: "invited"
-          },
-          read: false,
-          createdAt: new Date().toISOString(),
-          deliveryStatus: "pending"
-        }
-
-        await fetch(createApiUrl('/notifications'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitationNotification),
-        })
+      for (const email of emails) {
+        await createEmailInvitation(email, project, userInviter)
       }
 
       // Simular envío de emails

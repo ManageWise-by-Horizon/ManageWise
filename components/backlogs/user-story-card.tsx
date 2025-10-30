@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Edit, Sparkles, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl } from "@/lib/api-config"
+import { getPriorityColor, getPriorityLabel } from "@/lib/ui-helpers"
 
 interface UserStory {
   id: string
@@ -51,24 +52,6 @@ export function UserStoryCard({ story, onUpdate }: UserStoryCardProps) {
         variant: "destructive",
       })
     }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-chart-5 text-white",
-      medium: "bg-chart-4 text-white",
-      low: "bg-chart-2 text-white",
-    }
-    return colors[priority as keyof typeof colors] || "bg-muted"
-  }
-
-  const getPriorityLabel = (priority: string) => {
-    const labels = {
-      high: "Alta",
-      medium: "Media",
-      low: "Baja",
-    }
-    return labels[priority as keyof typeof labels] || priority
   }
 
   return (

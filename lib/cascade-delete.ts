@@ -96,7 +96,6 @@ export async function cascadeDeleteProject({
 
               if (notifResponse.ok) {
                 result.notifiedMembers++;
-                console.log(`✅ Notificación creada para usuario ${memberId}`);
               }
             } catch (error) {
               console.error(`Error creando notificación para usuario ${memberId}:`, error);
@@ -236,16 +235,35 @@ async function deleteRelatedEntities({
   try {
     // Obtener todas las entidades de este tipo
     const response = await fetch(`${apiUrl}/${entity}`);
+    
+    // Si la colección no existe (404) o está vacía, simplemente continuar
     if (!response.ok) {
+      if (response.status === 404) {
+        // La colección no existe en la base de datos, no es un error
+        onProgress?.(entity, 0);
+        return;
+      }
       throw new Error(`Error fetching ${entity}: ${response.status}`);
     }
 
     const entities = await response.json();
     
+    // Asegurar que entities es un array
+    if (!Array.isArray(entities)) {
+      onProgress?.(entity, 0);
+      return;
+    }
+
     // Filtrar entidades que pertenecen al proyecto
     const relatedEntities = entities.filter((item: any) => 
       item.projectId === projectId
     );
+
+    // Si no hay entidades relacionadas, continuar
+    if (relatedEntities.length === 0) {
+      onProgress?.(entity, 0);
+      return;
+    }
 
     // Eliminar cada entidad relacionada
     for (const item of relatedEntities) {

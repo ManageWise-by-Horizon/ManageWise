@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useProjectPermissions } from "@/hooks/use-project-permissions"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl } from "@/lib/api-config"
+import { getPriorityColor } from "@/lib/ui-helpers"
 
 interface Task {
   id: string
@@ -126,15 +127,6 @@ export function TaskBoard({ tasks, onUpdate, projectId }: TaskBoardProps) {
 
   const getUser = (userId: string) => {
     return users.find((u) => u.id === userId)
-  }
-
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-chart-5",
-      medium: "bg-chart-4",
-      low: "bg-chart-2",
-    }
-    return colors[priority as keyof typeof colors] || "bg-muted"
   }
 
   const columns = [

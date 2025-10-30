@@ -94,65 +94,53 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
       const allUsers = await usersRes.json()
       const teamMembers = allUsers.filter((u: any) => project.members.includes(u.id))
 
+      // Helper function: Generar tareas para una user story con asignación AI
+      const generateTasksForStory = (storyId: string, story: any) => {
+        const taskTemplates = [
+          {
+            title: `Diseñar UI para ${story.title}`,
+            description: `Crear mockups y diseño de interfaz`,
+            assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[0]?.id,
+            estimatedHours: 4,
+          },
+          {
+            title: `Implementar backend para ${story.title}`,
+            description: `Desarrollar lógica de negocio y APIs`,
+            assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[0]?.id,
+            estimatedHours: 8,
+          },
+          {
+            title: `Implementar frontend para ${story.title}`,
+            description: `Desarrollar componentes y vistas`,
+            assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[1]?.id,
+            estimatedHours: 6,
+          },
+          {
+            title: `Testing para ${story.title}`,
+            description: `Pruebas unitarias e integración`,
+            assignedTo: teamMembers[teamMembers.length - 1]?.id,
+            estimatedHours: 3,
+          },
+        ]
+
+        return taskTemplates.map(template => ({
+          ...template,
+          userStoryId: storyId,
+          status: "todo",
+          priority: story.priority,
+          createdBy: user?.id,
+          createdAt: new Date().toISOString(),
+          aiAssigned: true,
+        }))
+      }
+
       // Generate tasks for each selected user story with AI assignment
       const allTasks = []
       for (const storyId of selectedStories) {
         const story = userStories.find((s) => s.id === storyId)
         if (!story) continue
 
-        // Mock AI-generated tasks based on user story
-        const mockTasks = [
-          {
-            title: `Diseñar UI para ${story.title}`,
-            description: `Crear mockups y diseño de interfaz`,
-            userStoryId: storyId,
-            assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[0]?.id,
-            status: "todo",
-            priority: story.priority,
-            estimatedHours: 4,
-            createdBy: user?.id,
-            createdAt: new Date().toISOString(),
-            aiAssigned: true,
-          },
-          {
-            title: `Implementar backend para ${story.title}`,
-            description: `Desarrollar lógica de negocio y APIs`,
-            userStoryId: storyId,
-            assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[0]?.id,
-            status: "todo",
-            priority: story.priority,
-            estimatedHours: 8,
-            createdBy: user?.id,
-            createdAt: new Date().toISOString(),
-            aiAssigned: true,
-          },
-          {
-            title: `Implementar frontend para ${story.title}`,
-            description: `Desarrollar componentes y vistas`,
-            userStoryId: storyId,
-            assignedTo: teamMembers.find((m: any) => m.role === "developer")?.id || teamMembers[1]?.id,
-            status: "todo",
-            priority: story.priority,
-            estimatedHours: 6,
-            createdBy: user?.id,
-            createdAt: new Date().toISOString(),
-            aiAssigned: true,
-          },
-          {
-            title: `Testing para ${story.title}`,
-            description: `Pruebas unitarias e integración`,
-            userStoryId: storyId,
-            assignedTo: teamMembers[teamMembers.length - 1]?.id,
-            status: "todo",
-            priority: story.priority,
-            estimatedHours: 3,
-            createdBy: user?.id,
-            createdAt: new Date().toISOString(),
-            aiAssigned: true,
-          },
-        ]
-
-        allTasks.push(...mockTasks)
+        allTasks.push(...generateTasksForStory(storyId, story))
       }
 
       // Create tasks with validation
@@ -163,7 +151,6 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
             throw new Error(`Task "${task.title}" missing userStoryId`)
           }
           if (task.status !== "todo") {
-            console.warn(`Task "${task.title}" has unexpected status: ${task.status}`)
             task.status = "todo" // Force correct status
           }
 

@@ -79,8 +79,6 @@ export function useNotifications(
       }
 
       const notificationsData = await response.json()
-      console.log('🔔 fetchNotifications: Raw API response:', notificationsData)
-      console.log('🔔 fetchNotifications: Setting notifications to state')
       
       setNotifications(notificationsData)
 
@@ -418,10 +416,8 @@ export function useNotifications(
   // Cargar notificaciones al montar
   useEffect(() => {
     if (user) {
-      console.log('🔔 useNotifications: Fetching notifications for user:', user.id)
       fetchNotifications()
     } else {
-      console.log('🔔 useNotifications: No user found, clearing notifications')
       setNotifications([])
       setStats(null)
     }

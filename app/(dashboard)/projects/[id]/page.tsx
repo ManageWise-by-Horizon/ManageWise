@@ -201,12 +201,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       if (!sprintsRes.ok) throw new Error('Error al cargar sprints')
       const sprintsData = await sprintsRes.json()
       setSprints(sprintsData)
-      
-      console.log("🎯 Contexto completo cargado:")
-      console.log("  - User Stories:", userStoriesData.length)
-      console.log("  - Tasks:", projectTasks.length)
-      console.log("  - Sprints:", sprintsData.length)
-      console.log("  - Members:", projectMembers.length)
     } catch (error) {
       console.error("[v0] Error fetching project details:", error)
       toast({

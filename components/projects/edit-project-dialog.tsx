@@ -63,6 +63,17 @@ export function EditProjectDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validación de fechas
+    if (formData.startDate && formData.endDate && formData.startDate >= formData.endDate) {
+      toast({
+        title: "Error de validación",
+        description: "La fecha de finalización debe ser posterior a la fecha de inicio",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {

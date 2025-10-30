@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { getOKRStatusColor } from "@/lib/ui-helpers"
 
 interface KeyResult {
   id: string
@@ -71,21 +72,6 @@ export function OKRCard({ okr, getUserName, onEdit, onDelete }: OKRCardProps) {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800"
-      case "in_progress":
-        return "bg-blue-100 text-blue-800"
-      case "at_risk":
-        return "bg-yellow-100 text-yellow-800"
-      case "not_started":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "completed":
@@ -126,7 +112,7 @@ export function OKRCard({ okr, getUserName, onEdit, onDelete }: OKRCardProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(okr.status)}>
+            <Badge className={getOKRStatusColor(okr.status)}>
               {getStatusLabel(okr.status)}
             </Badge>
             <Badge variant="outline">{okr.quarter}</Badge>

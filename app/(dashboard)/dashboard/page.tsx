@@ -55,48 +55,60 @@ export default function DashboardPage() {
     else setGreeting("Buenas noches")
   }, [])
 
+  // Helper function para obtener tareas del usuario
+  const getUserTasks = (
+    tasksData: any[], 
+    userStoriesData: any[], 
+    userProjectIds: string[], 
+    userId: string
+  ) => {
+    const userStoryIds = userStoriesData
+      .filter((us: any) => userProjectIds.includes(us.projectId))
+      .map((us: any) => us.id)
+
+    return tasksData.filter((t: any) => 
+      userStoryIds.includes(t.userStoryId) && t.assignedTo === userId
+    )
+  }
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!user) return
 
       try {
-        const projectsRes = await fetch(createApiUrl('/projects'))
-        const projectsData = await projectsRes.json()
+        // Fetch all data in parallel
+        const [projectsRes, tasksRes, userStoriesRes, meetingsRes] = await Promise.all([
+          fetch(createApiUrl('/projects')),
+          fetch(createApiUrl('/tasks')),
+          fetch(createApiUrl('/userStories')),
+          fetch(createApiUrl('/meetings'))
+        ])
+
+        const [projectsData, tasksData, userStoriesData, meetingsData] = await Promise.all([
+          projectsRes.json(),
+          tasksRes.json(),
+          userStoriesRes.json(),
+          meetingsRes.json()
+        ])
         
-        // Filtrar solo proyectos donde el usuario es miembro
+        // Filtrar proyectos del usuario
         const userProjects = projectsData.filter((p: Project) => p.members.includes(user.id))
         setProjects(userProjects)
 
-        const tasksRes = await fetch(createApiUrl('/tasks'))
-        const tasksData = await tasksRes.json()
-
-        // Obtener user stories para relacionar tareas con proyectos
-        const userStoriesRes = await fetch(createApiUrl('/userStories'))
-        const userStoriesData = await userStoriesRes.json()
-
-        // Obtener los IDs de los proyectos del usuario
+        // Obtener IDs de proyectos
         const userProjectIds = userProjects.map((p: Project) => p.id)
 
-        // Filtrar user stories de los proyectos del usuario
-        const userProjectUserStories = userStoriesData.filter((us: any) => 
-          userProjectIds.includes(us.projectId)
-        )
-        const userStoryIds = userProjectUserStories.map((us: any) => us.id)
+        // Obtener tareas del usuario
+        const userTasks = getUserTasks(tasksData, userStoriesData, userProjectIds, user.id)
 
-        // Filtrar tareas que están asignadas al usuario y pertenecen a user stories de sus proyectos
-        const userTasks = tasksData.filter((t: any) => 
-          userStoryIds.includes(t.userStoryId) && t.assignedTo === user.id
-        )
-
-        const meetingsRes = await fetch(createApiUrl('/meetings'))
-        const meetingsData = await meetingsRes.json()
-
+        // Calcular estadísticas
+        const now = new Date()
         setStats({
           totalProjects: userProjects.length,
           activeProjects: userProjects.filter((p: Project) => p.status === "active").length,
           totalTasks: userTasks.length,
           completedTasks: userTasks.filter((t: any) => t.status === "done").length,
-          upcomingMeetings: meetingsData.filter((m: any) => new Date(m.date) > new Date()).length,
+          upcomingMeetings: meetingsData.filter((m: any) => new Date(m.date) > now).length,
           tokensUsed: user?.subscription.tokensUsed || 0,
           tokensLimit: user?.subscription.tokensLimit || 100,
         })

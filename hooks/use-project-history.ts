@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { createApiUrl } from '@/lib/api-config';
 import { 
   ProjectHistoryEntry, 
   ChangeType, 
@@ -13,8 +14,6 @@ import {
   CreateNotificationRequest, 
   NotificationType 
 } from '@/lib/types/notifications';
-
-const API_BASE = 'http://localhost:3001';
 
 interface UseProjectHistoryReturn {
   history: ProjectHistoryEntry[];
@@ -131,7 +130,7 @@ export function useProjectHistory(): UseProjectHistoryReturn {
       // Si no se especificaron usuarios, obtener todos los miembros del proyecto
       if (usersToNotify.length === 0) {
         try {
-          const membersResponse = await fetch(`${API_BASE}/projectMembers?projectId=${context.projectId}`);
+          const membersResponse = await fetch(createApiUrl(`/projectMembers?projectId=${context.projectId}`));
           if (membersResponse.ok) {
             const members = await membersResponse.json();
             usersToNotify = members.map((member: any) => member.userId);
@@ -167,7 +166,7 @@ export function useProjectHistory(): UseProjectHistoryReturn {
           }
         };
 
-        const response = await fetch(`${API_BASE}/notifications`, {
+        const response = await fetch(createApiUrl('/notifications'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -219,7 +218,7 @@ export function useProjectHistory(): UseProjectHistoryReturn {
           }
         };
 
-        const response = await fetch(`${API_BASE}/projectHistory`, {
+        const response = await fetch(createApiUrl('/projectHistory'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -279,7 +278,6 @@ export function useProjectHistory(): UseProjectHistoryReturn {
     setError(null);
 
     try {
-      let url = `${API_BASE}/projectHistory`;
       const params = new URLSearchParams();
 
       if (filters?.projectId) params.append('projectId', filters.projectId);
@@ -289,9 +287,9 @@ export function useProjectHistory(): UseProjectHistoryReturn {
       if (filters?.startDate) params.append('startDate', filters.startDate);
       if (filters?.endDate) params.append('endDate', filters.endDate);
 
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
+      const url = params.toString() 
+        ? createApiUrl(`/projectHistory?${params.toString()}`)
+        : createApiUrl('/projectHistory');
 
       const response = await fetch(url);
       
@@ -309,6 +307,7 @@ export function useProjectHistory(): UseProjectHistoryReturn {
       setHistory(sortedHistory);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Error al cargar historial';
+      console.error('Error in getHistory:', err);
       setError(errorMsg);
       toast({
         variant: "destructive",

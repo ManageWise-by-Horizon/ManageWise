@@ -86,34 +86,33 @@ export function ManagePermissionsDialog({
     try {
       setIsLoading(true)
       
-      // Cargar usuarios reales desde la API
-      const usersResponse = await fetch(createApiUrl('/users'))
-      if (!usersResponse.ok) {
-        throw new Error('Error al cargar usuarios')
-      }
-      const allUsers = await usersResponse.json()
+      // Cargar datos en paralelo
+      const [usersResponse, projectResponse, permissionsResponse] = await Promise.all([
+        fetch(createApiUrl('/users')),
+        fetch(createApiUrl(`/projects/${projectId}`)),
+        fetch(createApiUrl(`/projectPermissions?projectId=${projectId}`))
+      ])
       
-      // Cargar proyecto para obtener miembros
-      const projectResponse = await fetch(createApiUrl(`/projects/${projectId}`))
-      if (!projectResponse.ok) {
-        throw new Error('Error al cargar proyecto')
+      if (!usersResponse.ok || !projectResponse.ok) {
+        throw new Error('Error al cargar datos')
       }
-      const project = await projectResponse.json()
       
-      // Filtrar solo los usuarios que son miembros del proyecto
+      const [allUsers, project] = await Promise.all([
+        usersResponse.json(),
+        projectResponse.json()
+      ])
+      
+      // Filtrar miembros del proyecto
       const projectMembers = allUsers.filter((user: User) => 
         project.members.includes(user.id)
       )
       
-      // Cargar permisos reales del proyecto
-      const permissionsResponse = await fetch(createApiUrl(`/projectPermissions?projectId=${projectId}`))
+      // Obtener permisos o crear por defecto
       let projectPermissions: UserPermissions[] = []
-      
       if (permissionsResponse.ok) {
         projectPermissions = await permissionsResponse.json()
       }
       
-      // Si no hay permisos, crear permisos por defecto
       if (projectPermissions.length === 0) {
         projectPermissions = projectMembers.map((member: User) => ({
           userId: member.id,
@@ -139,41 +138,31 @@ export function ManagePermissionsDialog({
     }
   }
 
-  const updatePermission = (userId: string, permission: keyof Omit<UserPermissions, 'userId' | 'role'>, value: boolean) => {
+  // Helper function para actualizar permisos de un usuario
+  const updateUserPermissions = (userId: string, updates: Partial<UserPermissions>) => {
     setPermissions(prev => 
-      prev.map(p => 
-        p.userId === userId 
-          ? { ...p, [permission]: value }
-          : p
-      )
+      prev.map(p => p.userId === userId ? { ...p, ...updates } : p)
     )
+  }
+
+  const updatePermission = (userId: string, permission: keyof Omit<UserPermissions, 'userId' | 'role'>, value: boolean) => {
+    updateUserPermissions(userId, { [permission]: value })
   }
 
   const updateRole = (userId: string, role: ProjectRole) => {
-    setPermissions(prev => 
-      prev.map(p => 
-        p.userId === userId 
-          ? { ...p, role }
-          : p
-      )
-    )
+    updateUserPermissions(userId, { role })
   }
 
-  const setPermissionPreset = (userId: string, preset: 'admin' | 'manager' | 'member' | 'viewer') => {
-    const presets = {
-      admin: { read: true, write: true, manage_project: true, manage_members: true, manage_permissions: true },
-      manager: { read: true, write: true, manage_project: true, manage_members: true, manage_permissions: false },
-      member: { read: true, write: true, manage_project: false, manage_members: false, manage_permissions: false },
-      viewer: { read: true, write: false, manage_project: false, manage_members: false, manage_permissions: false }
-    }
+  // Presets de permisos predefinidos
+  const PERMISSION_PRESETS = {
+    admin: { read: true, write: true, manage_project: true, manage_members: true, manage_permissions: true },
+    manager: { read: true, write: true, manage_project: true, manage_members: true, manage_permissions: false },
+    member: { read: true, write: true, manage_project: false, manage_members: false, manage_permissions: false },
+    viewer: { read: true, write: false, manage_project: false, manage_members: false, manage_permissions: false }
+  } as const
 
-    setPermissions(prev =>
-      prev.map(p =>
-        p.userId === userId
-          ? { ...p, ...presets[preset] }
-          : p
-      )
-    )
+  const setPermissionPreset = (userId: string, preset: keyof typeof PERMISSION_PRESETS) => {
+    updateUserPermissions(userId, PERMISSION_PRESETS[preset])
   }
 
   const getUserPermissions = (userId: string): UserPermissions | undefined => {
@@ -214,6 +203,26 @@ export function ManagePermissionsDialog({
     setRemoveDialogOpen(true)
   }
 
+  // Helper function para crear notificación de eliminación
+  const createRemovalNotification = (userId: string, projectName: string) => ({
+    id: `notif_removed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    userId,
+    projectId,
+    type: "member_removed",
+    title: "Has sido removido del proyecto",
+    message: `Has sido eliminado del proyecto "${projectName}" por ${currentUser.name}`,
+    data: {
+      projectId,
+      projectName,
+      removedBy: currentUser.id,
+      removedByName: currentUser.name,
+      changeType: "removed"
+    },
+    read: false,
+    createdAt: new Date().toISOString(),
+    deliveryStatus: "delivered"
+  })
+
   const confirmRemoveMember = async () => {
     if (!userToRemove) return
 
@@ -223,55 +232,45 @@ export function ManagePermissionsDialog({
       setIsLoading(true)
       setRemoveDialogOpen(false)
 
-      // 1. Obtener el proyecto
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // Obtener proyecto y permisos en paralelo
+      const [projectRes, permsRes] = await Promise.all([
+        fetch(createApiUrl(`/projects/${projectId}`)),
+        fetch(createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${userId}`))
+      ])
 
-      // 2. Remover usuario del array de miembros
-      const updatedMembers = project.members.filter((id: string) => id !== userId)
-      await fetch(createApiUrl(`/projects/${projectId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ members: updatedMembers })
-      })
+      const [project, userPerms] = await Promise.all([
+        projectRes.json(),
+        permsRes.json()
+      ])
 
-      // 3. Eliminar permisos del usuario
-      const permsRes = await fetch(
-        createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${userId}`)
-      )
-      const userPerms = await permsRes.json()
-      
-      if (userPerms.length > 0) {
-        await fetch(createApiUrl(`/projectPermissions/${userPerms[0].id}`), {
-          method: 'DELETE'
+      // Ejecutar operaciones de eliminación en paralelo
+      const operations = [
+        // Remover usuario del array de miembros
+        fetch(createApiUrl(`/projects/${projectId}`), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            members: project.members.filter((id: string) => id !== userId) 
+          })
+        }),
+        // Crear notificación
+        fetch(createApiUrl('/notifications'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(createRemovalNotification(userId, project.name))
         })
+      ]
+
+      // Eliminar permisos si existen
+      if (userPerms.length > 0) {
+        operations.push(
+          fetch(createApiUrl(`/projectPermissions/${userPerms[0].id}`), {
+            method: 'DELETE'
+          })
+        )
       }
 
-      // 4. Crear notificación para el usuario eliminado
-      const notification = {
-        id: `notif_removed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        userId: userId,
-        projectId: projectId,
-        type: "member_removed",
-        title: "Has sido removido del proyecto",
-        message: `Has sido eliminado del proyecto "${project.name}" por ${currentUser.name}`,
-        data: {
-          projectId: projectId,
-          projectName: project.name,
-          removedBy: currentUser.id,
-          removedByName: currentUser.name,
-          changeType: "removed"
-        },
-        read: false,
-        createdAt: new Date().toISOString(),
-        deliveryStatus: "delivered"
-      }
-
-      await fetch(createApiUrl('/notifications'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notification)
-      })
+      await Promise.all(operations)
 
       toast({
         title: "Miembro eliminado",
@@ -294,47 +293,43 @@ export function ManagePermissionsDialog({
     }
   }
 
+  // Helper function para guardar o actualizar permisos de un usuario
+  const saveUserPermissions = async (perm: UserPermissions) => {
+    const existingPermsResponse = await fetch(
+      createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${perm.userId}`)
+    )
+    const existingPerms = await existingPermsResponse.json()
+    
+    const permissionData = {
+      projectId,
+      userId: perm.userId,
+      role: perm.role,
+      read: perm.read,
+      write: perm.write,
+      manage_project: perm.manage_project,
+      manage_members: perm.manage_members,
+      manage_permissions: perm.manage_permissions
+    }
+    
+    const url = existingPerms.length > 0 
+      ? createApiUrl(`/projectPermissions/${existingPerms[0].id}`)
+      : createApiUrl('/projectPermissions')
+    
+    const method = existingPerms.length > 0 ? 'PATCH' : 'POST'
+    
+    return fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(permissionData)
+    })
+  }
+
   const handleSave = async () => {
     try {
       setIsLoading(true)
       
-      // Actualizar permisos de cada usuario
-      const updatePromises = permissions.map(async (perm) => {
-        // Buscar si ya existe un registro de permisos
-        const existingPermsResponse = await fetch(
-          createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${perm.userId}`)
-        )
-        const existingPerms = await existingPermsResponse.json()
-        
-        const permissionData = {
-          projectId,
-          userId: perm.userId,
-          role: perm.role,
-          read: perm.read,
-          write: perm.write,
-          manage_project: perm.manage_project,
-          manage_members: perm.manage_members,
-          manage_permissions: perm.manage_permissions
-        }
-        
-        if (existingPerms.length > 0) {
-          // Actualizar permisos existentes
-          return fetch(createApiUrl(`/projectPermissions/${existingPerms[0].id}`), {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(permissionData)
-          })
-        } else {
-          // Crear nuevos permisos
-          return fetch(createApiUrl('/projectPermissions'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(permissionData)
-          })
-        }
-      })
-      
-      await Promise.all(updatePromises)
+      // Actualizar todos los permisos en paralelo
+      await Promise.all(permissions.map(saveUserPermissions))
       
       toast({
         title: "Permisos actualizados",

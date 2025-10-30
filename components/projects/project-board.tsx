@@ -8,8 +8,11 @@ import { Clock, Sparkles, GripVertical } from "lucide-react"
 import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useProjectHistory } from "@/hooks/use-project-history"
 import { TaskDetailModal } from "./task-detail-modal"
 import { createApiUrl } from "@/lib/api-config"
+import { getPriorityColor } from "@/lib/ui-helpers"
 
 interface ProjectTask {
   id: string
@@ -41,23 +44,28 @@ interface ProjectBoardProps {
 
 export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoardProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
+  const { logChange } = useProjectHistory()
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Drag-and-drop setup
   useEffect(() => {
+    const cleanupFunctions: (() => void)[] = []
+
     const draggables = document.querySelectorAll('[data-draggable-task]')
     draggables.forEach((el) => {
-      draggable({
+      const cleanup = draggable({
         element: el as HTMLElement,
         getInitialData: () => ({ taskId: el.getAttribute('data-task-id') }),
       })
+      cleanupFunctions.push(cleanup)
     })
 
     const dropColumns = document.querySelectorAll('[data-drop-column]')
     dropColumns.forEach((el) => {
-      dropTargetForElements({
+      const cleanup = dropTargetForElements({
         element: el as HTMLElement,
         onDragEnter: ({ source }) => {
           setDragOverColumn(el.getAttribute('data-column-id'))
@@ -74,14 +82,23 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
           setDragOverColumn(null)
         },
       })
+      cleanupFunctions.push(cleanup)
     })
+
     return () => {
+      cleanupFunctions.forEach(cleanup => cleanup())
       setDragOverColumn(null)
     }
   }, [tasks])
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
+      // Obtener datos actuales de la tarea
+      const task = tasks.find(t => t.id === taskId)
+      if (!task) return
+
+      const oldStatus = task.status
+
       const response = await fetch(createApiUrl(`/tasks/${taskId}`), {
         method: "PATCH",
         headers: {
@@ -91,6 +108,33 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
       })
       
       if (response.ok) {
+        // Registrar el cambio en el historial
+        if (user) {
+          const statusLabels: Record<string, string> = {
+            todo: "Por Hacer",
+            in_progress: "En Progreso",
+            done: "Completado"
+          }
+
+          await logChange(
+            'task_status_changed',
+            'task',
+            taskId,
+            `Estado de tarea cambiado: ${task.title}`,
+            {
+              title: task.title,
+              oldValue: statusLabels[oldStatus] || oldStatus,
+              newValue: statusLabels[newStatus] || newStatus
+            },
+            {
+              projectId,
+              userId: user.id,
+              userAgent: 'ManageWise Web App',
+              source: 'manual'
+            }
+          )
+        }
+
         toast({
           title: "Tarea actualizada",
           description: "El estado de la tarea se ha actualizado correctamente",
@@ -116,15 +160,6 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
 
   const getUser = (userId: string) => {
     return members.find((u) => u.id === userId)
-  }
-
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-red-500",
-      medium: "bg-yellow-500",
-      low: "bg-green-500",
-    }
-    return colors[priority as keyof typeof colors] || "bg-muted"
   }
 
   const columns = [

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CreateUserStoryDialog } from "@/components/backlogs/create-user-story-dialog"
 import { UserStoryDetailModal } from "@/components/backlogs/user-story-detail-modal"
 import { createApiUrl } from "@/lib/api-config"
+import { getPriorityColor, getStatusColor, getPriorityLabel, getStatusLabel } from "@/lib/ui-helpers"
 
 interface UserStory {
   id: string
@@ -67,66 +68,6 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
       })
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "alta":
-      case "high":
-        return "bg-red-500 text-white"
-      case "media":
-      case "medium":
-        return "bg-yellow-500 text-white"
-      case "baja":
-      case "low":
-        return "bg-green-500 text-white"
-      default:
-        return "bg-gray-500 text-white"
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-      case "todo":
-        return "border-gray-500 text-gray-700 bg-gray-50"
-      case "in_progress":
-        return "border-blue-500 text-blue-700 bg-blue-50"
-      case "done":
-        return "border-green-500 text-green-700 bg-green-50"
-      default:
-        return "border-gray-500 text-gray-700 bg-gray-50"
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-      case "todo":
-        return "Por Hacer"
-      case "in_progress":
-        return "En Progreso"
-      case "done":
-        return "Completado"
-      default:
-        return status
-    }
-  }
-
-  const getPriorityLabel = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "alta":
-      case "high":
-        return "Alta"
-      case "media":
-      case "medium":
-        return "Media"
-      case "baja":
-      case "low":
-        return "Baja"
-      default:
-        return priority
     }
   }
 

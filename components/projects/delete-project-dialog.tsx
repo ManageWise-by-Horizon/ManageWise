@@ -58,7 +58,7 @@ export function DeleteProjectDialog({
         apiUrl: API_BASE_URL,
         currentUserId: user?.id,
         onProgress: (entity, count) => {
-          console.log(`Deleted ${count} ${entity}`)
+          // Progress tracking
         },
         onError: (entity, error) => {
           console.error(`Error deleting ${entity}:`, error)

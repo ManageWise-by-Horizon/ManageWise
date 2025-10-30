@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { PermissionGuard } from '@/components/projects/permission-guard';
+import { createApiUrl } from '@/lib/api-config';
 import { 
   Clock, 
   User, 
@@ -109,17 +110,20 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
   const [filterEntityType, setFilterEntityType] = useState<EntityType | 'all' | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [users, setUsers] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
 
   useEffect(() => {
     if (projectId && user) {
       getHistory({ projectId });
       loadUsers();
     }
-  }, [projectId, user, getHistory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, user]);
 
   const loadUsers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/users');
+      const response = await fetch(createApiUrl('/users'));
       if (response.ok) {
         const usersData = await response.json();
         setUsers(usersData);
@@ -191,6 +195,26 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
     );
   });
 
+  // Paginación
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedHistory = filteredHistory.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleFilterWithReset = () => {
+    setCurrentPage(1);
+    handleFilter();
+  };
+
+  const handleClearFiltersWithReset = () => {
+    setCurrentPage(1);
+    clearFilters();
+  };
+
   return (
     <PermissionGuard
       projectId={projectId}
@@ -258,11 +282,11 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleFilter} className="flex items-center gap-2">
+            <Button onClick={handleFilterWithReset} className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Filtrar
             </Button>
-            <Button onClick={clearFilters} variant="outline">
+            <Button onClick={handleClearFiltersWithReset} variant="outline">
               Limpiar
             </Button>
             {error && (
@@ -284,9 +308,9 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
               No se encontraron cambios con los filtros aplicados
             </div>
           ) : (
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-4">
-                {filteredHistory.map((entry, index) => (
+            <>
+              <div className="space-y-4 mb-6">
+                {paginatedHistory.map((entry, index) => (
                   <div key={entry.id}>
                     <div className="flex items-start gap-4 p-4 rounded-lg border">
                       <div className="flex items-center gap-3">
@@ -355,11 +379,53 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                         </div>
                       </div>
                     </div>
-                    {index < filteredHistory.length - 1 && <Separator className="my-2" />}
+                    {index < paginatedHistory.length - 1 && <Separator className="my-2" />}
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+
+              {/* Paginación */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t pt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {startIndex + 1} - {Math.min(endIndex, filteredHistory.length)} de {filteredHistory.length} cambios
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

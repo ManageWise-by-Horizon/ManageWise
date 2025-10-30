@@ -7,11 +7,9 @@ function getGeminiClient() {
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
   if (!apiKey) {
-    console.error("❌ Gemini API key is missing!")
     throw new Error("Gemini API key is not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.")
   }
 
-  console.log("✅ Gemini API key found, initializing client...")
   return new GoogleGenerativeAI(apiKey)
 }
 
@@ -419,14 +417,10 @@ export async function chatWithGemini(
     // Extract text from all files if provided
     let filesContext = ""
     if (fileArray.length > 0) {
-      console.log(`📄 Extrayendo texto de ${fileArray.length} archivo(s)...`)
-      
       const extractedTexts = await Promise.all(
         fileArray.map(async (file, index) => {
           try {
-            console.log(`  ${index + 1}. ${file.name} (${file.type})`)
             const text = await extractTextFromFile(file)
-            console.log(`  ✅ Texto extraído de ${file.name}: ${text.substring(0, 50)}...`)
             return `\n### Archivo ${index + 1}: ${file.name}\n${text}\n`
           } catch (error) {
             console.error(`  ❌ Error extrayendo texto de ${file.name}:`, error)
@@ -436,7 +430,6 @@ export async function chatWithGemini(
       )
       
       filesContext = extractedTexts.join('\n---\n')
-      console.log(`✅ Extracción completada de ${fileArray.length} archivo(s)`)
     }
 
     // Build conversation history

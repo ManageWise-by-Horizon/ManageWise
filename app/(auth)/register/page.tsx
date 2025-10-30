@@ -24,19 +24,19 @@ export default function RegisterPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // If user is already logged in, redirect to dashboard
+    // If user is already logged in, redirect immediately using window.location
     if (!authLoading && user) {
-      router.push("/dashboard")
+      window.location.href = "/dashboard"
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading])
 
-  // Show loading while checking auth status
+  // Show loading only while checking initial auth status
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando...</p>
+          <p className="text-muted-foreground font-medium">Cargando...</p>
         </div>
       </div>
     )
@@ -53,9 +53,11 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, name, "developer")
+      // No need to handle navigation here - register() now handles it with window.location
+      // Just show success message briefly
       toast({
         title: "¡Cuenta creada!",
-        description: "Tu cuenta ha sido creada exitosamente",
+        description: "Redirigiendo...",
         className: "bg-success text-success-foreground",
       })
     } catch (error) {
@@ -64,9 +66,21 @@ export default function RegisterPage() {
         description: error instanceof Error ? error.message : "No se pudo crear la cuenta",
         variant: "destructive",
       })
-    } finally {
       setIsLoading(false)
     }
+  }
+
+  // Mostrar loader en pantalla completa mientras se está procesando
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground font-medium">Creando tu cuenta...</p>
+          <p className="text-sm text-muted-foreground/60 mt-2">Esto puede tomar unos segundos</p>
+        </div>
+      </div>
+    )
   }
 
   return (

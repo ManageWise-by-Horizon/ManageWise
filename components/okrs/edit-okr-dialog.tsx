@@ -22,11 +22,16 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Target, Plus, X, Edit } from "lucide-react"
+import { Target, Plus, X, Edit, Calendar as CalendarIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl, apiRequest } from "@/lib/api-config"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useNotifications } from "@/hooks/use-notifications"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 interface KeyResult {
   id: string
@@ -113,8 +118,8 @@ export function EditOKRDialog({
   const [ownerId, setOwnerId] = useState("")
   const [quarter, setQuarter] = useState("")
   const [status, setStatus] = useState<"not_started" | "in_progress" | "completed" | "at_risk">("not_started")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startDate, setStartDate] = useState<Date>()
+  const [endDate, setEndDate] = useState<Date>()
   
   // Key Results
   const [keyResults, setKeyResults] = useState<KeyResult[]>([])
@@ -130,8 +135,8 @@ export function EditOKRDialog({
       setOwnerId(okr.ownerId)
       setQuarter(okr.quarter)
       setStatus(okr.status)
-      setStartDate(okr.startDate)
-      setEndDate(okr.endDate)
+      setStartDate(okr.startDate ? new Date(okr.startDate) : undefined)
+      setEndDate(okr.endDate ? new Date(okr.endDate) : undefined)
       setKeyResults([...okr.keyResults])
       setOriginalProgress(okr.progress)
     }
@@ -178,89 +183,35 @@ export function EditOKRDialog({
     return Math.round(totalProgress / keyResults.length)
   }
 
+  // Helper function para validaciones con toast
+  const showValidationError = (description: string) => {
+    toast({
+      title: "Error de validación",
+      description,
+      variant: "destructive"
+    })
+    return false
+  }
+
   const validateForm = () => {
-    if (!title.trim()) {
-      toast({
-        title: "Error de validación",
-        description: "El título del objetivo es requerido",
-        variant: "destructive"
-      })
-      return false
-    }
-
-    if (!description.trim()) {
-      toast({
-        title: "Error de validación", 
-        description: "La descripción del objetivo es requerida",
-        variant: "destructive"
-      })
-      return false
-    }
-
-    if (!ownerId) {
-      toast({
-        title: "Error de validación",
-        description: "Debe seleccionar un responsable",
-        variant: "destructive"
-      })
-      return false
-    }
-
-    if (!quarter) {
-      toast({
-        title: "Error de validación",
-        description: "Debe seleccionar un trimestre",
-        variant: "destructive"
-      })
-      return false
-    }
-
-    if (!startDate || !endDate) {
-      toast({
-        title: "Error de validación",
-        description: "Las fechas de inicio y fin son requeridas",
-        variant: "destructive"
-      })
-      return false
-    }
-
+    if (!title.trim()) return showValidationError("El título del objetivo es requerido")
+    if (!description.trim()) return showValidationError("La descripción del objetivo es requerida")
+    if (!ownerId) return showValidationError("Debe seleccionar un responsable")
+    if (!quarter) return showValidationError("Debe seleccionar un trimestre")
+    if (!startDate || !endDate) return showValidationError("Las fechas de inicio y fin son requeridas")
     if (new Date(startDate) >= new Date(endDate)) {
-      toast({
-        title: "Error de validación",
-        description: "La fecha de fin debe ser posterior a la fecha de inicio",
-        variant: "destructive"
-      })
-      return false
+      return showValidationError("La fecha de fin debe ser posterior a la fecha de inicio")
     }
 
     // Validar Key Results
     for (let i = 0; i < keyResults.length; i++) {
       const kr = keyResults[i]
-      if (!kr.title?.trim()) {
-        toast({
-          title: "Error de validación",
-          description: `El título del resultado clave ${i + 1} es requerido`,
-          variant: "destructive"
-        })
-        return false
-      }
-
-      if (!kr.description?.trim()) {
-        toast({
-          title: "Error de validación",
-          description: `La descripción del resultado clave ${i + 1} es requerida`,
-          variant: "destructive"
-        })
-        return false
-      }
-
+      const krNum = i + 1
+      
+      if (!kr.title?.trim()) return showValidationError(`El título del resultado clave ${krNum} es requerido`)
+      if (!kr.description?.trim()) return showValidationError(`La descripción del resultado clave ${krNum} es requerida`)
       if (!kr.targetValue || kr.targetValue <= 0) {
-        toast({
-          title: "Error de validación",
-          description: `El valor objetivo del resultado clave ${i + 1} debe ser mayor a 0`,
-          variant: "destructive"
-        })
-        return false
+        return showValidationError(`El valor objetivo del resultado clave ${krNum} debe ser mayor a 0`)
       }
     }
 
@@ -279,8 +230,8 @@ export function EditOKRDialog({
         ownerId,
         quarter,
         status,
-        startDate,
-        endDate,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString(),
         progress: calculateProgress(),
         keyResults
       }
@@ -298,8 +249,6 @@ export function EditOKRDialog({
       if (!response.ok) {
         throw new Error('Error al actualizar el OKR')
       }
-      
-      console.log("OKR actualizado:", updatedOKR)
       
       // Crear notificación si el progreso cambió significativamente (más de 5%)
       const newProgress = calculateProgress()
@@ -465,22 +414,54 @@ export function EditOKRDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="startDate">Fecha de Inicio *</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP", { locale: es }) : "Selecciona una fecha"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="endDate">Fecha de Fin *</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP", { locale: es }) : "Selecciona una fecha"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

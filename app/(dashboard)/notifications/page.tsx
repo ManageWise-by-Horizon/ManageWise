@@ -50,12 +50,21 @@ export default function NotificationsPage() {
     }
 
     try {
-      // Obtener el proyecto actual
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // Obtener proyecto y permisos en paralelo
+      const [projectRes, existingPermsRes] = await Promise.all([
+        fetch(createApiUrl(`/projects/${projectId}`)),
+        fetch(createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${user.id}`))
+      ])
+      
+      const [project, existingPerms] = await Promise.all([
+        projectRes.json(),
+        existingPermsRes.json()
+      ])
 
-      // Verificar si el usuario ya es miembro (Escenario 4)
-      if (project.members.includes(user.id)) {
+      // Verificar si el usuario ya es miembro
+      const isAlreadyMember = project.members.includes(user.id)
+      
+      if (isAlreadyMember && existingPerms.length > 0) {
         toast({
           title: "Ya eres miembro",
           description: "Ya perteneces a este proyecto",
@@ -64,38 +73,57 @@ export default function NotificationsPage() {
         return
       }
 
-      // Agregar usuario al proyecto
-      const updatedMembers = [...project.members, user.id]
-      await fetch(createApiUrl(`/projects/${projectId}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ members: updatedMembers }),
-      })
+      // Preparar operaciones en paralelo
+      const operations = []
 
-      // Crear permisos por defecto para el nuevo miembro
-      const defaultPermission = {
-        id: `perm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId,
-        userId: user.id,
-        role: 'developer', // Rol por defecto
-        read: true,
-        write: true,
-        manage_project: false,
-        manage_members: false,
-        manage_permissions: false
+      // Agregar usuario al proyecto si no está
+      if (!isAlreadyMember) {
+        const updatedMembers = [...project.members, user.id]
+        operations.push(
+          fetch(createApiUrl(`/projects/${projectId}`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ members: updatedMembers }),
+          })
+        )
       }
 
-      await fetch(createApiUrl('/projectPermissions'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(defaultPermission),
-      })
+      // Crear permisos por defecto si no existen
+      if (existingPerms.length === 0) {
+        const defaultPermission = {
+          id: `perm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          projectId,
+          userId: user.id,
+          role: 'developer',
+          read: true,
+          write: true,
+          manage_project: false,
+          manage_members: false,
+          manage_permissions: false
+        }
+
+        operations.push(
+          fetch(createApiUrl('/projectPermissions'), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(defaultPermission),
+          })
+        )
+      }
 
       // Marcar notificación como leída
-      await markAsRead(notificationId)
+      operations.push(markAsRead(notificationId))
 
-      // Actualizar el estado de la invitación si existe
-      const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${projectId}&email=${user.email}`))
+      // Buscar invitación para actualizar
+      operations.push(
+        fetch(createApiUrl(`/projectInvitations?projectId=${projectId}&email=${user.email}`))
+      )
+
+      // Ejecutar todas las operaciones en paralelo
+      const results = await Promise.all(operations)
+      
+      // Actualizar estado de invitación si existe (la última respuesta es la búsqueda de invitaciones)
+      const invitationsRes = results[results.length - 1] as Response
       const invitations = await invitationsRes.json()
       if (invitations.length > 0) {
         await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {

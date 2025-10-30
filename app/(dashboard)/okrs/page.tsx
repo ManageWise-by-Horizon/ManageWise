@@ -56,6 +56,10 @@ export default function OKRsPage() {
   const [filterOwner, setFilterOwner] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterQuarter, setFilterQuarter] = useState<string>("all")
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [selectedOKR, setSelectedOKR] = useState<OKR | null>(null)
+  const [okrToDelete, setOkrToDelete] = useState<string | null>(null)
 
   // Cargar datos desde la API
   useEffect(() => {
@@ -111,22 +115,21 @@ export default function OKRsPage() {
 
   const handleCreateFirst = () => {
     // Implementar creación de OKR
-    console.log("Crear primer OKR")
+    setCreateDialogOpen(true)
   }
 
   const handleCreateOKR = () => {
     // Implementar creación de OKR
-    console.log("Crear nuevo OKR")
+    setCreateDialogOpen(true)
   }
 
   const handleEditOKR = (okr: OKR) => {
-    // Implementar edición de OKR
-    console.log("Editar OKR:", okr)
+    setSelectedOKR(okr)
+    setEditDialogOpen(true)
   }
 
   const handleDeleteOKR = (okrId: string) => {
-    // Implementar eliminación de OKR
-    console.log("Eliminar OKR:", okrId)
+    setOkrToDelete(okrId)
   }
 
   const handleClearFilters = () => {

@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/auth-context"
 import { createApiUrl } from "@/lib/api-config"
+import { getPriorityColor, getStatusColor, getStatusLabel } from "@/lib/ui-helpers"
 
 interface TaskDetailModalProps {
   open: boolean
@@ -90,6 +91,40 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [localTask, setLocalTask] = useState(task)
 
+  // Helper function para actualizar campos de la tarea
+  const updateTaskField = async (field: Partial<NonNullable<typeof localTask>>, successMessage: string) => {
+    if (!localTask) return false
+    
+    try {
+      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(field),
+      })
+
+      if (response.ok) {
+        // Update local state immediately
+        setLocalTask(prev => prev ? { ...prev, ...field } : prev)
+        
+        toast({
+          title: successMessage,
+          description: "Los cambios se han guardado correctamente",
+        })
+        onUpdate()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error("Error updating task:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar los cambios",
+        variant: "destructive",
+      })
+      return false
+    }
+  }
+
   useEffect(() => {
     if (task && open) {
       setLocalTask(task)
@@ -131,105 +166,25 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   }
 
   const handleSaveChanges = async () => {
-    if (!localTask) return
-    
-    try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: editedTitle,
-          description: editedDescription,
-        }),
-      })
-
-      if (response.ok) {
-        // Update local state immediately
-        setLocalTask(prev => prev ? { ...prev, title: editedTitle, description: editedDescription } : prev)
-        
-        toast({
-          title: "Tarea actualizada",
-          description: "Los cambios se han guardado correctamente",
-        })
-        setIsEditing(false)
-        onUpdate()
-      }
-    } catch (error) {
-      console.error("Error updating task:", error)
-      toast({
-        title: "Error",
-        description: "No se pudieron guardar los cambios",
-        variant: "destructive",
-      })
+    const success = await updateTaskField(
+      { title: editedTitle, description: editedDescription },
+      "Tarea actualizada"
+    )
+    if (success) {
+      setIsEditing(false)
     }
   }
 
   const handleAssignUser = async (userId: string) => {
-    if (!localTask) return
-    
-    // Convert "unassigned" back to null/empty for the API
     const assignedToValue = userId === "unassigned" ? null : userId
-    
-    try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          assignedTo: assignedToValue,
-        }),
-      })
-
-      if (response.ok) {
-        // Update local task state immediately for real-time update
-        setLocalTask(prev => prev ? { ...prev, assignedTo: assignedToValue || undefined } : prev)
-        
-        toast({
-          title: "Asignación actualizada",
-          description: "La tarea se ha asignado correctamente",
-        })
-        onUpdate()
-      }
-    } catch (error) {
-      console.error("Error assigning task:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo asignar la tarea",
-        variant: "destructive",
-      })
-    }
+    await updateTaskField(
+      { assignedTo: assignedToValue || undefined },
+      "Asignación actualizada"
+    )
   }
 
   const handleUpdatePriority = async (priority: string) => {
-    if (!localTask) return
-    
-    try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          priority: priority,
-        }),
-      })
-
-      if (response.ok) {
-        // Update local state immediately
-        setLocalTask(prev => prev ? { ...prev, priority } : prev)
-        
-        toast({
-          title: "Prioridad actualizada",
-          description: "La prioridad de la tarea se ha actualizado",
-        })
-        onUpdate()
-      }
-    } catch (error) {
-      console.error("Error updating priority:", error)
-    }
+    await updateTaskField({ priority }, "Prioridad actualizada")
   }
 
   const handleAddComment = async () => {
@@ -276,24 +231,6 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
       hour: "2-digit",
       minute: "2-digit",
     })
-  }
-
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-red-500",
-      medium: "bg-yellow-500", 
-      low: "bg-green-500",
-    }
-    return colors[priority as keyof typeof colors] || "bg-muted"
-  }
-
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; color: string }> = {
-      todo: { label: "Por Hacer", color: "bg-gray-500" },
-      in_progress: { label: "En Progreso", color: "bg-blue-500" },
-      done: { label: "Completado", color: "bg-green-500" },
-    }
-    return statusMap[status] || { label: status, color: "bg-muted" }
   }
 
   const assignedUser = localTask?.assignedTo ? members.find(m => m.id === localTask.assignedTo) : null
@@ -484,8 +421,8 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                 <CardTitle className="text-sm">Estado</CardTitle>
               </CardHeader>
               <CardContent>
-                <Badge className={cn("text-white", getStatusBadge(localTask.status).color)}>
-                  {getStatusBadge(localTask.status).label}
+                <Badge className={cn("text-white", getStatusColor(localTask.status))}>
+                  {getStatusLabel(localTask.status)}
                 </Badge>
               </CardContent>
             </Card>
