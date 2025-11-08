@@ -20,7 +20,9 @@ export interface Subscription {
 export interface User {
   id: string
   email: string
-  name: string
+  firstName: string
+  lastName: string
+  phone: string
   role: UserRole
   avatar: string
   subscription: Subscription
@@ -35,7 +37,7 @@ interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
-  register: (email: string, password: string, name: string, role: UserRole) => Promise<void>
+  register: (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => Promise<void>
   isLoading: boolean
   isMounted: boolean
   checkLimits: (type: "tokens" | "userStories", amount?: number) => boolean
@@ -107,64 +109,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      // Mock API call to JSON Server
-      const response = await fetch(createApiUrl(`/users?email=${email}`))
-      const users = await response.json()
+      // Call Auth-Service to sign in
+      const authResponse = await fetch('http://localhost:8080/api/v1/authentication/sign-in', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail: email, userPassword: password }),
+      })
 
-      if (users.length === 0) {
-        throw new Error("Usuario no encontrado")
+      if (!authResponse.ok) {
+        const error = await authResponse.text()
+        throw new Error(error || "Credenciales inválidas")
       }
 
-      const foundUser = users[0]
+      const authData = await authResponse.json()
+      const { token, userEmail } = authData
 
-      if (foundUser.password !== password) {
-        throw new Error("Contraseña incorrecta")
+      // Get user profile from Profile-Service
+      // First we need to get userId from token
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]))
+      const userId = tokenPayload.sub || tokenPayload.userId
+
+      const profileResponse = await fetch(`http://localhost:8081/api/v1/profiles/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+      })
+
+      if (!profileResponse.ok) {
+        throw new Error("Error al obtener perfil de usuario")
       }
 
-      // Create mock JWT token
-      const token = btoa(JSON.stringify({ userId: foundUser.id, exp: Date.now() + 86400000 }))
+      const profileData = await profileResponse.json()
 
-      // Remove password from user object
-      const { password: _, ...userWithoutPassword } = foundUser
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem("auth_token", token)
-        localStorage.setItem("user", JSON.stringify(userWithoutPassword))
-      }
-
-      setUser(userWithoutPassword)
-      router.push("/dashboard")
-    } catch (error) {
-      console.error("[v0] Login error:", error)
-      throw error
-    }
-  }
-
-  const register = async (email: string, password: string, name: string, role: UserRole) => {
-    try {
-      // Check if user already exists
-      const checkResponse = await fetch(createApiUrl(`/users?email=${email}`))
-      const existingUsers = await checkResponse.json()
-
-      if (existingUsers.length > 0) {
-        throw new Error("El correo ya está registrado")
-      }
-
-      // Create new user
-      const newUser = {
-        email,
-        password,
-        name,
-        role,
-        avatar: `/placeholder.svg?height=40&width=40&query=${name}`,
+      // Build complete user object
+      const userObject: User = {
+        id: profileData.userId,
+        email: profileData.userEmail,
+        firstName: profileData.userFirstName,
+        lastName: profileData.userLastName,
+        phone: profileData.userPhone,
+        role: "developer", // TODO: Get from Auth or Profile
+        avatar: profileData.userProfileImgUrl,
         subscription: {
-          plan: "free" as Plan,
+          plan: "free",
           tokensUsed: 0,
           tokensLimit: 100,
           userStoriesUsed: 0,
           userStoriesLimit: 10,
         },
-        createdAt: new Date().toISOString(),
         resume: {
           skills: [],
           experience: "0 years",
@@ -172,34 +165,111 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       }
 
-      const response = await fetch(createApiUrl('/users'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newUser),
-      })
-
-      if (!response.ok) {
-        throw new Error("Error al crear la cuenta")
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("auth_token", token)
+        localStorage.setItem("user", JSON.stringify(userObject))
       }
 
-      const createdUser = await response.json()
+      setUser(userObject)
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("[v0] Login error:", error)
+      throw error
+    }
+  }
 
-      // Auto login inmediato sin hacer otra petición
-      // Crear token directamente con el usuario que acabamos de crear
-      const token = btoa(JSON.stringify({ userId: createdUser.id, exp: Date.now() + 86400000 }))
+  const register = async (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => {
+    try {
+      // Call Auth-Service to sign up
+      const authResponse = await fetch('http://localhost:8080/api/v1/authentication/sign-up', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userFirstName: firstName,
+          userLastName: lastName,
+          userEmail: email,
+          userPhone: phone,
+          userCountry: country || "Unknown",
+          userPassword: password,
+        }),
+      })
 
-      // Remove password from user object
-      const { password: _, ...userWithoutPassword } = createdUser
+      if (!authResponse.ok) {
+        const error = await authResponse.text()
+        throw new Error(error || "Error al crear la cuenta")
+      }
+
+      const authData = await authResponse.json()
+      const userId = authData.userId
+
+      // Wait a bit for Profile-Service to create profile via ActiveMQ event
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Get user profile from Profile-Service
+      const profileResponse = await fetch(`http://localhost:8081/api/v1/profiles/${userId}`, {
+        headers: { "Content-Type": "application/json" },
+      })
+
+      let profileData
+      if (profileResponse.ok) {
+        profileData = await profileResponse.json()
+      } else {
+        // If profile doesn't exist yet, use data from auth response
+        profileData = {
+          userId: userId,
+          userEmail: email,
+          userFirstName: firstName,
+          userLastName: lastName,
+          userPhone: phone,
+          userProfileImgUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+        }
+      }
+
+      // Auto login - call sign-in to get JWT
+      const loginResponse = await fetch('http://localhost:8080/api/v1/authentication/sign-in', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail: email, userPassword: password }),
+      })
+
+      if (!loginResponse.ok) {
+        throw new Error("Error al iniciar sesión")
+      }
+
+      const loginData = await loginResponse.json()
+      const { token } = loginData
+
+      // Build complete user object
+      const userObject: User = {
+        id: profileData.userId,
+        email: profileData.userEmail,
+        firstName: profileData.userFirstName,
+        lastName: profileData.userLastName,
+        phone: profileData.userPhone,
+        role: "developer", // Rol por defecto temporal, se asigna por proyecto
+        avatar: profileData.userProfileImgUrl,
+        subscription: {
+          plan: "free",
+          tokensUsed: 0,
+          tokensLimit: 100,
+          userStoriesUsed: 0,
+          userStoriesLimit: 10,
+        },
+        resume: {
+          skills: [],
+          experience: "0 years",
+          certifications: [],
+        },
+      }
 
       if (typeof window !== 'undefined') {
         localStorage.setItem("auth_token", token)
-        localStorage.setItem("user", JSON.stringify(userWithoutPassword))
+        localStorage.setItem("user", JSON.stringify(userObject))
       }
 
-      // Primero actualizamos el estado
-      setUser(userWithoutPassword)
+      setUser(userObject)
       
-      // Luego redirigimos de forma imperativa usando window.location para evitar renders adicionales
+      // Redirect to dashboard
       if (typeof window !== 'undefined') {
         window.location.href = "/dashboard"
       }

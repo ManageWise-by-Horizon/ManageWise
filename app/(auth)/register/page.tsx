@@ -9,15 +9,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import { parsePhoneNumber, getCountryCallingCode } from 'react-phone-number-input'
+import type { E164Number } from 'react-phone-number-input'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [phone, setPhone] = useState<string>("")
+  const [country, setCountry] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { register, user, isLoading: authLoading } = useAuth()
   const { toast } = useToast()
@@ -52,7 +57,20 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await register(email, password, name, "developer")
+      // Extraer país del número de teléfono si está disponible
+      let detectedCountry = country
+      if (phone && !detectedCountry) {
+        try {
+          const phoneNumber = parsePhoneNumber(phone)
+          if (phoneNumber) {
+            detectedCountry = phoneNumber.country || ""
+          }
+        } catch (error) {
+          console.log("No se pudo parsear el número de teléfono")
+        }
+      }
+
+      await register(email, password, firstName, lastName, phone, detectedCountry)
       // No need to handle navigation here - register() now handles it with window.location
       // Just show success message briefly
       toast({
@@ -123,17 +141,31 @@ export default function RegisterPage() {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre Completo</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Juan Pérez"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Juan"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Pérez"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Correo Electrónico</Label>
@@ -146,6 +178,35 @@ export default function RegisterPage() {
                   required
                   disabled={isLoading}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono</Label>
+                <PhoneInput
+                  id="phone"
+                  placeholder="Ingresa tu número de teléfono"
+                  value={phone}
+                  onChange={(value) => {
+                    setPhone(value || "")
+                    // Detectar país automáticamente del número
+                    if (value) {
+                      try {
+                        const phoneNumber = parsePhoneNumber(value)
+                        if (phoneNumber?.country) {
+                          setCountry(phoneNumber.country)
+                        }
+                      } catch (error) {
+                        // No hacer nada si no se puede parsear
+                      }
+                    }
+                  }}
+                  defaultCountry="PE"
+                  disabled={isLoading}
+                />
+                {country && (
+                  <p className="text-xs text-muted-foreground">
+                    País detectado: {country}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>

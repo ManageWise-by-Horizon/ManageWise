@@ -203,3 +203,6 @@
   scrollbar-width: thin !important;
   scrollbar-color: #94a3b8 #f1f5f9 !important;
 }
+
+/* React Phone Number Input Styles */
+@import 'react-phone-number-input/style.css';

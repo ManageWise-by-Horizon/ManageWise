@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { getUserFullName, getUserInitials } from "@/lib/auth/user-utils"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -89,16 +90,13 @@ export function AppSidebar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-3 px-2 hover:bg-sidebar-accent">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={getUserFullName(user)} />
                 <AvatarFallback className="bg-chart-1 text-white">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {getUserInitials(user)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-1 flex-col items-start text-left">
-                <span className="text-sm font-medium text-sidebar-foreground">{user.name}</span>
+                <span className="text-sm font-medium text-sidebar-foreground">{getUserFullName(user)}</span>
                 <span className="text-xs text-muted-foreground">{user.email}</span>
               </div>
               <ChevronDown className="h-4 w-4 text-sidebar-foreground" />
