@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       // Call Auth-Service to sign in
-      const authResponse = await fetch('http://localhost:8080/api/v1/authentication/sign-in', {
+      const authResponse = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:8080'}/api/v1/authentication/sign-in`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userEmail: email, userPassword: password }),
@@ -118,29 +118,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!authResponse.ok) {
         const error = await authResponse.text()
+        console.error("[v0] Auth error response:", error)
         throw new Error(error || "Credenciales inválidas")
       }
 
       const authData = await authResponse.json()
-      const { token, userEmail } = authData
+      console.log("[v0] Auth response data:", authData)
+      const { userId, userToken, userEmail } = authData
 
       // Get user profile from Profile-Service
-      // First we need to get userId from token
-      const tokenPayload = JSON.parse(atob(token.split('.')[1]))
-      const userId = tokenPayload.sub || tokenPayload.userId
-
-      const profileResponse = await fetch(`http://localhost:8081/api/v1/profiles/${userId}`, {
+      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/profiles/${userId}`, {
         headers: { 
-          "Authorization": `Bearer ${token}`,
+          "Authorization": `Bearer ${userToken}`,
           "Content-Type": "application/json"
         },
       })
 
       if (!profileResponse.ok) {
+        console.error("[v0] Profile fetch error:", await profileResponse.text())
         throw new Error("Error al obtener perfil de usuario")
       }
 
       const profileData = await profileResponse.json()
+      console.log("[v0] Profile data:", profileData)
 
       // Build complete user object
       const userObject: User = {
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastName: profileData.userLastName,
         phone: profileData.userPhone,
         role: "developer", // TODO: Get from Auth or Profile
-        avatar: profileData.userProfileImgUrl,
+        avatar: profileData.userProfileImgUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profileData.userEmail}`,
         subscription: {
           plan: "free",
           tokensUsed: 0,
@@ -166,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem("auth_token", token)
+        localStorage.setItem("auth_token", userToken)
         localStorage.setItem("user", JSON.stringify(userObject))
       }
 
@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => {
     try {
       // Call Auth-Service to sign up
-      const authResponse = await fetch('http://localhost:8080/api/v1/authentication/sign-up', {
+      const authResponse = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:8080'}/api/v1/authentication/sign-up`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -206,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       // Get user profile from Profile-Service
-      const profileResponse = await fetch(`http://localhost:8081/api/v1/profiles/${userId}`, {
+      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/profiles/${userId}`, {
         headers: { "Content-Type": "application/json" },
       })
 
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Auto login - call sign-in to get JWT
-      const loginResponse = await fetch('http://localhost:8080/api/v1/authentication/sign-in', {
+      const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:8080'}/api/v1/authentication/sign-in`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userEmail: email, userPassword: password }),
