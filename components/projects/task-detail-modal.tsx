@@ -325,7 +325,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={user?.avatar || "/placeholder-user.jpg"} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user?.name?.split(" ").map(n => n[0]).join("") || "U"}
+                      {user?.email?.split("@")[0]?.slice(0, 2).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 space-y-2">

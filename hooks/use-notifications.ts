@@ -80,14 +80,17 @@ export function useNotifications(
 
       const notificationsData = await response.json()
       
-      setNotifications(notificationsData)
+      // Validar que sea un array
+      const safeNotifications = Array.isArray(notificationsData) ? notificationsData : []
+      
+      setNotifications(safeNotifications)
 
       // Calcular estadísticas
-      const unread = notificationsData.filter((n: Notification) => !n.read).length
+      const unread = safeNotifications.filter((n: Notification) => !n.read).length
       const byType: Record<string, number> = {}
       const byProject: Record<string, number> = {}
 
-      notificationsData.forEach((n: Notification) => {
+      safeNotifications.forEach((n: Notification) => {
         byType[n.type] = (byType[n.type] || 0) + 1
         if (n.projectId) {
           byProject[n.projectId] = (byProject[n.projectId] || 0) + 1
@@ -95,7 +98,7 @@ export function useNotifications(
       })
 
       setStats({
-        total: notificationsData.length,
+        total: safeNotifications.length,
         unread,
         byType: byType as Record<NotificationType, number>,
         byProject
@@ -104,15 +107,22 @@ export function useNotifications(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
       setError(errorMessage)
-      toast({
-        title: "Error al cargar notificaciones",
-        description: errorMessage,
-        variant: "destructive"
+      
+      // No mostrar toast si el servicio no está implementado
+      // Solo inicializar con datos vacíos
+      setNotifications([])
+      setStats({
+        total: 0,
+        unread: 0,
+        byType: {} as Record<NotificationType, number>,
+        byProject: {}
       })
+      
+      console.warn('Notifications service not available:', errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }, [user, toast])
+  }, [user])
 
   // Marcar notificación como leída
   const markAsRead = useCallback(async (notificationId: string) => {

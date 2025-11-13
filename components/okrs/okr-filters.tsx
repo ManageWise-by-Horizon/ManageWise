@@ -8,7 +8,8 @@ import { Search, Filter, X } from "lucide-react"
 
 interface User {
   id: string
-  name: string
+  name?: string
+  email?: string
   avatar?: string
 }
 
@@ -80,7 +81,7 @@ export function OKRFilters({
                 <SelectItem value="all">Todos los responsables</SelectItem>
                 {users.map(user => (
                   <SelectItem key={user.id} value={user.id}>
-                    {user.name}
+                    {user.name || user.email?.split("@")[0] || "Usuario"}
                   </SelectItem>
                 ))}
               </SelectContent>

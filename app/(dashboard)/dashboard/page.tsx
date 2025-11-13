@@ -11,7 +11,8 @@ import { useEffect, useState } from "react"
 import { createApiUrl } from "@/lib/api-config"
 
 interface Project {
-  id: string
+  id: number | string  // Soportar tanto Long del backend como string del db.json
+  projectId?: string   // UUID del proyecto (backend Java)
   name: string
   status: string
   members: string[]
@@ -91,15 +92,23 @@ export default function DashboardPage() {
           meetingsRes.json()
         ])
         
+        // Asegurar que todos los datos son arrays
+        const safeProjectsData = Array.isArray(projectsData) ? projectsData : []
+        const safeTasksData = Array.isArray(tasksData) ? tasksData : []
+        const safeUserStoriesData = Array.isArray(userStoriesData) ? userStoriesData : []
+        const safeMeetingsData = Array.isArray(meetingsData) ? meetingsData : []
+        
         // Filtrar proyectos del usuario
-        const userProjects = projectsData.filter((p: Project) => p.members.includes(user.id))
+        const userProjects = safeProjectsData.filter((p: Project) => 
+          p.members && p.members.includes(user.id)
+        )
         setProjects(userProjects)
 
-        // Obtener IDs de proyectos
-        const userProjectIds = userProjects.map((p: Project) => p.id)
+        // Obtener IDs de proyectos (convertir a string)
+        const userProjectIds = userProjects.map((p: Project) => String(p.id))
 
         // Obtener tareas del usuario
-        const userTasks = getUserTasks(tasksData, userStoriesData, userProjectIds, user.id)
+        const userTasks = getUserTasks(safeTasksData, safeUserStoriesData, userProjectIds, user.id)
 
         // Calcular estadísticas
         const now = new Date()
@@ -108,7 +117,7 @@ export default function DashboardPage() {
           activeProjects: userProjects.filter((p: Project) => p.status === "active").length,
           totalTasks: userTasks.length,
           completedTasks: userTasks.filter((t: any) => t.status === "done").length,
-          upcomingMeetings: meetingsData.filter((m: any) => new Date(m.date) > now).length,
+          upcomingMeetings: safeMeetingsData.filter((m: any) => new Date(m.date) > now).length,
           tokensUsed: user?.subscription.tokensUsed || 0,
           tokensLimit: user?.subscription.tokensLimit || 100,
         })
@@ -128,7 +137,7 @@ export default function DashboardPage() {
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">
-          {greeting && `${greeting}, `}{isClient ? user?.name : ''}
+          {greeting && `${greeting}, `}{isClient ? user?.email?.split('@')[0] : ''}
         </h1>
         <p className="mt-2 text-muted-foreground">Aquí está el resumen de tus proyectos y tareas</p>
       </div>

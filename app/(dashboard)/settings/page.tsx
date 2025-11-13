@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
+    name: user?.email?.split("@")[0] || "",
     email: user?.email || "",
     currentPassword: "",
     newPassword: "",
@@ -229,10 +229,10 @@ export default function SettingsPage() {
                 <Avatar className="w-20 h-20">
                   <AvatarImage src={user.avatar || "/placeholder.svg"} />
                   <AvatarFallback className="text-2xl">
-                    {user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
+                    {user.email
+                      ?.split("@")[0]
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>

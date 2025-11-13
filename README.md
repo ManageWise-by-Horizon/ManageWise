@@ -204,7 +204,19 @@ La aplicación estará disponible en `http://localhost:3000`
 2. Inicia sesión con tu cuenta de Google
 3. Haz clic en "Create API Key"
 4. Copia tu API key y pégala en `.env.local`
-5. La cuota gratuita incluye 60 requests/minuto
+
+#### ⚠️ Límites de la API Gratuita de Gemini
+- **15 requests por minuto** (RPM)
+- **1 millón de tokens por minuto** (TPM)
+- **1,500 requests por día** (RPD)
+
+Si excedes estos límites, verás un error 429. En ese caso:
+- Espera unos minutos antes de reintentar
+- Considera crear proyectos manualmente sin IA
+- Usa una API key diferente
+- Actualiza a Gemini Pro (de pago) para límites más altos
+
+**Recomendación**: No uses la generación con IA más de 10-15 veces seguidas para evitar alcanzar el límite.
 
 ## 👤 Usuarios de Prueba
 

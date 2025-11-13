@@ -44,26 +44,30 @@ import { createApiUrl } from "@/lib/api-config"
 import { enrichTasks } from "@/lib/data-helpers"
 
 interface Project {
-  id: string
+  id: number | string  // Soportar Long del backend y string del db.json
+  projectId?: string   // UUID del proyecto (backend Java)
   name: string
-  description: string
-  objectives: string[]
-  timeline: {
+  description?: string
+  objectives?: string[]
+  timeline?: {
     start?: string
     end?: string
     startDate?: string
     estimatedEndDate?: string
   }
   members: string[]
-  createdBy: string
-  createdAt: string
+  createdBy?: string
+  createdAt?: string
   status: string
+  startDate?: string   // Backend Java
+  endDate?: string     // Backend Java
+  ownerId?: string     // Backend Java
   structuredPrompt?: {
     objective: string
     role: string
     context: string
     constraints: string
-  }
+  } | string  // Backend puede enviar string
 }
 
 type ProjectRole = 'scrum_master' | 'product_owner' | 'developer' | 'tester' | 'designer' | 'stakeholder'
@@ -275,6 +279,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
+  // Convertir project.id a string para todos los componentes
+  const projectIdString = String(project.id)
+  const projectObjectives = project.objectives || []
+  const projectTimeline = project.timeline || { 
+    start: project.startDate, 
+    end: project.endDate 
+  }
+  const projectDescription = project.description || ''
+  const projectStructuredPrompt = typeof project.structuredPrompt === 'object' 
+    ? project.structuredPrompt 
+    : undefined
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -292,7 +308,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 {project.status === "active" ? "Activo" : "Inactivo"}
               </Badge>
             </div>
-            <p className="mt-2 text-muted-foreground">{project.description}</p>
+            <p className="mt-2 text-muted-foreground">{projectDescription}</p>
           </div>
         </div>
         <DropdownMenu>
@@ -303,7 +319,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <PermissionWrapper
-              projectId={project.id}
+              projectId={projectIdString}
               userId={user?.id || ""}
               requiredPermission="manage_project"
             >
@@ -317,7 +333,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               )}
             </PermissionWrapper>
             <PermissionWrapper
-              projectId={project.id}
+              projectId={projectIdString}
               userId={user?.id || ""}
               requiredPermission="manage_members"
             >
@@ -331,7 +347,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               )}
             </PermissionWrapper>
             <PermissionWrapper
-              projectId={project.id}
+              projectId={projectIdString}
               userId={user?.id || ""}
               requiredPermission="manage_permissions"
             >
@@ -345,7 +361,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               )}
             </PermissionWrapper>
             <PermissionWrapper
-              projectId={project.id}
+              projectId={projectIdString}
               userId={user?.id || ""}
               requiredPermission="manage_project"
             >
@@ -378,10 +394,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <CardContent>
             <div className="text-sm">
               <p className="font-medium">
-                {formatDate(project.timeline.startDate || project.timeline.start || "")}
+                {formatDate(projectTimeline.startDate || projectTimeline.start || "")}
               </p>
               <p className="text-muted-foreground">
-                hasta {formatDate(project.timeline.estimatedEndDate || project.timeline.end || "")}
+                hasta {formatDate(projectTimeline.estimatedEndDate || projectTimeline.end || "")}
               </p>
             </div>
           </CardContent>
@@ -404,14 +420,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{project.objectives.length}</div>
+            <div className="text-2xl font-bold">{projectObjectives.length}</div>
             <p className="text-xs text-muted-foreground">objetivos definidos</p>
           </CardContent>
         </Card>
 
         {/* Permisos del Usuario */}
         <ProjectPermissionsSummary
-          projectId={project.id}
+          projectId={projectIdString}
           userId={user?.id || ""}
         />
       </div>
@@ -462,11 +478,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <CardDescription>Metas y objetivos SMART</CardDescription>
               </CardHeader>
               <CardContent>
-                {project.objectives.length === 0 ? (
+                {projectObjectives.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No hay objetivos definidos</p>
                 ) : (
                   <ul className="space-y-2">
-                    {project.objectives.map((objective, index) => (
+                    {projectObjectives.map((objective, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm">
                         <Target className="mt-0.5 h-4 w-4 text-chart-1" />
                         <span>{objective}</span>
@@ -486,7 +502,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <CardDescription>Colaboradores del proyecto</CardDescription>
                   </div>
                   <PermissionGuard
-                    projectId={project.id}
+                    projectId={projectIdString}
                     userId={user?.id || ""}
                     requiredPermission="manage_members"
                   >
@@ -532,13 +548,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         <TabsContent value="backlog" className="space-y-4">
           <PermissionGuard
-            projectId={project.id}
+            projectId={projectIdString}
             userId={user?.id || ""}
             requiredPermission="read"
             showError={true}
           >
             <ProjectBacklog 
-              projectId={project.id} 
+              projectId={projectIdString} 
               projectName={project.name} 
               externalUserStories={userStories}
             />
@@ -547,25 +563,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         <TabsContent value="chat" className="space-y-4">
           <PermissionGuard
-            projectId={project.id}
+            projectId={projectIdString}
             userId={user?.id || ""}
             requiredPermission="read"
             showError={true}
           >
             <div className="h-[600px]">
               <ProjectChat
-                projectId={project.id}
+                projectId={projectIdString}
                 projectContext={{
                   projectName: project.name,
-                  description: project.description,
-                  objectives: project.objectives,
+                  description: projectDescription,
+                  objectives: projectObjectives,
                   timeline: project.timeline,
                   productBacklog: userStories,
                   tasks: tasks,
                   sprints: sprints,
                   teamMembers: members,
                 }}
-                initialPrompt={project.structuredPrompt}
+                initialPrompt={projectStructuredPrompt}
                 onDataUpdate={fetchProjectDetails} // Actualiza sin reload
               />
             </div>
@@ -574,13 +590,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         <TabsContent value="board">
           <PermissionGuard
-            projectId={project.id}
+            projectId={projectIdString}
             userId={user?.id || ""}
             requiredPermission="read"
             showError={true}
           >
             <ProjectBoard 
-              projectId={project.id}
+              projectId={projectIdString}
               tasks={tasks}
               members={members}
               onUpdate={fetchProjectDetails}
@@ -590,13 +606,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         <TabsContent value="okrs">
           <PermissionGuard
-            projectId={project.id}
+            projectId={projectIdString}
             userId={user?.id || ""}
             requiredPermission="read"
             showError={true}
           >
             <ProjectOKRs 
-              projectId={project.id}
+              projectId={projectIdString}
               projectName={project.name}
               members={members}
             />
@@ -624,7 +640,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          <ProjectHistoryDashboard projectId={project.id} />
+          <ProjectHistoryDashboard projectId={projectIdString} />
         </TabsContent>
 
         <TabsContent value="calendar">
@@ -640,14 +656,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Add Member Dialog */}
       <PermissionGuard
-        projectId={project.id}
+        projectId={projectIdString}
         userId={user?.id || ""}
         requiredPermission="manage_members"
       >
         <AddMemberDialog
           open={isAddMemberDialogOpen}
           onOpenChange={setIsAddMemberDialogOpen}
-          projectId={project.id}
+          projectId={projectIdString}
           currentMembers={project.members}
           currentUserId={user?.id || ""}
           onMemberAdded={fetchProjectDetails}
@@ -656,29 +672,43 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Edit Project Dialog */}
       <PermissionGuard
-        projectId={project.id}
+        projectId={projectIdString}
         userId={user?.id || ""}
         requiredPermission="manage_project"
       >
         <EditProjectDialog
           open={isEditProjectDialogOpen}
           onOpenChange={setIsEditProjectDialogOpen}
-          project={project}
+          project={{
+            ...project,
+            id: projectIdString,
+            description: projectDescription,
+            objectives: projectObjectives,
+            timeline: projectTimeline,
+            createdBy: project.createdBy || project.ownerId || '',
+            createdAt: project.createdAt || ''
+          }}
           onProjectUpdated={fetchProjectDetails}
         />
       </PermissionGuard>
 
       {/* Manage Permissions Dialog */}
       <PermissionGuard
-        projectId={project.id}
+        projectId={projectIdString}
         userId={user?.id || ""}
         requiredPermission="manage_permissions"
       >
         <ManagePermissionsDialog
           open={isPermissionsDialogOpen}
           onOpenChange={setIsPermissionsDialogOpen}
-          projectId={project.id}
-          currentUser={user!}
+          projectId={projectIdString}
+          currentUser={{
+            id: user!.id,
+            email: user!.email,
+            name: user!.email.split('@')[0],
+            role: '',
+            avatar: ''
+          }}
           isAdmin={checkIsAdmin()}
           onPermissionsUpdated={fetchProjectDetails}
         />
@@ -686,13 +716,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Delete Project Dialog */}
       <PermissionGuard
-        projectId={project.id}
+        projectId={projectIdString}
         userId={user?.id || ""}
         requiredPermission="manage_project"
       >
         <DeleteProjectDialog
           project={{
-            id: project.id,
+            id: projectIdString,
             name: project.name,
           }}
           open={isDeleteDialogOpen}

@@ -29,7 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { generateProjectWithGemini, type StructuredPrompt } from "@/lib/gemini"
 import { getMessageForStep } from "@/lib/generation-messages"
-import { createApiUrl } from "@/lib/api-config"
+import { createApiUrl, getAuthHeaders } from "@/lib/api-config"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -155,20 +155,21 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           start: startDate?.toISOString(),
           end: endDate?.toISOString(),
         },
-        members: [user?.id],
-        createdBy: user?.id,
+        members: [user?.email || ''],
+        createdBy: user?.email || '',
         createdAt: new Date().toISOString(),
         status: "active",
       }
 
-      const projectResponse = await fetch(createApiUrl('/projects'), {
+      const projectResponse = await fetch(createApiUrl('/api/v1/projects'), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newProject),
       })
 
       if (!projectResponse.ok) {
-        throw new Error(`Error al crear el proyecto: ${projectResponse.statusText}`)
+        const errorText = await projectResponse.text()
+        throw new Error(`Error al crear el proyecto: ${projectResponse.statusText} - ${errorText}`)
       }
 
       const createdProject = await projectResponse.json()
@@ -523,30 +524,38 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         onProjectCreated()
       }, 2000)
     } catch (error) {
-      console.error("❌ Error generating project with Gemini:", error)
-      
       // Get error message
       let errorMessage = "Error desconocido"
       let errorTitle = "Error al generar proyecto"
       
       if (error instanceof Error) {
         errorMessage = error.message
-        console.error("📋 Error message:", errorMessage)
-        console.error("📋 Error stack:", error.stack)
+        
+        // Only log in development mode
+        if (process.env.NODE_ENV === 'development') {
+          console.warn("❌ Error generating project:", errorMessage.split('\n')[0])
+        }
       } else if (typeof error === 'string') {
         errorMessage = error
       }
       
-      // Check for specific error types
+      // Check for specific error types and provide user-friendly messages
       if (errorMessage.includes("API key")) {
         errorTitle = "Error de configuración"
-        errorMessage = "API key de Gemini no configurada correctamente"
+        errorMessage = "La API key de Gemini no está configurada correctamente. Por favor, contacta al administrador."
       } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
         errorTitle = "Error de conexión"
-        errorMessage = "No se pudo conectar con el servicio de IA"
-      } else if (errorMessage.includes("quota") || errorMessage.includes("limit")) {
-        errorTitle = "Límite alcanzado"
-        errorMessage = "Has alcanzado el límite de uso de la API"
+        errorMessage = "No se pudo conectar con el servicio de IA. Verifica tu conexión a internet."
+      } else if (errorMessage.includes("quota") || errorMessage.includes("limit") || errorMessage.includes("429")) {
+        errorTitle = "Límite de API alcanzado"
+        errorMessage = "Has excedido el límite de uso gratuito de la API de Gemini. Por favor, intenta nuevamente en unos minutos o crea el proyecto manualmente."
+      } else if (errorMessage.includes("401") || errorMessage.includes("unauthorized")) {
+        errorTitle = "Error de autenticación"
+        errorMessage = "La API key no es válida. Por favor, contacta al administrador."
+      } else {
+        // Generic error - show first line only
+        errorTitle = "Error al generar proyecto"
+        errorMessage = "Ocurrió un error al generar el proyecto con IA. Puedes intentar crear el proyecto manualmente."
       }
       
       setGenerationLog((prev) => [

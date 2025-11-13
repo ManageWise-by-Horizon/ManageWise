@@ -214,16 +214,18 @@ export function TaskBoard({ tasks, onUpdate, projectId }: TaskBoardProps) {
                           <div className="flex items-center gap-1">
                             {assignedUser && (
                               <Avatar className="h-4 w-4">
-                                <AvatarImage src={assignedUser.avatar || "/placeholder.svg"} alt={assignedUser.name} />
+                                <AvatarImage src={assignedUser.avatar || "/placeholder.svg"} alt={assignedUser.name || assignedUser.email} />
                                 <AvatarFallback className="text-xs">
-                                  {assignedUser.name
-                                    .split(" ")
-                                    .map((n: string) => n[0])
-                                    .join("")}
+                                  {(assignedUser.name || assignedUser.email)
+                                    ?.split(" ")[0]
+                                    ?.slice(0, 2)
+                                    .toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                             )}
-                            <span className="text-muted-foreground truncate max-w-[60px]">{assignedUser?.name}</span>
+                            <span className="text-muted-foreground truncate max-w-[60px]">
+                              {assignedUser?.name || assignedUser?.email?.split("@")[0]}
+                            </span>
                           </div>
 
                           <div className="flex items-center gap-1 text-muted-foreground">

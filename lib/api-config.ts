@@ -13,6 +13,26 @@ export function createApiUrl(endpoint: string): string {
   return `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
 }
 
+// Helper para obtener token de autenticación
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('auth_token')
+}
+
+// Helper para crear headers con autenticación
+export function getAuthHeaders(): HeadersInit {
+  const token = getAuthToken()
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  
+  return headers
+}
+
 // Helper para manejar errores de API
 export async function apiRequest(url: string, options?: RequestInit): Promise<Response> {
   try {
@@ -41,11 +61,12 @@ export async function apiRequest(url: string, options?: RequestInit): Promise<Re
     
     return response
   } catch (error) {
-    console.error('API Request failed:', {
-      url,
-      method: options?.method || 'GET',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    })
+    // Solo hacer log en desarrollo o si es un error real
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`API Request failed: ${options?.method || 'GET'} ${url}`, 
+        error instanceof Error ? error.message : String(error)
+      )
+    }
     throw error
   }
 }

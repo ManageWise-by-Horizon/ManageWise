@@ -17,18 +17,22 @@ import { createApiUrl } from "@/lib/api-config"
 type ProjectRole = 'scrum_master' | 'product_owner' | 'developer' | 'tester' | 'designer' | 'stakeholder'
 
 interface Project {
-  id: string
+  id: number | string  // Soportar Long del backend y string del db.json
+  projectId?: string   // UUID del proyecto (backend Java)
   name: string
-  description: string
-  objectives: string[]
-  timeline: {
+  description?: string
+  objectives?: string[]
+  timeline?: {
     start: string
     end: string
   }
   members: string[]
-  createdBy: string
-  createdAt: string
+  createdBy?: string
+  createdAt?: string
   status: string
+  startDate?: string   // Backend Java
+  endDate?: string     // Backend Java
+  ownerId?: string     // Backend Java
 }
 
 interface ProjectPermission {
@@ -61,16 +65,19 @@ export default function ProjectsPage() {
     try {
       const response = await fetch(createApiUrl('/projects'))
       const data = await response.json()
-      setProjects(data)
+      
+      // Validar que data es un array
+      const safeProjects = Array.isArray(data) ? data : []
+      setProjects(safeProjects)
 
       // Obtener permisos del usuario para cada proyecto
       if (user) {
-        const permissionsPromises = data.map(async (project: Project) => {
+        const permissionsPromises = safeProjects.map(async (project: Project) => {
           const permResponse = await fetch(
             createApiUrl(`/projectPermissions?projectId=${project.id}&userId=${user.id}`)
           )
           const perms = await permResponse.json()
-          return { projectId: project.id, permission: perms[0] }
+          return { projectId: String(project.id), permission: perms[0] }
         })
 
         const permissionsResults = await Promise.all(permissionsPromises)
@@ -90,6 +97,8 @@ export default function ProjectsPage() {
         description: "No se pudieron cargar los proyectos",
         variant: "destructive",
       })
+      // Establecer array vacío en caso de error
+      setProjects([])
     } finally {
       setIsLoading(false)
     }
@@ -225,7 +234,7 @@ export default function ProjectsPage() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        onClick={() => setProjectToDelete({ id: project.id, name: project.name })} 
+                        onClick={() => setProjectToDelete({ id: String(project.id), name: project.name })} 
                         className="text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -251,7 +260,12 @@ export default function ProjectsPage() {
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>
-                      {formatDate(project.timeline.start)} - {formatDate(project.timeline.end)}
+                      {project.timeline 
+                        ? `${formatDate(project.timeline.start)} - ${formatDate(project.timeline.end)}`
+                        : project.startDate && project.endDate
+                        ? `${formatDate(project.startDate)} - ${formatDate(project.endDate)}`
+                        : 'Sin fechas definidas'
+                      }
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">

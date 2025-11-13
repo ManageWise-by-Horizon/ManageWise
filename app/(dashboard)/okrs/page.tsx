@@ -42,7 +42,8 @@ interface OKR {
 
 interface User {
   id: string
-  name: string
+  name?: string
+  email?: string
   avatar?: string
 }
 
@@ -106,7 +107,7 @@ export default function OKRsPage() {
 
   const getUserName = (userId: string) => {
     const user = users.find(u => u.id === userId)
-    return user?.name || "Usuario desconocido"
+    return user?.name || user?.email?.split("@")[0] || "Usuario desconocido"
   }
 
   const handleRetry = () => {

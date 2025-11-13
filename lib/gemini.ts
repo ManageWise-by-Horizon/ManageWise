@@ -225,7 +225,11 @@ export async function generateProjectWithGemini(
       return parseGeminiResponse(text)
     }
   } catch (error) {
-    console.error("❌ Error generating project with Gemini:", error)
+    // Only log simplified error in development
+    if (process.env.NODE_ENV === 'development') {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.warn("❌ Gemini API error:", errorMsg.split('\n')[0])
+    }
     throw error
   }
 }

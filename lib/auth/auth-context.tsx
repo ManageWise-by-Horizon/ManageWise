@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { userId, userToken, userEmail } = authData
 
       // Get user profile from Profile-Service
-      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/profiles/${userId}`, {
+      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/user/${userId}`, {
         headers: { 
           "Authorization": `Bearer ${userToken}`,
           "Content-Type": "application/json"
@@ -206,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       // Get user profile from Profile-Service
-      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/profiles/${userId}`, {
+      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/user/${userId}`, {
         headers: { "Content-Type": "application/json" },
       })
 
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const loginData = await loginResponse.json()
-      const { token } = loginData
+      const { userToken } = loginData
 
       // Build complete user object
       const userObject: User = {
@@ -263,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem("auth_token", token)
+        localStorage.setItem("auth_token", userToken)
         localStorage.setItem("user", JSON.stringify(userObject))
       }
 
