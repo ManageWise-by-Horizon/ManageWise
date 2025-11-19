@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, UserPlus, Mail, AlertTriangle } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createApiUrl } from "@/lib/api-config"
+import { profileService } from "@/lib/domain/profile/services/profile.service"
 
 interface User {
   id: string
@@ -64,37 +65,64 @@ export function AddMemberDialog({
 
   const checkAdminPermissions = async () => {
     try {
-      // Verificar si el usuario actual es administrador del proyecto
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // Obtener el proyecto usando el servicio DDD
+      const { projectService } = await import('@/lib/domain/projects/services/project.service')
+      const project = await projectService.getProjectById(projectId)
+      
+      if (!project) {
+        setIsAdmin(false)
+        return
+      }
       
       // Verificar si es el creador del proyecto
       const isCreator = project.createdBy === currentUserId
       
-      // Verificar permisos específicos en la tabla de permisos
-      const permissionsRes = await fetch(createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${currentUserId}`))
-      const permissions = await permissionsRes.json()
+      // Verificar permisos específicos usando el servicio DDD
+      const { permissionService } = await import('@/lib/domain/projects/services/permission.service')
+      const allPermissions = await permissionService.getPermissionsByProjectId(projectId)
       
-      const hasManagePermission = permissions.some((perm: any) => 
-        perm.userId === currentUserId && perm.manage_members === true
+      // Asegurar que permissions sea un array
+      const permissionsArray = Array.isArray(allPermissions) ? allPermissions : []
+      
+      // Buscar el permiso del usuario actual (el backend usa manageMembers y manageProject en camelCase)
+      const userPermission = permissionsArray.find((perm: any) => 
+        perm.userId === currentUserId
       )
+      
+      // Verificar si tiene permisos de administración (manageMembers o manageProject)
+      const hasManagePermission = userPermission?.manageMembers === true || userPermission?.manageProject === true
       
       setIsAdmin(isCreator || hasManagePermission)
     } catch (error) {
-      console.error("[v0] Error checking admin permissions:", error)
+      console.error("[AddMemberDialog] Error checking admin permissions:", error)
       setIsAdmin(false)
     }
   }
 
   const fetchAvailableUsers = async () => {
     try {
-      const response = await fetch(createApiUrl('/users'))
-      const data = await response.json()
-      // Filter out users already in the project
-      const availableUsers = data.filter((u: User) => !currentMembers.includes(u.id))
+      // Fetch all users from Profile-Service
+      const profiles = await profileService.getAllUsers()
+      
+      // Map profiles to User format and filter out users already in the project
+      const availableUsers: User[] = profiles
+        .filter((profile) => !currentMembers.includes(profile.userId))
+        .map((profile) => ({
+          id: profile.userId,
+          name: `${profile.userFirstName} ${profile.userLastName}`.trim() || profile.userEmail,
+          email: profile.userEmail,
+          role: profile.userRole || 'developer',
+          avatar: profile.userProfileImgUrl || '/placeholder.svg'
+        }))
+      
       setUsers(availableUsers)
     } catch (error) {
       console.error("[v0] Error fetching users:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los usuarios disponibles",
+        variant: "destructive"
+      })
     }
   }
 
@@ -114,80 +142,93 @@ export function AddMemberDialog({
     setIsLoading(true)
 
     try {
-      // Fetch current project
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // Obtener el proyecto usando el servicio DDD
+      const { projectService } = await import('@/lib/domain/projects/services/project.service')
+      const project = await projectService.getProjectById(projectId)
+      
+      if (!project) {
+        throw new Error('Proyecto no encontrado')
+      }
 
-      // Obtener información de los usuarios seleccionados
-      const usersRes = await fetch(createApiUrl('/users'))
-      const allUsers = await usersRes.json()
+      // Obtener información de los usuarios seleccionados usando el servicio de perfil
+      const allUsersProfiles = await profileService.getAllUsers()
+      
+      // Asegurar que allUsers sea un array
+      const allUsers = Array.isArray(allUsersProfiles) ? allUsersProfiles : []
 
       // Obtener información del usuario actual (quien invita)
-      const currentUserData = allUsers.find((u: User) => u.id === currentUserId)
+      const currentUserData = allUsers.find((u: any) => u.userId === currentUserId || u.id === currentUserId)
 
       // Crear invitaciones para cada usuario (NO agregar directamente al proyecto)
       const invitationsPromises = selectedUsers.map(async (userId) => {
-        const invitedUser = allUsers.find((u: User) => u.id === userId)
-        if (!invitedUser) return
+        const invitedUser = allUsers.find((u: any) => (u.userId === userId || u.id === userId))
+        if (!invitedUser) {
+          console.warn(`Usuario ${userId} no encontrado en la lista de usuarios`)
+          return
+        }
 
-        // Verificar si ya tiene una invitación pendiente
-        const existingInvitationsRes = await fetch(
-          createApiUrl(`/projectInvitations?projectId=${projectId}&email=${invitedUser.email}&status=pending`)
+        // Obtener el email del usuario (puede estar en userEmail o email)
+        const userEmail = invitedUser.userEmail
+        if (!userEmail) {
+          console.warn(`Usuario ${userId} no tiene email`)
+          return
+        }
+
+        // Verificar si ya tiene una invitación pendiente usando el servicio DDD
+        const { invitationService } = await import('@/lib/domain/invitations/services/invitation.service')
+        const allInvitations = await invitationService.getInvitationsByProjectId(projectId)
+        const existingInvitations = Array.isArray(allInvitations) ? allInvitations : []
+        
+        const hasPendingInvitation = existingInvitations.some((inv: any) => 
+          inv.email === userEmail && (inv.status === 'pending' || inv.status === 'PENDING')
         )
-        const existingInvitations = await existingInvitationsRes.json()
 
-        if (existingInvitations.length > 0) {
+        if (hasPendingInvitation) {
           return // Ya tiene invitación pendiente
         }
 
         // Preparar el mensaje personalizado o por defecto
         const invitationMessage = message || `Te invitamos a formar parte del proyecto "${project.name}"`
         
-        // Crear invitación
-        const invitation = {
-          id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          projectId,
-          email: invitedUser.email,
-          invitedBy: currentUserId,
-          message: invitationMessage,
-          status: "pending",
-          createdAt: new Date().toISOString(),
+        // Crear invitación usando el servicio DDD
+        // El servicio acepta projectId como string (UUID), email, invitedBy, message (opcional), expiresAt (opcional)
+        const createdInvitation = await invitationService.createInvitation({
+          projectId: projectId, // Ya es string (UUID)
+          email: userEmail,
+          invitedBy: currentUserId, // Puede ser UUID o número
+          message: invitationMessage, // Mensaje personalizado
           expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
-        }
-
-        await fetch(createApiUrl('/projectInvitations'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitation),
         })
 
-        // Crear notificación para el usuario invitado
-        const notification = {
-          id: `notif_inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          userId: invitedUser.id,
-          projectId,
-          type: "project_invitation",
-          title: "Invitación a proyecto",
-          message: invitationMessage, // Usar el mismo mensaje de la invitación
-          data: {
-            projectId,
-            projectName: project.name,
-            invitationId: invitation.id,
-            invitedBy: currentUserId,
-            invitedByName: currentUserData?.name || 'Usuario desconocido',
-            email: invitedUser.email,
-            changeType: "invited"
-          },
-          read: false,
-          createdAt: new Date().toISOString(),
-          deliveryStatus: "pending"
+        // Crear notificación para el usuario invitado usando el servicio DDD
+        // Obtener el userId del usuario invitado
+        const invitedUserId = invitedUser.userId || userId
+        
+        // Solo crear notificación si el usuario tiene un userId válido (está registrado)
+        if (invitedUserId) {
+          const { notificationService } = await import('@/lib/domain/notifications/services/notification.service')
+          
+          await notificationService.createNotification({
+            userId: String(invitedUserId), // Asegurar que sea string
+            projectId: projectId,
+            type: "project_invitation",
+            title: "Invitación a proyecto",
+            message: invitationMessage, // Usar el mismo mensaje de la invitación
+            data: {
+              projectId,
+              projectName: project.name,
+              invitationId: createdInvitation.id,
+              invitedBy: currentUserId,
+            invitedByName: currentUserData?.userFirstName || 'Usuario desconocido',
+            email: invitedUser.userEmail || userEmail,
+              changeType: "invited"
+            }
+          })
+          
+          console.log(`[AddMemberDialog] Notificación creada para usuario ${invitedUserId} sobre invitación al proyecto ${projectId}`)
+        } else {
+          console.warn(`[AddMemberDialog] No se pudo crear notificación: el usuario ${userEmail} no tiene userId válido. La invitación se creó pero la notificación no se enviará hasta que el usuario se registre.`)
         }
-
-        await fetch(createApiUrl('/notifications'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(notification),
-        })
       })
 
       await Promise.all(invitationsPromises)
@@ -258,20 +299,29 @@ export function AddMemberDialog({
     setIsLoading(true)
 
     try {
-      // Escenario 2: Verificar si los emails ya pertenecen a usuarios del proyecto
-      const allUsersRes = await fetch(createApiUrl('/users'))
-      const allUsers = await allUsersRes.json()
+      // Obtener todos los usuarios y el proyecto una sola vez
+      const allUsersProfiles = await profileService.getAllUsers()
+      const allUsers = Array.isArray(allUsersProfiles) ? allUsersProfiles : []
       
-      // Obtener usuarios actuales del proyecto
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // Obtener usuarios actuales del proyecto usando el servicio DDD
+      const { projectService } = await import('@/lib/domain/projects/services/project.service')
+      const project = await projectService.getProjectById(projectId)
       
+      if (!project) {
+        throw new Error('Proyecto no encontrado')
+      }
+      
+      // Verificar si los emails ya pertenecen a usuarios del proyecto
       const projectMemberEmails = allUsers
-        .filter((user: User) => project.members.includes(user.id))
-        .map((user: User) => user.email)
+        .filter((user: any) => {
+          const userId = user.userId || user.id
+          return project.members && project.members.includes(userId)
+        })
+        .map((user: any) => user.userEmail?.toLowerCase())
+        .filter(Boolean)
 
       const duplicateEmails = emails.filter(email => 
-        projectMemberEmails.includes(email)
+        projectMemberEmails.includes(email.toLowerCase())
       )
 
       if (duplicateEmails.length > 0) {
@@ -282,56 +332,58 @@ export function AddMemberDialog({
         })
         return
       }
+      
+      // Obtener datos del usuario actual
+      const currentUserData = allUsers.find((u: any) => u.userId === currentUserId || u.id === currentUserId)
 
-      // Escenario 1: Registrar invitaciones en la base de datos
-      const currentUser = await fetch(createApiUrl(`/users/${currentUserId}`))
-      const user = await currentUser.json()
+      // Crear invitaciones usando el servicio DDD
+      const { invitationService } = await import('@/lib/domain/invitations/services/invitation.service')
+      const { notificationService } = await import('@/lib/domain/notifications/services/notification.service')
+      
+      const invitationMessage = message || `Te invitamos a formar parte del proyecto "${project.name}"`
 
-      const invitations = emails.map(email => ({
-        id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId,
-        email,
-        invitedBy: user.id,
-        message: message || "Te invitamos a formar parte de nuestro equipo en este proyecto.",
-        status: "pending",
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
-      }))
-
-      // Registrar cada invitación
-      for (const invitation of invitations) {
-        await fetch(createApiUrl('/projectInvitations'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitation),
+      for (const email of emails) {
+        // Crear invitación usando el servicio DDD
+        const createdInvitation = await invitationService.createInvitation({
+          projectId: projectId,
+          email: email,
+          invitedBy: currentUserId,
+          message: invitationMessage,
+          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 días
         })
 
-        // Escenario 1: Crear notificación para el usuario invitado
-        const invitationNotification = {
-          id: `notif_inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          userId: null, // Se enviará por email ya que puede que no tenga cuenta
-          projectId,
-          type: "email_invitation",
-          title: "Invitación a proyecto",
-          message: `Has sido invitado a unirte al proyecto "${project.name}"`,
-          data: {
-            projectId,
-            projectName: project.name,
-            invitationId: invitation.id,
-            invitedBy: invitation.invitedBy,
-            email: invitation.email,
-            changeType: "invited"
-          },
-          read: false,
-          createdAt: new Date().toISOString(),
-          deliveryStatus: "pending"
+        // Buscar si el usuario existe por email
+        const invitedUser = allUsers.find((u: any) => 
+          u.userEmail?.toLowerCase() === email.toLowerCase()
+        )
+
+        // Solo crear notificación si el usuario existe (está registrado)
+        if (invitedUser) {
+          const invitedUserId = invitedUser.userId
+          
+          if (invitedUserId) {
+            await notificationService.createNotification({
+              userId: String(invitedUserId),
+              projectId: projectId,
+              type: "email_invitation",
+              title: "Invitación a proyecto",
+              message: invitationMessage,
+              data: {
+                projectId,
+                projectName: project.name,
+                invitationId: createdInvitation.id,
+                invitedBy: currentUserId,
+                invitedByName: currentUserData?.userFirstName || 'Usuario desconocido',
+                email: email,
+                changeType: "invited"
+              }
+            })
+            
+            console.log(`[AddMemberDialog] Notificación creada para usuario ${invitedUserId} (email: ${email}) sobre invitación al proyecto ${projectId}`)
+          }
+        } else {
+          console.log(`[AddMemberDialog] Usuario con email ${email} no está registrado. La invitación se creó pero la notificación se enviará cuando el usuario se registre.`)
         }
-
-        await fetch(createApiUrl('/notifications'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitationNotification),
-        })
       }
 
       // Simular envío de emails

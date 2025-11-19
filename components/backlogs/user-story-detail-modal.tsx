@@ -19,18 +19,21 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl } from "@/lib/api-config"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
+import { profileService } from "@/lib/domain/profile/services/profile.service"
+import { CreateTaskDialog } from "./create-task-dialog"
 
 interface UserStory {
   id: string
   title: string
   description: string
   acceptanceCriteria: string[]
-  priority: "high" | "medium" | "low" | "Alta" | "Media" | "Baja"
+  priority?: "high" | "medium" | "low" | "Alta" | "Media" | "Baja"
   storyPoints: number
-  status: string
-  projectId: string
-  createdBy: string
-  createdAt: string
+  status?: string
+  projectId?: string
+  createdBy?: string
+  createdAt?: string
   aiGenerated?: boolean
   qualityMetrics?: {
     bleu: number
@@ -65,18 +68,21 @@ interface UserStoryDetailModalProps {
   onOpenChange: (open: boolean) => void
   userStory: UserStory | null
   projectId: string
+  onTaskCreated?: () => void // Callback para actualizar tareas en el proyecto
 }
 
 export function UserStoryDetailModal({ 
   open, 
   onOpenChange, 
   userStory, 
-  projectId 
+  projectId,
+  onTaskCreated
 }: UserStoryDetailModalProps) {
   const { toast } = useToast()
   const [tasks, setTasks] = useState<Task[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isCreateTaskDialogOpen, setIsCreateTaskDialogOpen] = useState(false)
 
   useEffect(() => {
     if (open && userStory) {
@@ -89,21 +95,54 @@ export function UserStoryDetailModal({
     
     setIsLoading(true)
     try {
-      // Fetch tasks related to this user story
-      const tasksRes = await fetch(createApiUrl('/tasks'))
-      const allTasks = await tasksRes.json()
+      // Fetch tasks related to this user story using DDD service
+      const relatedTasks = await taskService.getTasksByUserStoryId(userStory.id)
       
-      // Filter tasks that belong to this user story
-      const relatedTasks = allTasks.filter((task: Task) => 
-        task.userStoryId === userStory.id
-      )
-      
-      setTasks(relatedTasks)
+      // Map backend task format to component format
+      const mapPriority = (priority: string): "high" | "medium" | "low" => {
+        const upperPriority = priority.toUpperCase()
+        if (upperPriority === "ALTA") return "high"
+        if (upperPriority === "MEDIA") return "medium"
+        if (upperPriority === "BAJA") return "low"
+        return "medium" // default
+      }
 
-      // Fetch users for assigned members
-      const usersRes = await fetch(createApiUrl('/users'))
-      const usersData = await usersRes.json()
-      setUsers(usersData)
+      const mapStatus = (status: string): "todo" | "in_progress" | "done" => {
+        const upperStatus = status.toUpperCase()
+        if (upperStatus === "TODO") return "todo"
+        if (upperStatus === "IN_PROGRESS") return "in_progress"
+        if (upperStatus === "DONE") return "done"
+        return "todo" // default
+      }
+
+      const mappedTasks: Task[] = relatedTasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: mapStatus(task.status),
+        priority: mapPriority(task.priority),
+        assignedTo: task.assignedTo || undefined,
+        estimatedHours: task.estimatedHours,
+        userStoryId: task.userStoryId,
+        projectId: projectId,
+        createdAt: task.createdAt ? (typeof task.createdAt === 'string' ? task.createdAt : new Date(task.createdAt).toISOString()) : new Date().toISOString(),
+        aiAssigned: task.aiGenerated,
+      }))
+      
+      setTasks(mappedTasks)
+
+      // Fetch users for assigned members using DDD service
+      const userProfiles = await profileService.getAllUsers()
+      
+      // Map UserProfile to User format
+      const usersArray: User[] = userProfiles.map((profile) => ({
+        id: profile.userId,
+        name: `${profile.userFirstName} ${profile.userLastName}`.trim() || profile.userEmail,
+        email: profile.userEmail,
+        avatar: profile.userProfileImgUrl || '/placeholder.svg',
+      }))
+      
+      setUsers(usersArray)
     } catch (error) {
       console.error("Error fetching related data:", error)
       toast({
@@ -111,6 +150,9 @@ export function UserStoryDetailModal({
         description: "No se pudieron cargar los datos relacionados",
         variant: "destructive",
       })
+      // Asegurar que tasks y users sean arrays vacíos en caso de error
+      setTasks([])
+      setUsers([])
     } finally {
       setIsLoading(false)
     }
@@ -258,7 +300,7 @@ export function UserStoryDetailModal({
                     <Target className="h-5 w-5" />
                     Tasks Relacionadas ({tasks.length})
                   </CardTitle>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" onClick={() => setIsCreateTaskDialogOpen(true)}>
                     <Plus className="h-4 w-4 mr-1" />
                     Nueva Task
                   </Button>
@@ -274,7 +316,7 @@ export function UserStoryDetailModal({
                   <div className="text-center py-8">
                     <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">No hay tasks relacionadas</p>
-                    <Button size="sm" variant="outline" className="mt-2">
+                    <Button size="sm" variant="outline" className="mt-2" onClick={() => setIsCreateTaskDialogOpen(true)}>
                       <Plus className="h-4 w-4 mr-1" />
                       Crear primera task
                     </Button>
@@ -322,7 +364,7 @@ export function UserStoryDetailModal({
             </Card>
 
             {/* Quality Metrics (if AI generated) */}
-            {userStory.aiGenerated && userStory.qualityMetrics && (
+            {userStory.aiGenerated && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -331,22 +373,47 @@ export function UserStoryDetailModal({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 rounded-lg border border-chart-1/20 bg-chart-1/5">
-                      <div className="text-2xl font-bold">{(userStory.qualityMetrics.bleu * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">BLEU Score</div>
+                  {userStory.qualityMetrics ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 rounded-lg border border-chart-1/20 bg-chart-1/5">
+                        <div className="text-2xl font-bold">{(userStory.qualityMetrics.bleu * 100).toFixed(1)}%</div>
+                        <div className="text-xs text-muted-foreground">BLEU Score</div>
+                      </div>
+                      <div className="text-center p-3 rounded-lg border border-chart-2/20 bg-chart-2/5">
+                        <div className="text-2xl font-bold">{(userStory.qualityMetrics.rouge * 100).toFixed(1)}%</div>
+                        <div className="text-xs text-muted-foreground">ROUGE Score</div>
+                      </div>
                     </div>
-                    <div className="text-center p-3 rounded-lg border border-chart-2/20 bg-chart-2/5">
-                      <div className="text-2xl font-bold">{(userStory.qualityMetrics.rouge * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">ROUGE Score</div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">
+                        Esta user story fue generada con IA, pero las métricas de calidad no están disponibles.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Las métricas BLEU/ROUGE se calculan durante la generación con IA.
+                      </p>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )}
           </div>
         </div>
       </DialogContent>
+
+      <CreateTaskDialog
+        open={isCreateTaskDialogOpen}
+        onOpenChange={setIsCreateTaskDialogOpen}
+        userStoryId={userStory.id}
+        projectId={projectId}
+        onTaskCreated={() => {
+          fetchRelatedData()
+          // Notificar al componente padre para actualizar las tareas del proyecto
+          if (onTaskCreated) {
+            onTaskCreated()
+          }
+        }}
+      />
     </Dialog>
   )
 }

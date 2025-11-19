@@ -38,7 +38,10 @@ export default function SettingsPage() {
     setLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Parsear el nombre completo en firstName y lastName
+      const nameParts = formData.name.trim().split(' ')
+      const firstName = nameParts[0] || formData.name
+      const lastName = nameParts.slice(1).join(' ') || ''
 
       const updatedUser = {
         ...user!,
@@ -46,14 +49,8 @@ export default function SettingsPage() {
         email: formData.email,
       }
 
-      localStorage.setItem("user", JSON.stringify(updatedUser))
-      updateUser(updatedUser)
-
-      await fetch(createApiUrl(`/users/${user!.id}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: formData.name, email: formData.email }),
-      })
+      // Actualizar usando Profile-Service (updateUser ahora actualiza en Profile-Service)
+      await updateUser(updatedUser)
 
       toast({
         title: "Perfil actualizado",
@@ -97,7 +94,7 @@ export default function SettingsPage() {
     setUploadingImage(true)
 
     try {
-      // Upload to ImgBB
+      // Upload to ImgBB (o usar data URL si no hay API key)
       const imageUrl = await uploadToImgBB(file)
 
       // Update user profile
@@ -109,15 +106,18 @@ export default function SettingsPage() {
       localStorage.setItem("user", JSON.stringify(updatedUser))
       updateUser(updatedUser)
 
-      await fetch(createApiUrl(`/users/${user!.id}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: imageUrl }),
-      })
+      // TODO: Actualizar en Profile-Service cuando esté disponible
+      // await fetch(createApiUrl(`/api/v1/profiles/${user!.id}`), {
+      //   method: "PATCH",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ avatar: imageUrl }),
+      // })
 
       toast({
         title: "Foto actualizada",
-        description: "Tu foto de perfil ha sido actualizada exitosamente.",
+        description: imageUrl.startsWith('data:') 
+          ? "Tu foto de perfil ha sido actualizada (modo local). Para subir a la nube, configura NEXT_PUBLIC_IMGBB_API_KEY en .env.local"
+          : "Tu foto de perfil ha sido actualizada exitosamente.",
       })
     } catch (error) {
       console.error("Error uploading image:", error)

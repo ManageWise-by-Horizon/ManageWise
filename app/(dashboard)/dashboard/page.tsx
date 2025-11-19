@@ -8,14 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { FolderKanban, ListTodo, CheckCircle2, TrendingUp, Users, Zap, ArrowRight, Calendar } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { createApiUrl } from "@/lib/api-config"
-
-interface Project {
-  id: string
-  name: string
-  status: string
-  members: string[]
-}
+import { useProjects } from "@/lib/domain/projects/hooks/use-projects"
+import { CreateProjectDialog } from "@/components/projects/create-project-dialog"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
+import type { Project } from "@/lib/domain/projects/types/project.types"
+import type { Task } from "@/lib/domain/tasks/types/task.types"
 
 interface DashboardStats {
   totalProjects: number
@@ -29,9 +26,11 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { projects: allProjects, isLoading: projectsLoading, refetch: refetchProjects } = useProjects()
   const [projects, setProjects] = useState<Project[]>([])
   const [greeting, setGreeting] = useState("") // Estado para el saludo
   const [isClient, setIsClient] = useState(false) // Para evitar hidratación
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({
     totalProjects: 0,
     activeProjects: 0,
@@ -55,57 +54,66 @@ export default function DashboardPage() {
     else setGreeting("Buenas noches")
   }, [])
 
+  // Filtrar proyectos del usuario cuando cambien los proyectos o el usuario
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return
+    if (!user || !allProjects) {
+      setProjects([])
+      return
+    }
+
+    // Asegurar que allProjects sea un array
+    const projectsArray = Array.isArray(allProjects) ? allProjects : []
+    
+    // Filtrar solo proyectos donde el usuario es miembro
+    const userProjects = projectsArray.filter((p: Project) => 
+      p.members && p.members.includes(user.id)
+    )
+    
+    setProjects(userProjects)
+
+    // Actualizar estadísticas básicas
+    setStats(prev => ({
+      ...prev,
+      totalProjects: userProjects.length,
+      activeProjects: userProjects.filter((p: Project) => p.status === "active").length,
+      tokensUsed: user?.subscription.tokensUsed || 0,
+      tokensLimit: user?.subscription.tokensLimit || 100,
+    }))
+  }, [allProjects, user])
+
+  // Cargar tareas del usuario
+  useEffect(() => {
+    const loadUserTasks = async () => {
+      if (!user?.id) {
+        setStats(prev => ({
+          ...prev,
+          totalTasks: 0,
+          completedTasks: 0,
+        }))
+        return
+      }
 
       try {
-        const projectsRes = await fetch(createApiUrl('/projects'))
-        const projectsData = await projectsRes.json()
+        const userTasks = await taskService.getTasksByUserId(user.id)
+        const completedTasks = userTasks.filter((task: Task) => task.status === 'DONE')
         
-        // Filtrar solo proyectos donde el usuario es miembro
-        const userProjects = projectsData.filter((p: Project) => p.members.includes(user.id))
-        setProjects(userProjects)
-
-        const tasksRes = await fetch(createApiUrl('/tasks'))
-        const tasksData = await tasksRes.json()
-
-        // Obtener user stories para relacionar tareas con proyectos
-        const userStoriesRes = await fetch(createApiUrl('/userStories'))
-        const userStoriesData = await userStoriesRes.json()
-
-        // Obtener los IDs de los proyectos del usuario
-        const userProjectIds = userProjects.map((p: Project) => p.id)
-
-        // Filtrar user stories de los proyectos del usuario
-        const userProjectUserStories = userStoriesData.filter((us: any) => 
-          userProjectIds.includes(us.projectId)
-        )
-        const userStoryIds = userProjectUserStories.map((us: any) => us.id)
-
-        // Filtrar tareas que están asignadas al usuario y pertenecen a user stories de sus proyectos
-        const userTasks = tasksData.filter((t: any) => 
-          userStoryIds.includes(t.userStoryId) && t.assignedTo === user.id
-        )
-
-        const meetingsRes = await fetch(createApiUrl('/meetings'))
-        const meetingsData = await meetingsRes.json()
-
-        setStats({
-          totalProjects: userProjects.length,
-          activeProjects: userProjects.filter((p: Project) => p.status === "active").length,
+        setStats(prev => ({
+          ...prev,
           totalTasks: userTasks.length,
-          completedTasks: userTasks.filter((t: any) => t.status === "done").length,
-          upcomingMeetings: meetingsData.filter((m: any) => new Date(m.date) > new Date()).length,
-          tokensUsed: user?.subscription.tokensUsed || 0,
-          tokensLimit: user?.subscription.tokensLimit || 100,
-        })
+          completedTasks: completedTasks.length,
+        }))
       } catch (error) {
-        console.error("[v0] Error fetching dashboard data:", error)
+        console.error('Error loading user tasks:', error)
+        // En caso de error, mantener los valores por defecto (0)
+        setStats(prev => ({
+          ...prev,
+          totalTasks: 0,
+          completedTasks: 0,
+        }))
       }
     }
 
-    fetchDashboardData()
+    loadUserTasks()
   }, [user])
 
   const taskCompletionRate = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0
@@ -209,7 +217,7 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 {projects.slice(0, 3).map((project) => (
                   <div
-                    key={project.id}
+                    key={project.projectId}
                     className="flex items-center justify-between rounded-lg border border-border p-4"
                   >
                     <div className="flex items-center gap-3">
@@ -220,16 +228,16 @@ export default function DashboardPage() {
                         <p className="font-medium">{project.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
-                            {project.status === "active" ? "Activo" : "Inactivo"}
+                            {project.status === "active" ? "Activo" : project.status || "Inactivo"}
                           </Badge>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Users className="h-3 w-3" />
-                            {project.members.length}
+                            {project.members ? project.members.length : 0}
                           </div>
                         </div>
                       </div>
                     </div>
-                    <Link href={`/projects/${project.id}`}>
+                    <Link href={`/projects/${project.projectId}`}>
                       <Button variant="ghost" size="sm">
                         Ver
                       </Button>
@@ -248,12 +256,14 @@ export default function DashboardPage() {
             <CardDescription>Accede a las funciones más usadas</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Link href="/projects/new">
-              <Button className="w-full justify-start bg-transparent" variant="outline">
-                <FolderKanban className="mr-2 h-4 w-4" />
-                Crear Nuevo Proyecto
-              </Button>
-            </Link>
+            <Button 
+              className="w-full justify-start bg-transparent" 
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              <FolderKanban className="mr-2 h-4 w-4" />
+              Crear Nuevo Proyecto
+            </Button>
             <Link href="/chat">
               <Button className="w-full justify-start bg-transparent" variant="outline">
                 <Zap className="mr-2 h-4 w-4" />
@@ -275,6 +285,15 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Project Dialog */}
+      <CreateProjectDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onProjectCreated={() => {
+          refetchProjects()
+        }}
+      />
 
       {/* Upgrade Banner for Free Users */}
       {isClient && user?.subscription.plan === "free" && tokenUsageRate > 70 && (

@@ -24,7 +24,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Target, Plus, X, Calendar } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { createApiUrl, apiRequest } from "@/lib/api-config"
+import { useOkrs } from "@/lib/domain/okrs/hooks/use-okr"
+import { okrService } from "@/lib/domain/okrs/services/okr.service"
+import type { CreateOkrCommand, CreateKeyResultCommand } from "@/lib/domain/okrs/types/okr.types"
 
 interface KeyResult {
   id: string
@@ -78,6 +80,7 @@ export function CreateOKRDialog({
   onOKRCreated
 }: CreateOKRDialogProps) {
   const { toast } = useToast()
+  const { createOkr, isLoading } = useOkrs()
   const [loading, setLoading] = useState(false)
   
   // Datos del OKR
@@ -227,46 +230,74 @@ export function CreateOKRDialog({
 
     setLoading(true)
     try {
-      // Crear el OKR
-      const newOKR = {
-        id: `okr_${generateId()}`,
-        projectId,
-        title,
-        description,
-        type: "objective" as const,
-        ownerId,
-        quarter,
-        status: "not_started" as const,
-        progress: 0,
-        startDate,
-        endDate,
-        createdAt: new Date().toISOString(),
-        keyResults: keyResults.map(kr => ({
-          id: `kr_${generateId()}`,
-          title: kr.title!,
-          description: kr.description!,
-          targetValue: kr.targetValue!,
-          currentValue: kr.currentValue || 0,
-          unit: kr.unit!,
-          status: "not_started" as const
-        }))
+      // Validar que el projectId existe
+      if (!projectId || projectId.trim() === '') {
+        throw new Error('El ID del proyecto no es válido.')
       }
 
-      // Crear el OKR usando la API real
-      const url = createApiUrl('/okrs')
-      const response = await apiRequest(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newOKR)
-      })
+      // Crear el comando para el OKR usando DDD
+      // El backend espera: OBJECTIVE, KEY_RESULT, o INITIATIVE para type
+      // El servicio mapeará COMPANY/TEAM/INDIVIDUAL a OBJECTIVE
+      const command: CreateOkrCommand = {
+        projectId: projectId, // El servicio lo convierte a string internamente
+        title,
+        description: description || undefined,
+        type: 'TEAM', // COMPANY, TEAM, o INDIVIDUAL (el servicio lo mapeará a OBJECTIVE)
+        ownerId,
+        quarter,
+        status: 'NOT_STARTED',
+        startDate: startDate || undefined,
+        endDate: endDate || undefined
+      }
+
+      // Crear el OKR usando el servicio DDD
+      const newOkr = await createOkr(command)
       
-      if (!response.ok) {
-        throw new Error('Error al crear el OKR')
+      // Crear los key results después de crear el OKR
+      // Filtrar solo los key results que tienen título (los válidos)
+      const validKeyResults = keyResults.filter(kr => kr.title && kr.title.trim() !== '')
+      
+      if (validKeyResults.length > 0 && newOkr.id) {
+        // Mapear status del frontend al backend
+        const mapStatusToBackend = (frontendStatus: string): string => {
+          const statusLower = frontendStatus?.toLowerCase() || 'not_started'
+          if (statusLower === 'not_started' || statusLower === 'not-started') return 'NOT_STARTED'
+          if (statusLower === 'in_progress' || statusLower === 'in-progress') return 'IN_PROGRESS'
+          if (statusLower === 'completed') return 'COMPLETED'
+          if (statusLower === 'at_risk' || statusLower === 'at-risk') return 'CANCELLED'
+          return 'NOT_STARTED'
+        }
+        
+        // Crear cada key result
+        const keyResultPromises = validKeyResults.map(async (kr) => {
+          const keyResultCommand: CreateKeyResultCommand = {
+            okrId: newOkr.id,
+            title: kr.title!,
+            description: kr.description || undefined,
+            targetValue: kr.targetValue || 0,
+            currentValue: kr.currentValue || 0,
+            unit: kr.unit || 'percentage',
+            status: mapStatusToBackend(kr.status || 'not_started')
+          }
+          
+          return okrService.createKeyResult(keyResultCommand)
+        })
+        
+        try {
+          await Promise.all(keyResultPromises)
+          console.log(`Se crearon ${validKeyResults.length} key results para el OKR ${newOkr.id}`)
+        } catch (keyResultError) {
+          console.error('Error al crear key results:', keyResultError)
+          // No fallar la creación del OKR si fallan los key results
+          toast({
+            title: "Advertencia",
+            description: "El OKR se creó pero algunos key results no se pudieron crear",
+            variant: "destructive"
+          })
+        }
       }
       
-      console.log("Nuevo OKR creado:", newOKR)
+      console.log("Nuevo OKR creado:", newOkr)
       
       toast({
         title: "OKR creado exitosamente",
@@ -294,9 +325,10 @@ export function CreateOKRDialog({
       
     } catch (error) {
       console.error("Error creating OKR:", error)
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al crear el OKR'
       toast({
         title: "Error al crear OKR",
-        description: "Hubo un problema al crear el objetivo. Inténtalo nuevamente.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {

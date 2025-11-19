@@ -30,6 +30,7 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Shield, Users, Settings, Lock, UserX } from "lucide-react"
 import { createApiUrl } from "@/lib/api-config"
+import { profileService } from "@/lib/domain/profile/services/profile.service"
 
 interface User {
   id: string
@@ -75,6 +76,7 @@ export function ManagePermissionsDialog({
   const [permissions, setPermissions] = useState<UserPermissions[]>([])
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [userToRemove, setUserToRemove] = useState<{ id: string; name: string } | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -86,31 +88,59 @@ export function ManagePermissionsDialog({
     try {
       setIsLoading(true)
       
-      // Cargar usuarios reales desde la API
-      const usersResponse = await fetch(createApiUrl('/users'))
-      if (!usersResponse.ok) {
-        throw new Error('Error al cargar usuarios')
-      }
-      const allUsers = await usersResponse.json()
+      // Cargar proyecto usando el servicio DDD
+      const { projectService } = await import('@/lib/domain/projects/services/project.service')
+      const project = await projectService.getProjectById(projectId)
       
-      // Cargar proyecto para obtener miembros
-      const projectResponse = await fetch(createApiUrl(`/projects/${projectId}`))
-      if (!projectResponse.ok) {
-        throw new Error('Error al cargar proyecto')
+      if (!project) {
+        throw new Error('Proyecto no encontrado')
       }
-      const project = await projectResponse.json()
       
-      // Filtrar solo los usuarios que son miembros del proyecto
-      const projectMembers = allUsers.filter((user: User) => 
-        project.members.includes(user.id)
+      // Obtener perfiles de los miembros desde Profile-Service
+      const memberIds = project.members && Array.isArray(project.members) ? project.members : []
+      const memberProfiles = await Promise.all(
+        memberIds.map(async (memberId: string) => {
+          try {
+            const profile = await profileService.getUserProfile({ userId: memberId })
+            return {
+              id: profile.userId,
+              name: `${profile.userFirstName} ${profile.userLastName}`.trim() || profile.userEmail,
+              email: profile.userEmail,
+              role: profile.userRole || 'developer',
+              avatar: profile.userProfileImgUrl || '/placeholder.svg'
+            }
+          } catch (error) {
+            console.warn(`Could not fetch profile for user ${memberId}:`, error)
+            return {
+              id: memberId,
+              name: memberId.split('@')[0] || memberId,
+              email: memberId.includes('@') ? memberId : `${memberId}@example.com`,
+              role: 'developer',
+              avatar: '/placeholder.svg'
+            }
+          }
+        })
       )
       
-      // Cargar permisos reales del proyecto
-      const permissionsResponse = await fetch(createApiUrl(`/projectPermissions?projectId=${projectId}`))
+      const projectMembers: User[] = memberProfiles
+      
+      // Cargar permisos reales del proyecto usando el servicio DDD
+      const { permissionService } = await import('@/lib/domain/projects/services/permission.service')
       let projectPermissions: UserPermissions[] = []
       
-      if (permissionsResponse.ok) {
-        projectPermissions = await permissionsResponse.json()
+      try {
+        const allPermissions = await permissionService.getPermissionsByProjectId(projectId)
+        projectPermissions = (Array.isArray(allPermissions) ? allPermissions : []).map((perm: any) => ({
+          userId: perm.userId,
+          role: perm.role as ProjectRole,
+          read: perm.read || false,
+          write: perm.write || false,
+          manage_project: perm.manageProject || false,
+          manage_members: perm.manageMembers || false,
+          manage_permissions: perm.managePermissions || false
+        }))
+      } catch (error) {
+        console.warn('Error loading permissions:', error)
       }
       
       // Si no hay permisos, crear permisos por defecto
@@ -128,7 +158,13 @@ export function ManagePermissionsDialog({
 
       setProjectMembers(projectMembers)
       setPermissions(projectPermissions)
+      
+      // Seleccionar el primer miembro por defecto si hay miembros
+      if (projectMembers.length > 0 && !selectedMemberId) {
+        setSelectedMemberId(projectMembers[0].id)
+      }
     } catch (error) {
+      console.error('Error fetching members and permissions:', error)
       toast({
         title: "Error",
         description: "No se pudieron cargar los permisos.",
@@ -223,33 +259,31 @@ export function ManagePermissionsDialog({
       setIsLoading(true)
       setRemoveDialogOpen(false)
 
-      // 1. Obtener el proyecto
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // 1. Obtener el proyecto usando el servicio DDD
+      const { projectService } = await import('@/lib/domain/projects/services/project.service')
+      const project = await projectService.getProjectById(projectId)
 
-      // 2. Remover usuario del array de miembros
-      const updatedMembers = project.members.filter((id: string) => id !== userId)
-      await fetch(createApiUrl(`/projects/${projectId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ members: updatedMembers })
-      })
-
-      // 3. Eliminar permisos del usuario
-      const permsRes = await fetch(
-        createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${userId}`)
-      )
-      const userPerms = await permsRes.json()
-      
-      if (userPerms.length > 0) {
-        await fetch(createApiUrl(`/projectPermissions/${userPerms[0].id}`), {
-          method: 'DELETE'
-        })
+      if (!project) {
+        throw new Error('Proyecto no encontrado')
       }
 
-      // 4. Crear notificación para el usuario eliminado
-      const notification = {
-        id: `notif_removed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      // 2. Remover usuario del proyecto usando el servicio DDD
+      await projectService.removeMember(projectId, userId)
+
+      // 3. Eliminar permisos del usuario usando el servicio DDD
+      const { permissionService } = await import('@/lib/domain/projects/services/permission.service')
+      const allPermissions = await permissionService.getPermissionsByProjectId(projectId)
+      const userPerm = (Array.isArray(allPermissions) ? allPermissions : []).find(
+        (p: any) => p.userId === userId
+      )
+      
+      if (userPerm) {
+        await permissionService.deletePermission(userPerm.id)
+      }
+
+      // 4. Crear notificación para el usuario eliminado usando el servicio DDD
+      const { notificationService } = await import('@/lib/domain/notifications/services/notification.service')
+      await notificationService.createNotification({
         userId: userId,
         projectId: projectId,
         type: "member_removed",
@@ -261,16 +295,7 @@ export function ManagePermissionsDialog({
           removedBy: currentUser.id,
           removedByName: currentUser.name,
           changeType: "removed"
-        },
-        read: false,
-        createdAt: new Date().toISOString(),
-        deliveryStatus: "delivered"
-      }
-
-      await fetch(createApiUrl('/notifications'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notification)
+        }
       })
 
       toast({
@@ -280,6 +305,7 @@ export function ManagePermissionsDialog({
 
       // Recargar la lista de miembros
       setUserToRemove(null)
+      setSelectedMemberId(null) // Limpiar selección
       await fetchMembersAndPermissions()
       onPermissionsUpdated()
     } catch (error) {
@@ -298,39 +324,43 @@ export function ManagePermissionsDialog({
     try {
       setIsLoading(true)
       
-      // Actualizar permisos de cada usuario
+      // Actualizar permisos de cada usuario usando el servicio DDD
+      const { permissionService } = await import('@/lib/domain/projects/services/permission.service')
+      
       const updatePromises = permissions.map(async (perm) => {
-        // Buscar si ya existe un registro de permisos
-        const existingPermsResponse = await fetch(
-          createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${perm.userId}`)
-        )
-        const existingPerms = await existingPermsResponse.json()
-        
-        const permissionData = {
-          projectId,
-          userId: perm.userId,
-          role: perm.role,
-          read: perm.read,
-          write: perm.write,
-          manage_project: perm.manage_project,
-          manage_members: perm.manage_members,
-          manage_permissions: perm.manage_permissions
-        }
-        
-        if (existingPerms.length > 0) {
-          // Actualizar permisos existentes
-          return fetch(createApiUrl(`/projectPermissions/${existingPerms[0].id}`), {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(permissionData)
-          })
-        } else {
-          // Crear nuevos permisos
-          return fetch(createApiUrl('/projectPermissions'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(permissionData)
-          })
+        try {
+          // Buscar si ya existe un registro de permisos
+          const allPermissions = await permissionService.getPermissionsByProjectId(projectId)
+          const existingPerm = (Array.isArray(allPermissions) ? allPermissions : []).find(
+            (p: any) => p.userId === perm.userId
+          )
+          
+          if (existingPerm) {
+            // Actualizar permisos existentes
+            await permissionService.updatePermission(existingPerm.id, {
+              role: perm.role,
+              read: perm.read,
+              write: perm.write,
+              manageProject: perm.manage_project,
+              manageMembers: perm.manage_members,
+              managePermissions: perm.manage_permissions
+            })
+          } else {
+            // Crear nuevos permisos
+            await permissionService.createPermission({
+              projectId,
+              userId: perm.userId,
+              role: perm.role,
+              read: perm.read,
+              write: perm.write,
+              manageProject: perm.manage_project,
+              manageMembers: perm.manage_members,
+              managePermissions: perm.manage_permissions
+            })
+          }
+        } catch (error) {
+          console.error(`Error updating permissions for user ${perm.userId}:`, error)
+          throw error
         }
       })
       
@@ -344,6 +374,7 @@ export function ManagePermissionsDialog({
       onPermissionsUpdated()
       onOpenChange(false)
     } catch (error) {
+      console.error('Error saving permissions:', error)
       toast({
         title: "Error",
         description: "No se pudieron actualizar los permisos.",
@@ -362,7 +393,7 @@ export function ManagePermissionsDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-hidden">
+      <DialogContent className="sm:max-w-[900px] max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Gestionar Permisos del Proyecto</DialogTitle>
           <DialogDescription>
@@ -382,64 +413,107 @@ export function ManagePermissionsDialog({
             />
           </div>
 
-          {/* Lista de miembros */}
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
-            {filteredMembers.map((member) => {
-              const userPerms = getUserPermissions(member.id)
-              if (!userPerms) return null
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px] flex-1 overflow-hidden">
+            {/* Lista de miembros - Columna izquierda */}
+            <div className="space-y-2 md:border-r md:pr-4 overflow-hidden flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-semibold">Miembros del Proyecto</Label>
+              </div>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {filteredMembers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    No se encontraron miembros
+                  </div>
+                ) : (
+                  filteredMembers.map((member) => {
+                    const userPerms = getUserPermissions(member.id)
+                    if (!userPerms) return null
 
-              const permissionLevel = getPermissionLevel(userPerms)
-              const isCurrentUser = member.id === currentUser.id
+                    const permissionLevel = getPermissionLevel(userPerms)
+                    const isCurrentUser = member.id === currentUser.id
+                    const isSelected = selectedMemberId === member.id
 
-              return (
-                <Card key={member.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
+                    return (
+                      <div
+                        key={member.id}
+                        onClick={() => setSelectedMemberId(member.id)}
+                        className={`
+                          flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                          ${isSelected 
+                            ? 'bg-primary/10 border-primary' 
+                            : 'hover:bg-muted/50 border-border'
+                          }
+                        `}
+                      >
+                        <Avatar className="h-10 w-10">
                           <AvatarImage src={member.avatar} alt={member.name} />
                           <AvatarFallback>
                             {member.name.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <CardTitle className="text-base">{member.name}</CardTitle>
+                            <p className="font-medium text-sm truncate">{member.name}</p>
                             {isCurrentUser && (
                               <Badge variant="outline" className="text-xs">Tú</Badge>
                             )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                          <div className="flex items-center gap-2 mt-1">
                             <Badge variant="secondary" className="text-xs">
                               {getRoleLabel(userPerms.role)}
                             </Badge>
+                            <Badge className={`text-xs ${permissionLevel.color}`}>
+                              {permissionLevel.label}
+                            </Badge>
                           </div>
-                          <CardDescription>{member.email}</CardDescription>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={permissionLevel.color}>
-                          {permissionLevel.label}
-                        </Badge>
-                        <Select 
-                          onValueChange={(value: 'admin' | 'manager' | 'member' | 'viewer') => 
-                            setPermissionPreset(member.id, value)
-                          }
-                          disabled={isCurrentUser}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Preset" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
-                            <SelectItem value="member">Miembro</SelectItem>
-                            <SelectItem value="viewer">Visualizador</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Permisos del miembro seleccionado - Columna derecha */}
+            <div className="space-y-4 overflow-y-auto max-h-[500px]">
+              {selectedMemberId ? (() => {
+                const selectedMember = projectMembers.find(m => m.id === selectedMemberId)
+                const userPerms = getUserPermissions(selectedMemberId)
+                
+                if (!selectedMember || !userPerms) {
+                  return (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Selecciona un miembro para ver sus permisos
+                    </div>
+                  )
+                }
+
+                const permissionLevel = getPermissionLevel(userPerms)
+                const isCurrentUser = selectedMember.id === currentUser.id
+
+                return (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={selectedMember.avatar} alt={selectedMember.name} />
+                            <AvatarFallback>
+                              {selectedMember.name.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle className="text-lg">{selectedMember.name}</CardTitle>
+                            <CardDescription>{selectedMember.email}</CardDescription>
+                          </div>
+                        </div>
                         {!isCurrentUser && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleRemoveMember(member.id, member.name)}
+                            onClick={() => handleRemoveMember(selectedMember.id, selectedMember.name)}
                             disabled={isLoading}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             title="Eliminar del proyecto"
@@ -448,82 +522,166 @@ export function ManagePermissionsDialog({
                           </Button>
                         )}
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-4">
-                    <div>
-                      <Label htmlFor={`role-${member.id}`} className="text-sm font-medium mb-2 block">
-                        Rol en el Proyecto
-                      </Label>
-                      <Select 
-                        value={userPerms.role}
-                        onValueChange={(value: ProjectRole) => updateRole(member.id, value)}
-                        disabled={isCurrentUser}
-                      >
-                        <SelectTrigger id={`role-${member.id}`} className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="scrum_master">Scrum Master</SelectItem>
-                          <SelectItem value="product_owner">Product Owner</SelectItem>
-                          <SelectItem value="developer">Developer</SelectItem>
-                          <SelectItem value="tester">Tester</SelectItem>
-                          <SelectItem value="designer">Designer</SelectItem>
-                          <SelectItem value="stakeholder">Stakeholder</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={`read-${member.id}`} className="text-sm">Leer</Label>
-                        <Switch
-                          id={`read-${member.id}`}
-                          checked={userPerms.read}
-                          onCheckedChange={(checked) => updatePermission(member.id, 'read', checked)}
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Preset de permisos */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">
+                          Preset de Permisos
+                        </Label>
+                        <Select 
+                          onValueChange={(value: 'admin' | 'manager' | 'member' | 'viewer') => 
+                            setPermissionPreset(selectedMember.id, value)
+                          }
                           disabled={isCurrentUser}
-                        />
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleccionar preset" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin (Todos los permisos)</SelectItem>
+                            <SelectItem value="manager">Manager (Gestionar proyecto y miembros)</SelectItem>
+                            <SelectItem value="member">Miembro (Leer y escribir)</SelectItem>
+                            <SelectItem value="viewer">Visualizador (Solo leer)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={`write-${member.id}`} className="text-sm">Escribir</Label>
-                        <Switch
-                          id={`write-${member.id}`}
-                          checked={userPerms.write}
-                          onCheckedChange={(checked) => updatePermission(member.id, 'write', checked)}
+
+                      {/* Rol en el proyecto */}
+                      <div>
+                        <Label htmlFor={`role-${selectedMember.id}`} className="text-sm font-medium mb-2 block">
+                          Rol en el Proyecto
+                        </Label>
+                        <Select 
+                          value={userPerms.role}
+                          onValueChange={(value: ProjectRole) => updateRole(selectedMember.id, value)}
                           disabled={isCurrentUser}
-                        />
+                        >
+                          <SelectTrigger id={`role-${selectedMember.id}`} className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="scrum_master">Scrum Master</SelectItem>
+                            <SelectItem value="product_owner">Product Owner</SelectItem>
+                            <SelectItem value="developer">Developer</SelectItem>
+                            <SelectItem value="tester">Tester</SelectItem>
+                            <SelectItem value="designer">Designer</SelectItem>
+                            <SelectItem value="stakeholder">Stakeholder</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={`manage-project-${member.id}`} className="text-sm">Gestionar Proyecto</Label>
-                        <Switch
-                          id={`manage-project-${member.id}`}
-                          checked={userPerms.manage_project}
-                          onCheckedChange={(checked) => updatePermission(member.id, 'manage_project', checked)}
-                          disabled={isCurrentUser}
-                        />
+
+                      {/* Permisos individuales */}
+                      <div>
+                        <Label className="text-sm font-medium mb-3 block">
+                          Permisos Individuales
+                        </Label>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                              <Label htmlFor={`read-${selectedMember.id}`} className="text-sm font-medium">
+                                Leer
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Ver información del proyecto
+                              </p>
+                            </div>
+                            <Switch
+                              id={`read-${selectedMember.id}`}
+                              checked={userPerms.read}
+                              onCheckedChange={(checked) => updatePermission(selectedMember.id, 'read', checked)}
+                              disabled={isCurrentUser}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                              <Label htmlFor={`write-${selectedMember.id}`} className="text-sm font-medium">
+                                Escribir
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Crear y editar contenido
+                              </p>
+                            </div>
+                            <Switch
+                              id={`write-${selectedMember.id}`}
+                              checked={userPerms.write}
+                              onCheckedChange={(checked) => updatePermission(selectedMember.id, 'write', checked)}
+                              disabled={isCurrentUser}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                              <Label htmlFor={`manage-project-${selectedMember.id}`} className="text-sm font-medium">
+                                Gestionar Proyecto
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Editar configuración del proyecto
+                              </p>
+                            </div>
+                            <Switch
+                              id={`manage-project-${selectedMember.id}`}
+                              checked={userPerms.manage_project}
+                              onCheckedChange={(checked) => updatePermission(selectedMember.id, 'manage_project', checked)}
+                              disabled={isCurrentUser}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                              <Label htmlFor={`manage-members-${selectedMember.id}`} className="text-sm font-medium">
+                                Gestionar Miembros
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Agregar o eliminar miembros
+                              </p>
+                            </div>
+                            <Switch
+                              id={`manage-members-${selectedMember.id}`}
+                              checked={userPerms.manage_members}
+                              onCheckedChange={(checked) => updatePermission(selectedMember.id, 'manage_members', checked)}
+                              disabled={isCurrentUser}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                              <Label htmlFor={`manage-permissions-${selectedMember.id}`} className="text-sm font-medium">
+                                Gestionar Permisos
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Modificar permisos de otros usuarios
+                              </p>
+                            </div>
+                            <Switch
+                              id={`manage-permissions-${selectedMember.id}`}
+                              checked={userPerms.manage_permissions}
+                              onCheckedChange={(checked) => updatePermission(selectedMember.id, 'manage_permissions', checked)}
+                              disabled={isCurrentUser || !isAdmin}
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={`manage-members-${member.id}`} className="text-sm">Gestionar Miembros</Label>
-                        <Switch
-                          id={`manage-members-${member.id}`}
-                          checked={userPerms.manage_members}
-                          onCheckedChange={(checked) => updatePermission(member.id, 'manage_members', checked)}
-                          disabled={isCurrentUser}
-                        />
+
+                      {/* Resumen del nivel de permisos */}
+                      <div className="p-3 rounded-lg bg-muted">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Nivel de Permisos:</span>
+                          <Badge className={permissionLevel.color}>
+                            {permissionLevel.label}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={`manage-permissions-${member.id}`} className="text-sm">Gestionar Permisos</Label>
-                        <Switch
-                          id={`manage-permissions-${member.id}`}
-                          checked={userPerms.manage_permissions}
-                          onCheckedChange={(checked) => updatePermission(member.id, 'manage_permissions', checked)}
-                          disabled={isCurrentUser || !isAdmin}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+                    </CardContent>
+                  </Card>
+                )
+              })() : (
+                <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                  <div>
+                    <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Selecciona un miembro de la lista</p>
+                    <p className="text-xs mt-2">para ver y editar sus permisos</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -559,3 +717,4 @@ export function ManagePermissionsDialog({
   </>
   )
 }
+

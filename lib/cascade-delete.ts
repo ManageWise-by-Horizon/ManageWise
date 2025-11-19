@@ -3,6 +3,8 @@
  * Compatible con json-server actual y futuros microservicios
  */
 
+"use client"
+
 interface CascadeDeleteOptions {
   projectId: string;
   apiUrl: string;
@@ -59,14 +61,28 @@ export async function cascadeDeleteProject({
   try {
     // Primero obtener información del proyecto y crear notificaciones para los miembros
     try {
-      const projectResponse = await fetch(`${apiUrl}/projects/${projectId}`);
+      const projectResponse = await fetch(`${apiUrl}/api/v1/projects/${projectId}`);
       if (projectResponse.ok) {
-        const project = await projectResponse.json();
+        // Leer la respuesta como texto primero para evitar errores de JSON
+        const text = await projectResponse.text();
+        const contentType = projectResponse.headers.get('content-type');
         
-        // Crear notificaciones para todos los miembros (excepto el que eliminó)
-        for (const memberId of project.members || []) {
-          if (memberId !== currentUserId) {
+        let project: any = null;
+        if (text && text.trim() !== '') {
+          if (contentType?.includes('application/json')) {
             try {
+              project = JSON.parse(text);
+            } catch (parseError) {
+              console.warn('Error parsing project JSON:', parseError);
+              // Continuar sin notificaciones si no se puede parsear
+            }
+          }
+        }
+        
+        if (project) {
+          // Crear notificaciones para todos los miembros (excepto el que eliminó)
+          for (const memberId of project.members || []) {
+            if (memberId !== currentUserId) {
               const notification = {
                 id: `notif_project_deleted_${Date.now()}_${memberId}`,
                 userId: memberId,
@@ -86,21 +102,30 @@ export async function cascadeDeleteProject({
                 deliveryStatus: 'delivered'
               };
 
-              const notifResponse = await fetch(`${apiUrl}/notifications`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(notification),
-              });
+              try {
+                const notifResponse = await fetch(`${apiUrl}/api/v1/notifications`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(notification),
+                });
 
-              if (notifResponse.ok) {
-                result.notifiedMembers++;
-                console.log(`✅ Notificación creada para usuario ${memberId}`);
+                if (notifResponse.ok) {
+                  result.notifiedMembers++;
+                  console.log(`✅ Notificación creada para usuario ${memberId}`);
+                } else {
+                  // Leer el error como texto para evitar errores de JSON
+                  try {
+                    const errorText = await notifResponse.text();
+                    console.warn(`Error creating notification: ${notifResponse.status} - ${errorText.substring(0, 100)}`);
+                  } catch (readError) {
+                    console.warn(`Error creating notification: ${notifResponse.status}`);
+                  }
+                }
+              } catch (notifError) {
+                console.warn(`Error creating notification for user ${memberId}:`, notifError);
               }
-            } catch (error) {
-              console.error(`Error creando notificación para usuario ${memberId}:`, error);
-              onError?.('notification', error);
             }
           }
         }
@@ -189,23 +214,9 @@ export async function cascadeDeleteProject({
       onError
     });
 
-    // 9. Finalmente eliminar el proyecto
-    try {
-      const response = await fetch(`${apiUrl}/projects/${projectId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error eliminando proyecto: ${response.status}`);
-      }
-    } catch (error) {
-      result.success = false;
-      result.errors.push({
-        entity: 'project',
-        error
-      });
-      onError?.('project', error);
-    }
+    // 9. Finalmente eliminar el proyecto (esto se hace en el componente usando projectService)
+    // No eliminamos aquí porque el componente ya lo hace usando el servicio DDD
+    // que maneja correctamente los errores
 
   } catch (error) {
     result.success = false;
@@ -234,33 +245,114 @@ async function deleteRelatedEntities({
   onError?: (entity: string, error: any) => void;
 }) {
   try {
-    // Obtener todas las entidades de este tipo
-    const response = await fetch(`${apiUrl}/${entity}`);
-    if (!response.ok) {
-      throw new Error(`Error fetching ${entity}: ${response.status}`);
+    // Mapear nombres de entidades a endpoints de la API
+    const entityEndpoints: Record<string, string> = {
+      backlogs: `/api/v1/backlogs`, // Puede no existir
+      userStories: `/api/v1/user-stories/project/${projectId}`,
+      tasks: `/api/v1/tasks`, // Puede no existir
+      sprints: `/api/v1/sprints`, // Puede no existir
+      meetings: `/api/v1/meetings`, // Puede no existir
+      okrs: `/api/v1/okrs/projects/${projectId}`,
+      invitations: `/api/v1/invitations/projects/${projectId}`,
+      notifications: `/api/v1/notifications` // Puede no tener endpoint por proyecto
+    };
+
+    const endpoint = entityEndpoints[entity];
+    if (!endpoint) {
+      console.warn(`No endpoint defined for entity: ${entity}`);
+      return;
     }
 
-    const entities = await response.json();
+    // Obtener todas las entidades de este tipo
+    const response = await fetch(`${apiUrl}${endpoint}`);
+    
+    // Si el endpoint no existe (404), simplemente continuar sin error
+    if (response.status === 404) {
+      console.log(`Endpoint ${endpoint} not found (404), skipping ${entity} deletion`);
+      return;
+    }
+
+    if (!response.ok) {
+      // Si es un error diferente a 404, leer el mensaje como texto y registrar pero continuar
+      try {
+        const text = await response.text();
+        console.warn(`Error fetching ${entity}: ${response.status} - ${text.substring(0, 100)}`);
+      } catch (readError) {
+        console.warn(`Error fetching ${entity}: ${response.status}`);
+      }
+      return;
+    }
+
+    // Leer la respuesta como texto primero para evitar errores de JSON
+    const text = await response.text();
+    const contentType = response.headers.get('content-type');
+    
+    let entities: any[] = [];
+    if (text && text.trim() !== '') {
+      if (contentType?.includes('application/json')) {
+        try {
+          entities = JSON.parse(text);
+        } catch (parseError) {
+          console.warn(`Error parsing JSON response for ${entity}:`, parseError);
+          return; // Si no se puede parsear, salir sin error
+        }
+      } else {
+        // Si no es JSON, asumir que no hay entidades
+        console.log(`Response for ${entity} is not JSON, skipping`);
+        return;
+      }
+    }
+    
+    const entitiesArray = Array.isArray(entities) ? entities : [];
     
     // Filtrar entidades que pertenecen al proyecto
-    const relatedEntities = entities.filter((item: any) => 
-      item.projectId === projectId
-    );
+    const relatedEntities = entitiesArray.filter((item: any) => {
+      // Algunos endpoints ya filtran por proyecto, así que verificar
+      if (endpoint.includes(`/project/${projectId}`)) {
+        return true; // Ya filtrado por el backend
+      }
+      return item.projectId === projectId || item.projectId?.toString() === projectId.toString();
+    });
 
     // Eliminar cada entidad relacionada
     for (const item of relatedEntities) {
       try {
-        const deleteResponse = await fetch(`${apiUrl}/${entity}/${item.id}`, {
+        // Construir el endpoint de eliminación según el tipo de entidad
+        let deleteEndpoint = '';
+        if (entity === 'userStories') {
+          deleteEndpoint = `/api/v1/user-stories/${item.id}`;
+        } else if (entity === 'okrs') {
+          deleteEndpoint = `/api/v1/okrs/${item.id}`;
+        } else if (entity === 'invitations') {
+          deleteEndpoint = `/api/v1/invitations/${item.id}`;
+        } else if (entity === 'notifications') {
+          deleteEndpoint = `/api/v1/notifications/${item.id}`;
+        } else {
+          // Para otras entidades, usar formato genérico
+          deleteEndpoint = `${endpoint}/${item.id}`;
+        }
+
+        const deleteResponse = await fetch(`${apiUrl}${deleteEndpoint}`, {
           method: 'DELETE',
         });
 
         if (deleteResponse.ok) {
           result.deletedEntities[entity]++;
+        } else if (deleteResponse.status === 404) {
+          // Si la entidad ya no existe, continuar sin error
+          console.log(`${entity} ${item.id} already deleted or not found`);
         } else {
-          throw new Error(`Error deleting ${entity} ${item.id}: ${deleteResponse.status}`);
+          // Leer el cuerpo como texto para evitar errores de JSON
+          try {
+            const text = await deleteResponse.text();
+            console.warn(`Error deleting ${entity} ${item.id}: ${deleteResponse.status} - ${text.substring(0, 100)}`);
+          } catch (readError) {
+            console.warn(`Error deleting ${entity} ${item.id}: ${deleteResponse.status}`);
+          }
         }
       } catch (error) {
-        result.success = false;
+        // Registrar error pero continuar con otras entidades
+        console.warn(`Error deleting ${entity} ${item.id}:`, error);
         result.errors.push({
           entity: `${entity}[${item.id}]`,
           error
@@ -272,7 +364,8 @@ async function deleteRelatedEntities({
     onProgress?.(entity, result.deletedEntities[entity]);
 
   } catch (error) {
-    result.success = false;
+    // No marcar como error fatal, solo registrar
+    console.warn(`Error processing ${entity}:`, error);
     result.errors.push({
       entity,
       error

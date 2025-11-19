@@ -57,14 +57,21 @@ interface OKRCardProps {
 
 export function OKRCard({ okr, getUserName, onEdit, onDelete }: OKRCardProps) {
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase() || ''
+    switch (normalizedStatus) {
       case "completed":
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case "in_progress":
+      case "in-progress":
         return <Clock className="h-4 w-4 text-blue-500" />
       case "at_risk":
+      case "at-risk":
+      case "cancelled":
+      case "on_hold":
+      case "on-hold":
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />
       case "not_started":
+      case "not-started":
         return <XCircle className="h-4 w-4 text-gray-500" />
       default:
         return <XCircle className="h-4 w-4 text-gray-500" />
@@ -72,14 +79,21 @@ export function OKRCard({ okr, getUserName, onEdit, onDelete }: OKRCardProps) {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase() || ''
+    switch (normalizedStatus) {
       case "completed":
         return "bg-green-100 text-green-800"
       case "in_progress":
+      case "in-progress":
         return "bg-blue-100 text-blue-800"
       case "at_risk":
+      case "at-risk":
+      case "cancelled":
+      case "on_hold":
+      case "on-hold":
         return "bg-yellow-100 text-yellow-800"
       case "not_started":
+      case "not-started":
         return "bg-gray-100 text-gray-800"
       default:
         return "bg-gray-100 text-gray-800"
@@ -87,16 +101,30 @@ export function OKRCard({ okr, getUserName, onEdit, onDelete }: OKRCardProps) {
   }
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
+    // Normalizar el status a minúsculas para comparar
+    const normalizedStatus = status?.toLowerCase() || ''
+    
+    switch (normalizedStatus) {
       case "completed":
         return "Completado"
       case "in_progress":
+      case "in-progress":
         return "En progreso"
       case "at_risk":
+      case "at-risk":
+      case "cancelled":
+      case "on_hold":
+      case "on-hold":
         return "En riesgo"
       case "not_started":
+      case "not-started":
         return "No iniciado"
       default:
+        // Si el status viene en formato del backend (NOT_STARTED, etc.), mapearlo
+        if (normalizedStatus === 'not_started' || normalizedStatus === 'not-started') return "No iniciado"
+        if (normalizedStatus === 'in_progress' || normalizedStatus === 'in-progress') return "En progreso"
+        if (normalizedStatus === 'completed') return "Completado"
+        if (normalizedStatus === 'cancelled' || normalizedStatus === 'on_hold' || normalizedStatus === 'on-hold') return "En riesgo"
         return "Desconocido"
     }
   }

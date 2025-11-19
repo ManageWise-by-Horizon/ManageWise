@@ -8,29 +8,33 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   User, 
   Clock, 
-  MessageCircle, 
-  Activity, 
   Edit3, 
   Save, 
   X, 
-  UserPlus,
   Calendar,
   Flag,
   Sparkles,
-  Send
+  Trash2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/auth-context"
-import { createApiUrl } from "@/lib/api-config"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface TaskDetailModalProps {
   open: boolean
@@ -59,24 +63,6 @@ interface TaskDetailModalProps {
   onUpdate: () => void
 }
 
-interface Comment {
-  id: string
-  userId: string
-  userName: string
-  userAvatar: string
-  content: string
-  createdAt: string
-}
-
-interface Activity {
-  id: string
-  userId: string
-  userName: string
-  userAvatar: string
-  action: string
-  details: string
-  createdAt: string
-}
 
 export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }: TaskDetailModalProps) {
   const { toast } = useToast()
@@ -84,19 +70,15 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
   const [isEditing, setIsEditing] = useState(false)
   const [editedTitle, setEditedTitle] = useState("")
   const [editedDescription, setEditedDescription] = useState("")
-  const [comments, setComments] = useState<Comment[]>([])
-  const [activities, setActivities] = useState<Activity[]>([])
-  const [newComment, setNewComment] = useState("")
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [localTask, setLocalTask] = useState(task)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   useEffect(() => {
     if (task && open) {
       setLocalTask(task)
       setEditedTitle(task.title)
       setEditedDescription(task.description || "")
-      fetchComments()
-      fetchActivities()
     }
   }, [task, open])
 
@@ -104,58 +86,49 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     setLocalTask(task)
   }, [task])
 
-  const fetchComments = async () => {
-    if (!localTask) return
-    try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}/comments`))
-      if (response.ok) {
-        const data = await response.json()
-        setComments(data)
-      }
-    } catch (error) {
-      console.error("Error fetching comments:", error)
-    }
-  }
-
-  const fetchActivities = async () => {
-    if (!localTask) return
-    try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}/activities`))
-      if (response.ok) {
-        const data = await response.json()
-        setActivities(data)
-      }
-    } catch (error) {
-      console.error("Error fetching activities:", error)
-    }
-  }
 
   const handleSaveChanges = async () => {
     if (!localTask) return
     
     try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: editedTitle,
-          description: editedDescription,
-        }),
+      // Obtener la tarea completa del backend para asegurar que tenemos todos los campos requeridos
+      const fullTask = await taskService.getTaskById(localTask.id)
+      
+      // Mapear prioridad y estado al formato del backend
+      const mapPriorityToBackend = (priority: string): "ALTA" | "MEDIA" | "BAJA" => {
+        if (priority === "high") return "ALTA"
+        if (priority === "medium") return "MEDIA"
+        if (priority === "low") return "BAJA"
+        return "MEDIA" // default
+      }
+
+      const mapStatusToBackend = (status: string): "TODO" | "IN_PROGRESS" | "DONE" => {
+        if (status === "todo") return "TODO"
+        if (status === "in_progress") return "IN_PROGRESS"
+        if (status === "done") return "DONE"
+        return "TODO" // default
+      }
+
+      // Actualizar usando el servicio DDD
+      await taskService.updateTask(localTask.id, {
+        id: localTask.id,
+        title: editedTitle,
+        description: editedDescription,
+        estimatedHours: fullTask.estimatedHours,
+        status: mapStatusToBackend(localTask.status),
+        priority: mapPriorityToBackend(localTask.priority),
+        assignedTo: fullTask.assignedTo || null,
       })
 
-      if (response.ok) {
-        // Update local state immediately
-        setLocalTask(prev => prev ? { ...prev, title: editedTitle, description: editedDescription } : prev)
-        
-        toast({
-          title: "Tarea actualizada",
-          description: "Los cambios se han guardado correctamente",
-        })
-        setIsEditing(false)
-        onUpdate()
-      }
+      // Update local state immediately
+      setLocalTask(prev => prev ? { ...prev, title: editedTitle, description: editedDescription } : prev)
+      
+      toast({
+        title: "Tarea actualizada",
+        description: "Los cambios se han guardado correctamente",
+      })
+      setIsEditing(false)
+      onUpdate()
     } catch (error) {
       console.error("Error updating task:", error)
       toast({
@@ -173,26 +146,43 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     const assignedToValue = userId === "unassigned" ? null : userId
     
     try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          assignedTo: assignedToValue,
-        }),
+      // Obtener la tarea completa del backend para asegurar que tenemos todos los campos requeridos
+      const fullTask = await taskService.getTaskById(localTask.id)
+      
+      // Mapear prioridad y estado al formato del backend
+      const mapPriorityToBackend = (priority: string): "ALTA" | "MEDIA" | "BAJA" => {
+        if (priority === "high") return "ALTA"
+        if (priority === "medium") return "MEDIA"
+        if (priority === "low") return "BAJA"
+        return "MEDIA" // default
+      }
+
+      const mapStatusToBackend = (status: string): "TODO" | "IN_PROGRESS" | "DONE" => {
+        if (status === "todo") return "TODO"
+        if (status === "in_progress") return "IN_PROGRESS"
+        if (status === "done") return "DONE"
+        return "TODO" // default
+      }
+
+      // Actualizar usando el servicio DDD
+      await taskService.updateTask(localTask.id, {
+        id: localTask.id,
+        title: fullTask.title,
+        description: fullTask.description,
+        estimatedHours: fullTask.estimatedHours,
+        status: mapStatusToBackend(localTask.status),
+        priority: mapPriorityToBackend(localTask.priority),
+        assignedTo: assignedToValue,
       })
 
-      if (response.ok) {
-        // Update local task state immediately for real-time update
-        setLocalTask(prev => prev ? { ...prev, assignedTo: assignedToValue || undefined } : prev)
-        
-        toast({
-          title: "Asignación actualizada",
-          description: "La tarea se ha asignado correctamente",
-        })
-        onUpdate()
-      }
+      // Update local task state immediately for real-time update
+      setLocalTask(prev => prev ? { ...prev, assignedTo: assignedToValue || undefined } : prev)
+      
+      toast({
+        title: "Asignación actualizada",
+        description: "La tarea se ha asignado correctamente",
+      })
+      onUpdate()
     } catch (error) {
       console.error("Error assigning task:", error)
       toast({
@@ -207,64 +197,81 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     if (!localTask) return
     
     try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          priority: priority,
-        }),
+      // Obtener la tarea completa del backend para asegurar que tenemos todos los campos requeridos
+      const fullTask = await taskService.getTaskById(localTask.id)
+      
+      // Mapear prioridad y estado al formato del backend
+      const mapPriorityToBackend = (priority: string): "ALTA" | "MEDIA" | "BAJA" => {
+        if (priority === "high") return "ALTA"
+        if (priority === "medium") return "MEDIA"
+        if (priority === "low") return "BAJA"
+        return "MEDIA" // default
+      }
+
+      const mapStatusToBackend = (status: string): "TODO" | "IN_PROGRESS" | "DONE" => {
+        if (status === "todo") return "TODO"
+        if (status === "in_progress") return "IN_PROGRESS"
+        if (status === "done") return "DONE"
+        return "TODO" // default
+      }
+
+      // Mapear la prioridad del frontend al backend
+      const backendPriority = mapPriorityToBackend(priority)
+
+      // Actualizar usando el servicio DDD
+      await taskService.updateTask(localTask.id, {
+        id: localTask.id,
+        title: fullTask.title,
+        description: fullTask.description,
+        estimatedHours: fullTask.estimatedHours,
+        status: mapStatusToBackend(localTask.status),
+        priority: backendPriority,
+        assignedTo: fullTask.assignedTo || null,
       })
 
-      if (response.ok) {
-        // Update local state immediately
-        setLocalTask(prev => prev ? { ...prev, priority } : prev)
-        
-        toast({
-          title: "Prioridad actualizada",
-          description: "La prioridad de la tarea se ha actualizado",
-        })
-        onUpdate()
-      }
+      // Update local state immediately
+      setLocalTask(prev => prev ? { ...prev, priority } : prev)
+      
+      toast({
+        title: "Prioridad actualizada",
+        description: "La prioridad de la tarea se ha actualizado",
+      })
+      onUpdate()
     } catch (error) {
       console.error("Error updating priority:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la prioridad",
+        variant: "destructive",
+      })
     }
   }
 
-  const handleAddComment = async () => {
-    if (!localTask || !newComment.trim()) return
-    
-    setIsSubmittingComment(true)
+
+  const handleDelete = async () => {
+    if (!localTask) return
+
+    setIsDeleting(true)
     try {
-      const response = await fetch(createApiUrl(`/tasks/${localTask.id}/comments`), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: newComment,
-          userId: user?.id || "current-user-id",
-        }),
+      await taskService.deleteTask(localTask.id)
+      
+      toast({
+        title: "Tarea eliminada",
+        description: "La tarea ha sido eliminada correctamente",
       })
 
-      if (response.ok) {
-        setNewComment("")
-        fetchComments()
-        toast({
-          title: "Comentario añadido",
-          description: "Tu comentario se ha publicado",
-        })
-      }
+      onUpdate()
+      onOpenChange(false)
     } catch (error) {
-      console.error("Error adding comment:", error)
+      console.error("Error deleting task:", error)
       toast({
         title: "Error",
-        description: "No se pudo añadir el comentario",
+        description: "No se pudo eliminar la tarea",
         variant: "destructive",
       })
     } finally {
-      setIsSubmittingComment(false)
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
     }
   }
 
@@ -272,7 +279,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     return new Date(date).toLocaleDateString("es-ES", {
       year: "numeric",
       month: "short",
-      day: "numeric",
+            day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     })
@@ -304,6 +311,7 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden sm:max-w-7xl md:max-w-7xl lg:max-w-7xl xl:max-w-7xl">
         <DialogHeader>
+          <DialogTitle className="sr-only">Detalles de la tarea</DialogTitle>
           <div className="flex items-start justify-between">
             <div className="flex-1">
               {isEditing ? (
@@ -326,9 +334,17 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <DialogTitle className="text-xl">{localTask.title}</DialogTitle>
+                  <h2 className="text-xl font-semibold">{localTask.title}</h2>
                   <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
                     <Edit3 className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                   {localTask.aiAssigned && (
                     <Badge variant="secondary" className="gap-1">
@@ -369,111 +385,6 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
               </CardContent>
             </Card>
 
-            {/* Comments and Activity */}
-            <Tabs defaultValue="comments" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="comments" className="flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Comentarios ({comments.length})
-                </TabsTrigger>
-                <TabsTrigger value="activity" className="flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  Actividad ({activities.length})
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="comments" className="space-y-4">
-                {/* Add Comment */}
-                <div className="flex gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={user?.avatar || "/placeholder-user.jpg"} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user?.name?.split(" ").map(n => n[0]).join("") || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <Textarea
-                      placeholder="Escribe un comentario..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      className="min-h-[80px]"
-                    />
-                    <Button 
-                      size="sm" 
-                      onClick={handleAddComment}
-                      disabled={!newComment.trim() || isSubmittingComment}
-                    >
-                      <Send className="w-4 h-4 mr-1" />
-                      Comentar
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Comments List */}
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-4">
-                    {comments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        No hay comentarios aún
-                      </p>
-                    ) : (
-                      comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={comment.userAvatar} />
-                            <AvatarFallback>{comment.userName[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="bg-muted rounded-lg p-3">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium">{comment.userName}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(comment.createdAt)}
-                                </span>
-                              </div>
-                              <p className="text-sm">{comment.content}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="activity">
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-3">
-                    {activities.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        No hay actividad registrada
-                      </p>
-                    ) : (
-                      activities.map((activity) => (
-                        <div key={activity.id} className="flex gap-3 items-start">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage src={activity.userAvatar} />
-                            <AvatarFallback className="text-xs">{activity.userName[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm">
-                              <span className="font-medium">{activity.userName}</span>{" "}
-                              {activity.action}{" "}
-                              <span className="text-muted-foreground">{activity.details}</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(activity.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
           </div>
 
           {/* Sidebar */}
@@ -617,6 +528,27 @@ export function TaskDetailModal({ open, onOpenChange, task, members, onUpdate }:
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro de que deseas eliminar esta tarea?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La tarea "{localTask?.title}" será eliminada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -16,9 +16,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { useProject } from "@/lib/domain/projects/hooks/use-project"
+import type { UpdateProjectCommand, ProjectStatus } from "@/lib/domain/projects/types/project.types"
 
 interface Project {
   id: string
@@ -53,40 +56,59 @@ export function EditProjectDialog({
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   
+  // Usar el hook useProject para obtener la función updateProject
+  const { updateProject } = useProject({ projectId: project.id })
+  
   const [formData, setFormData] = useState({
-    name: project.name,
-    description: project.description,
-    objectives: project.objectives.join("\n"),
-    startDate: project.timeline.startDate ? new Date(project.timeline.startDate) : undefined,
-    endDate: project.timeline.estimatedEndDate ? new Date(project.timeline.estimatedEndDate) : undefined,
+    name: project?.name || "",
+    description: project?.description || "",
+    objectives: project?.objectives?.join("\n") || "",
+    status: (project?.status || "active") as ProjectStatus,
+    startDate: project?.timeline?.startDate ? new Date(project.timeline.startDate) : undefined,
+    endDate: project?.timeline?.estimatedEndDate ? new Date(project.timeline.estimatedEndDate) : undefined,
   })
+
+  // Actualizar formData cuando el proyecto cambia
+  useEffect(() => {
+    if (project && open) {
+      setFormData({
+        name: project.name,
+        description: project.description,
+        objectives: project.objectives.join("\n"),
+        status: (project.status || "active") as ProjectStatus,
+        startDate: project.timeline.startDate ? new Date(project.timeline.startDate) : undefined,
+        endDate: project.timeline.estimatedEndDate ? new Date(project.timeline.estimatedEndDate) : undefined,
+      })
+    }
+  }, [project, open])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!project.id || project.id.trim() === '') {
+      toast({
+        title: "Error",
+        description: "El ID del proyecto no es válido.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      const updatedProject = {
-        ...project,
+      // Crear el comando para actualizar el proyecto usando DDD
+      const command: UpdateProjectCommand = {
         name: formData.name,
         description: formData.description,
         objectives: formData.objectives.split('\n').filter(obj => obj.trim() !== ''),
-        timeline: {
-          ...project.timeline,
-          startDate: formData.startDate?.toISOString(),
-          estimatedEndDate: formData.endDate?.toISOString(),
-        }
+        status: formData.status,
+        startDate: formData.startDate?.toISOString().split('T')[0], // Formato YYYY-MM-DD
+        endDate: formData.endDate?.toISOString().split('T')[0], // Formato YYYY-MM-DD
       }
 
-      // Aquí harías la llamada real a la API
-      // await fetch(`/api/projects/${project.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(updatedProject)
-      // })
+      // Actualizar el proyecto usando el servicio DDD
+      await updateProject(project.id, command)
 
       toast({
         title: "Proyecto actualizado",
@@ -96,9 +118,11 @@ export function EditProjectDialog({
       onProjectUpdated()
       onOpenChange(false)
     } catch (error) {
+      console.error("Error updating project:", error)
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al actualizar el proyecto'
       toast({
         title: "Error",
-        description: "No se pudo actualizar el proyecto.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -150,6 +174,27 @@ export function EditProjectDialog({
                 placeholder="Objetivo 1&#10;Objetivo 2&#10;Objetivo 3"
                 rows={4}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="status">Estado del proyecto</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: ProjectStatus) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Seleccionar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Borrador</SelectItem>
+                  <SelectItem value="planning">Planificación</SelectItem>
+                  <SelectItem value="active">Activo</SelectItem>
+                  <SelectItem value="paused">Pausado</SelectItem>
+                  <SelectItem value="completed">Completado</SelectItem>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
+                  <SelectItem value="archived">Archivado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

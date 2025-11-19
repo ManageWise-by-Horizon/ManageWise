@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { TaskDetailModal } from "./task-detail-modal"
 import { createApiUrl } from "@/lib/api-config"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
 
 interface ProjectTask {
   id: string
@@ -82,26 +83,64 @@ export function ProjectBoard({ projectId, tasks, members, onUpdate }: ProjectBoa
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
-      const response = await fetch(createApiUrl(`/tasks/${taskId}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
+      // Map normalized status back to backend format
+      const mapStatusToBackend = (status: string): "TODO" | "IN_PROGRESS" | "DONE" => {
+        if (status === "todo") return "TODO"
+        if (status === "in_progress") return "IN_PROGRESS"
+        if (status === "done") return "DONE"
+        return "TODO" // default
+      }
+
+      // Map priority from frontend format to backend format
+      const mapPriorityToBackend = (priority: string): "ALTA" | "MEDIA" | "BAJA" => {
+        if (priority === "high") return "ALTA"
+        if (priority === "medium") return "MEDIA"
+        if (priority === "low") return "BAJA"
+        return "MEDIA" // default
+      }
+
+      const backendStatus = mapStatusToBackend(newStatus)
+      
+      // Get the current task to preserve other fields
+      const currentTask = tasks.find(t => t.id === taskId)
+      if (!currentTask) {
+        throw new Error("Task not found")
+      }
+
+      // Get the full task from backend to ensure we have all required fields
+      const fullTask = await taskService.getTaskById(taskId)
+      
+      console.log('[ProjectBoard] Full task from backend:', JSON.stringify(fullTask, null, 2))
+      console.log('[ProjectBoard] Updating task with status:', backendStatus)
+
+      // Validate that all required fields are present
+      if (!fullTask.title || !fullTask.description || fullTask.estimatedHours === undefined || !fullTask.priority) {
+        throw new Error('Task data is incomplete. Missing required fields.')
+      }
+
+      // Update task using DDD service - send all required fields
+      await taskService.updateTask(taskId, {
+        title: fullTask.title,
+        description: fullTask.description,
+        estimatedHours: fullTask.estimatedHours,
+        status: backendStatus,
+        priority: fullTask.priority, // Use current priority from backend
+        assignedTo: fullTask.assignedTo || null, // Ensure it's null if undefined
       })
       
-      if (response.ok) {
-        toast({
-          title: "Tarea actualizada",
-          description: "El estado de la tarea se ha actualizado correctamente",
-        })
-        onUpdate()
-      }
+      toast({
+        title: "Tarea actualizada",
+        description: "El estado de la tarea se ha actualizado correctamente",
+      })
+      onUpdate()
     } catch (error) {
       console.error("Error updating task:", error)
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (error as any)?.responseText || (error as any)?.details?.message || "No se pudo actualizar la tarea"
       toast({
         title: "Error",
-        description: "No se pudo actualizar la tarea",
+        description: errorMessage,
         variant: "destructive",
       })
     }

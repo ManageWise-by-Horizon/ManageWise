@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useProjectHistory } from '@/hooks/use-project-history';
-import { ProjectHistoryEntry, ChangeType, EntityType } from '@/lib/types/project-history';
+import { History, ChangeType, EntityType } from '@/lib/domain/history/types/history.types';
+import { profileService } from '@/lib/domain/profile/services/profile.service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,21 +114,74 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
   useEffect(() => {
     if (projectId && user) {
       getHistory({ projectId });
-      loadUsers();
     }
   }, [projectId, user, getHistory]);
 
-  const loadUsers = async () => {
-    try {
-      const response = await fetch('http://localhost:3001/users');
-      if (response.ok) {
-        const usersData = await response.json();
-        setUsers(usersData);
+  // Cargar usuarios después de que el historial se haya cargado
+  useEffect(() => {
+    const loadUserProfiles = async () => {
+      if (history && Array.isArray(history) && history.length > 0) {
+        try {
+          // Obtener todos los UUIDs únicos de usuarios del historial
+          const uniqueUserIds = new Set<string>();
+          history.forEach((entry: History) => {
+            if (entry.userId) {
+              uniqueUserIds.add(entry.userId);
+            }
+          });
+
+          // Obtener todos los perfiles de usuario disponibles
+          const allProfiles = await profileService.getAllUsers();
+          
+          // Mapear los perfiles a los usuarios encontrados en el historial
+          const usersFromHistory = Array.from(uniqueUserIds).map(userId => {
+            const profile = allProfiles.find(p => p.userId === userId);
+            if (profile) {
+              return {
+                id: profile.userId,
+                name: `${profile.userFirstName || ''} ${profile.userLastName || ''}`.trim() || profile.userEmail || userId,
+                email: profile.userEmail || `${userId}@example.com`,
+                avatar: profile.userProfileImgUrl || '/placeholder.svg'
+              };
+            } else {
+              // Si no se encuentra el perfil, usar el UUID como fallback
+              return {
+                id: userId,
+                name: userId.includes('@') ? userId.split('@')[0] : `Usuario ${userId.substring(0, 8)}`,
+                email: userId.includes('@') ? userId : `${userId}@example.com`,
+                avatar: '/placeholder.svg'
+              };
+            }
+          });
+          
+          setUsers(usersFromHistory);
+        } catch (error) {
+          console.error('Error loading user profiles:', error);
+          // En caso de error, usar los UUIDs como fallback
+          const uniqueUserIds = new Set<string>();
+          history.forEach((entry: History) => {
+            if (entry.userId) {
+              uniqueUserIds.add(entry.userId);
+            }
+          });
+          
+          const usersFromHistory = Array.from(uniqueUserIds).map(userId => ({
+            id: userId,
+            name: userId.includes('@') ? userId.split('@')[0] : `Usuario ${userId.substring(0, 8)}`,
+            email: userId.includes('@') ? userId : `${userId}@example.com`,
+            avatar: '/placeholder.svg'
+          }));
+          
+          setUsers(usersFromHistory);
+        }
+      } else {
+        // Si no hay historial, usar un array vacío
+        setUsers([]);
       }
-    } catch (err) {
-      console.error('Error loading users:', err);
-    }
-  };
+    };
+
+    loadUserProfiles();
+  }, [history]);
 
   const handleFilter = () => {
     const filters: any = { projectId };
@@ -156,13 +210,18 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
     return CHANGE_TYPE_COLORS.default;
   };
 
-  const getEntityIcon = (entityType: EntityType) => {
-    const IconComponent = CHANGE_TYPE_ICONS[entityType] || FileText;
+  const getEntityIcon = (entityType: string) => {
+    // Normalizar entityType para que coincida con las claves del objeto
+    const normalizedType = entityType === 'user_story' ? 'userStory' : 
+                          entityType === 'key_result' ? 'keyResult' : 
+                          entityType;
+    const IconComponent = CHANGE_TYPE_ICONS[normalizedType as EntityType] || FileText;
     return <IconComponent className="h-4 w-4" />;
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('es-ES', {
+  const formatTimestamp = (timestamp: string | Date) => {
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    return date.toLocaleString('es-ES', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -184,10 +243,12 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
   const filteredHistory = history.filter(entry => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
+    const changeTypeLabel = CHANGE_TYPE_LABELS[entry.changeType as ChangeType] || entry.changeType;
+    const entityTypeLabel = ENTITY_TYPE_LABELS[entry.entityType as EntityType] || entry.entityType;
     return (
       entry.description.toLowerCase().includes(searchLower) ||
-      CHANGE_TYPE_LABELS[entry.changeType].toLowerCase().includes(searchLower) ||
-      ENTITY_TYPE_LABELS[entry.entityType].toLowerCase().includes(searchLower)
+      changeTypeLabel.toLowerCase().includes(searchLower) ||
+      entityTypeLabel.toLowerCase().includes(searchLower)
     );
   });
 
@@ -304,15 +365,15 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge 
-                            className={getChangeTypeColor(entry.changeType)}
+                            className={getChangeTypeColor(entry.changeType as ChangeType)}
                             variant="outline"
                           >
-                            {CHANGE_TYPE_LABELS[entry.changeType]}
+                            {CHANGE_TYPE_LABELS[entry.changeType as ChangeType] || entry.changeType}
                           </Badge>
                           <Badge variant="secondary">
-                            {ENTITY_TYPE_LABELS[entry.entityType]}
+                            {ENTITY_TYPE_LABELS[entry.entityType as EntityType] || entry.entityType}
                           </Badge>
-                          {entry.metadata.source === 'ai_generated' && (
+                          {entry.metadata?.source === 'ai_generated' && (
                             <Badge variant="outline" className="bg-purple-50 text-purple-700">
                               IA
                             </Badge>

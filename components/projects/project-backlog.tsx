@@ -8,21 +8,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, Target, TrendingUp, MoreVertical, Edit, Trash2, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { CreateUserStoryDialog } from "@/components/backlogs/create-user-story-dialog"
+import { EditUserStoryDialog } from "@/components/backlogs/edit-user-story-dialog"
 import { UserStoryDetailModal } from "@/components/backlogs/user-story-detail-modal"
-import { createApiUrl } from "@/lib/api-config"
+import { userStoryService } from "@/lib/domain/user-stories/services/user-story.service"
+import type { UserStory as UserStoryType } from "@/lib/domain/user-stories/types/user-story.types"
 
-interface UserStory {
-  id: string
-  title: string
-  description: string
-  priority: "high" | "medium" | "low"
-  storyPoints: number
-  acceptanceCriteria: string[]
-  status: string
-  projectId: string
-  createdBy: string
-  createdAt: string
-  aiGenerated?: boolean
+// Usar el tipo del dominio y extenderlo con campos adicionales del frontend
+type UserStory = UserStoryType & {
+  priority?: "high" | "medium" | "low" | "Alta" | "Media" | "Baja"
+  projectId?: string
+  createdAt?: string
   qualityMetrics?: {
     bleu: number
     rouge: number
@@ -33,12 +28,14 @@ interface ProjectBacklogProps {
   projectId: string
   projectName: string
   externalUserStories?: UserStory[] // User Stories desde el padre (actualizadas en tiempo real)
+  onTaskCreated?: () => void // Callback para actualizar tareas en el proyecto
 }
 
-export function ProjectBacklog({ projectId, projectName, externalUserStories }: ProjectBacklogProps) {
+export function ProjectBacklog({ projectId, projectName, externalUserStories, onTaskCreated }: ProjectBacklogProps) {
   const [userStories, setUserStories] = useState<UserStory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedUserStory, setSelectedUserStory] = useState<UserStory | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const { toast } = useToast()
@@ -55,31 +52,63 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
 
   const fetchUserStories = async () => {
     try {
-      const response = await fetch(createApiUrl(`/userStories?projectId=${projectId}`))
-      const data = await response.json()
-      setUserStories(data)
+      if (!projectId) {
+        console.error("[ProjectBacklog] Error: projectId es requerido")
+        setUserStories([])
+        setIsLoading(false)
+        return
+      }
+
+      console.log(`[ProjectBacklog] Fetching user stories for projectId: ${projectId}`)
+
+      // Usar el servicio DDD - el backend espera projectId como String (UUID)
+      const data = await userStoryService.getUserStoriesByProjectId(projectId)
+      
+      console.log(`[ProjectBacklog] Raw data from backend:`, JSON.stringify(data, null, 2))
+      console.log(`[ProjectBacklog] Data type:`, Array.isArray(data) ? 'array' : typeof data)
+      console.log(`[ProjectBacklog] Data length:`, Array.isArray(data) ? data.length : 'N/A')
+      
+      // Mapear los datos del backend al formato del frontend
+      const mappedData: UserStory[] = (Array.isArray(data) ? data : []).map((item: UserStoryType) => {
+        console.log(`[ProjectBacklog] Mapping item:`, item)
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          storyPoints: item.storyPoints || 0,
+          acceptanceCriteria: Array.isArray(item.acceptanceCriteria) ? item.acceptanceCriteria : [],
+          aiGenerated: item.aiGenerated || false,
+          priority: item.priority || 'MEDIA', // El backend devuelve 'ALTA', 'MEDIA', 'BAJA'
+          status: item.status || 'TODO', // El backend devuelve 'TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'
+          projectId: item.projectId,
+          createdBy: item.createdBy,
+        }
+      })
+      
+      console.log(`[ProjectBacklog] Loaded ${mappedData.length} user stories for project ${projectId}`)
+      console.log(`[ProjectBacklog] Mapped data:`, JSON.stringify(mappedData, null, 2))
+      setUserStories(mappedData)
     } catch (error) {
-      console.error("Error fetching user stories:", error)
+      console.error("[ProjectBacklog] Error fetching user stories:", error)
+      console.error("[ProjectBacklog] Error details:", error instanceof Error ? error.message : String(error))
       toast({
         title: "Error",
         description: "No se pudieron cargar las user stories",
         variant: "destructive",
       })
+      setUserStories([])
     } finally {
       setIsLoading(false)
     }
   }
 
   const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "alta":
-      case "high":
+    switch (priority.toUpperCase()) {
+      case "ALTA":
         return "bg-red-500 text-white"
-      case "media":
-      case "medium":
+      case "MEDIA":
         return "bg-yellow-500 text-white"
-      case "baja":
-      case "low":
+      case "BAJA":
         return "bg-green-500 text-white"
       default:
         return "bg-gray-500 text-white"
@@ -87,43 +116,42 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
   }
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-      case "todo":
+    switch (status.toUpperCase()) {
+      case "TODO":
         return "border-gray-500 text-gray-700 bg-gray-50"
-      case "in_progress":
+      case "IN_PROGRESS":
         return "border-blue-500 text-blue-700 bg-blue-50"
-      case "done":
+      case "DONE":
         return "border-green-500 text-green-700 bg-green-50"
+      case "BLOCKED":
+        return "border-red-500 text-red-700 bg-red-50"
       default:
         return "border-gray-500 text-gray-700 bg-gray-50"
     }
   }
 
   const getStatusLabel = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-      case "todo":
+    switch (status.toUpperCase()) {
+      case "TODO":
         return "Por Hacer"
-      case "in_progress":
+      case "IN_PROGRESS":
         return "En Progreso"
-      case "done":
+      case "DONE":
         return "Completado"
+      case "BLOCKED":
+        return "Bloqueado"
       default:
         return status
     }
   }
 
   const getPriorityLabel = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "alta":
-      case "high":
+    switch (priority.toUpperCase()) {
+      case "ALTA":
         return "Alta"
-      case "media":
-      case "medium":
+      case "MEDIA":
         return "Media"
-      case "baja":
-      case "low":
+      case "BAJA":
         return "Baja"
       default:
         return priority
@@ -132,15 +160,16 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
 
   const handleDeleteUserStory = async (storyId: string) => {
     try {
-      await fetch(createApiUrl(`/userStories/${storyId}`), {
-        method: "DELETE",
-      })
+      // Usar el servicio DDD - el backend espera id como String (UUID)
+      await userStoryService.deleteUserStory(storyId)
+      
       toast({
         title: "User Story eliminada",
         description: "La user story ha sido eliminada exitosamente",
       })
       fetchUserStories()
     } catch (error) {
+      console.error("Error deleting user story:", error)
       toast({
         title: "Error",
         description: "No se pudo eliminar la user story",
@@ -201,7 +230,7 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {userStories.filter((us) => us.status === "done").length}
+              {userStories.filter((us) => (us.status || 'TODO') === "DONE").length}
             </div>
             <p className="text-xs text-muted-foreground">de {userStories.length}</p>
           </CardContent>
@@ -259,12 +288,17 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
               <tbody>
                 {userStories
                   .sort((a, b) => {
+                    // Ordenar por prioridad (ALTA > MEDIA > BAJA)
                     const priorityOrder: Record<string, number> = { 
-                      "alta": 0, "high": 0, 
-                      "media": 1, "medium": 1, 
-                      "baja": 2, "low": 2 
+                      "ALTA": 0, 
+                      "MEDIA": 1, 
+                      "BAJA": 2
                     }
-                    return (priorityOrder[a.priority.toLowerCase()] || 3) - (priorityOrder[b.priority.toLowerCase()] || 3)
+                    const aPriority = a.priority?.toUpperCase() || 'MEDIA'
+                    const bPriority = b.priority?.toUpperCase() || 'MEDIA'
+                    const priorityDiff = (priorityOrder[aPriority] ?? 3) - (priorityOrder[bPriority] ?? 3)
+                    // Si tienen la misma prioridad, ordenar por story points (mayor primero)
+                    return priorityDiff !== 0 ? priorityDiff : (b.storyPoints || 0) - (a.storyPoints || 0)
                   })
                   .map((story, index) => (
                     <tr 
@@ -287,8 +321,8 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
                         </div>
                       </td>
                       <td className="p-3">
-                        <Badge className={getPriorityColor(story.priority)}>
-                          {getPriorityLabel(story.priority)}
+                        <Badge className={getPriorityColor(story.priority || 'MEDIA')}>
+                          {getPriorityLabel(story.priority || 'MEDIA')}
                         </Badge>
                       </td>
                       <td className="p-3">
@@ -297,9 +331,9 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
                       <td className="p-3">
                         <Badge 
                           variant="outline" 
-                          className={getStatusColor(story.status)}
+                          className={getStatusColor(story.status || 'TODO')}
                         >
-                          {getStatusLabel(story.status)}
+                          {getStatusLabel(story.status || 'TODO')}
                         </Badge>
                       </td>
                       <td className="p-3">
@@ -318,12 +352,21 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedUserStory(story)
+                                setIsEditDialogOpen(true)
+                              }}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteUserStory(story.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteUserStory(story.id)
+                              }}
                               className="text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -341,22 +384,29 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories }: 
       )}
 
       {/* Create User Story Dialog */}
-      {userStories.length > 0 && (
-        <CreateUserStoryDialog
-          open={isCreateDialogOpen}
-          onOpenChange={setIsCreateDialogOpen}
-          projectId={projectId}
-          backlogId={projectId}
-          onStoryCreated={fetchUserStories}
-        />
-      )}
+      <CreateUserStoryDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        projectId={projectId}
+        backlogId={projectId}
+        onStoryCreated={fetchUserStories}
+      />
+
+      {/* Edit User Story Dialog */}
+      <EditUserStoryDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        userStory={selectedUserStory}
+        onStoryUpdated={fetchUserStories}
+      />
 
       {/* User Story Detail Modal */}
       <UserStoryDetailModal
         open={isDetailModalOpen}
         onOpenChange={setIsDetailModalOpen}
-        userStory={selectedUserStory}
+        userStory={selectedUserStory as any}
         projectId={projectId}
+        onTaskCreated={onTaskCreated}
       />
     </div>
   )

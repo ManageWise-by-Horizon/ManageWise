@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { createApiUrl } from "@/lib/api-config"
+import { profileService } from "@/lib/domain/profile/services/profile.service"
+import type { UserProfile } from "@/lib/domain/profile/types/profile.types"
 
 export type UserRole = "scrum_master" | "product_owner" | "developer"
 export type Plan = "free" | "premium"
@@ -40,7 +42,7 @@ interface AuthContextType {
   isMounted: boolean
   checkLimits: (type: "tokens" | "userStories", amount?: number) => boolean
   updateUsage: (type: "tokens" | "userStories", amount: number) => void
-  updateUser: (user: User) => void
+  updateUser: (user: User) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -56,83 +58,152 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsMounted(true)
   }, [])
 
+  // Función helper para mapear UserProfile del backend a User del frontend
+  const mapProfileToUser = (profile: UserProfile): User => {
+    const fullName = `${profile.userFirstName || ''} ${profile.userLastName || ''}`.trim() || profile.userEmail.split('@')[0]
+    
+    return {
+      id: profile.userId,
+      email: profile.userEmail,
+      name: fullName,
+      role: (profile.userRole?.toLowerCase() === 'scrum_master' ? 'scrum_master' : 
+             profile.userRole?.toLowerCase() === 'product_owner' ? 'product_owner' : 
+             'developer') as UserRole,
+      avatar: profile.userProfileImgUrl || `/placeholder.svg?height=40&width=40`,
+      subscription: {
+        plan: 'free' as Plan, // TODO: Obtener desde Profile-Service cuando esté disponible
+        tokensUsed: 0,
+        tokensLimit: 100,
+        userStoriesUsed: 0,
+        userStoriesLimit: 10
+      }
+    }
+  }
+
   useEffect(() => {
     if (!isMounted) return
     
-    // Verificar si hay un usuario autenticado en localStorage
+    // Verificar si hay un usuario autenticado y obtener su perfil desde Profile-Service
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem("auth_token")
-      const userData = localStorage.getItem("user")
+      const userId = localStorage.getItem("user_id")
       
-      if (token && userData) {
-        try {
-          const parsedUser = JSON.parse(userData)
-          
-          // Migrar estructura antigua si es necesaria
-          if (parsedUser.plan || parsedUser.tokensUsed !== undefined) {
-            const migratedUser: User = {
-              ...parsedUser,
-              subscription: {
-                plan: parsedUser.plan || "free",
-                tokensUsed: parsedUser.tokensUsed || 0,
-                tokensLimit: parsedUser.tokensLimit || 100,
-                userStoriesUsed: parsedUser.userStoriesUsed || 0,
-                userStoriesLimit: parsedUser.userStoriesLimit || 10,
-              },
-            }
-            // Remove old fields
-            delete (migratedUser as any).plan
-            delete (migratedUser as any).tokensUsed
-            delete (migratedUser as any).tokensLimit
-            delete (migratedUser as any).userStoriesUsed
-            delete (migratedUser as any).userStoriesLimit
+      if (token && userId) {
+        // Obtener el perfil desde Profile-Service en lugar de localStorage
+        profileService.getUserProfile({ userId })
+          .then((profile) => {
+            const userData = mapProfileToUser(profile)
+            setUser(userData)
+          })
+          .catch((error: any) => {
+            const is404 = error?.message?.includes('404') || error?.message?.includes('Not Found')
             
-            // Save migrated structure
-            localStorage.setItem("user", JSON.stringify(migratedUser))
-            setUser(migratedUser)
-          } else {
-            setUser(parsedUser)
-          }
-        } catch (error) {
-          console.error("Error parsing user data:", error)
-          // Clear corrupted data
-          localStorage.removeItem("auth_token")
-          localStorage.removeItem("user")
-        }
+            if (is404) {
+              // Si el perfil no existe (404), no es necesariamente un error crítico
+              // Puede ser que el perfil aún no se haya creado o el usuario fue eliminado
+              console.warn("User profile not found (404), user may need to re-login:", error)
+              // Limpiar datos para forzar re-login
+              localStorage.removeItem("auth_token")
+              localStorage.removeItem("user_id")
+              localStorage.removeItem("user")
+            } else {
+              // Para otros errores, loguear y limpiar
+              console.error("Error fetching user profile:", error)
+              localStorage.removeItem("auth_token")
+              localStorage.removeItem("user_id")
+              localStorage.removeItem("user")
+            }
+          })
+          .finally(() => {
+            setIsLoading(false)
+          })
+      } else {
+        setIsLoading(false)
       }
+    } else {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }, [isMounted])
 
   const login = async (email: string, password: string) => {
     try {
-      // Mock API call to JSON Server
-      const response = await fetch(createApiUrl(`/users?email=${email}`))
-      const users = await response.json()
+      // Real API call to Gateway
+      const response = await fetch(createApiUrl('/api/v1/authentication/sign-in'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: email,
+          userPassword: password
+        })
+      })
 
-      if (users.length === 0) {
-        throw new Error("Usuario no encontrado")
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Usuario no encontrado")
+        }
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `Error al iniciar sesión: ${response.status}`)
       }
 
-      const foundUser = users[0]
+      const authData = await response.json()
+      // authData contiene: { userId, userEmail, userToken }
 
-      if (foundUser.password !== password) {
-        throw new Error("Contraseña incorrecta")
-      }
-
-      // Create mock JWT token
-      const token = btoa(JSON.stringify({ userId: foundUser.id, exp: Date.now() + 86400000 }))
-
-      // Remove password from user object
-      const { password: _, ...userWithoutPassword } = foundUser
-
+      // Guardar el token JWT real
       if (typeof window !== 'undefined') {
-        localStorage.setItem("auth_token", token)
-        localStorage.setItem("user", JSON.stringify(userWithoutPassword))
+        localStorage.setItem("auth_token", authData.userToken)
+        localStorage.setItem("user_id", authData.userId)
       }
 
-      setUser(userWithoutPassword)
+      // Obtener el perfil completo del usuario desde Profile-Service con retry
+      let profile: UserProfile | null = null
+      const maxRetries = 3
+      const retryDelay = 500 // 500ms entre intentos
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          profile = await profileService.getUserProfile({ userId: authData.userId })
+          break // Si tiene éxito, salir del loop
+        } catch (profileError: any) {
+          const is404 = profileError?.message?.includes('404') || profileError?.message?.includes('Not Found')
+          
+          if (is404 && attempt < maxRetries) {
+            // Si es 404 y no es el último intento, esperar y reintentar
+            console.log(`Profile not found (attempt ${attempt}/${maxRetries}), retrying in ${retryDelay}ms...`)
+            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt)) // Backoff exponencial
+            continue
+          } else {
+            // Si es el último intento o no es 404, usar fallback
+            console.warn("Error fetching user profile after login:", profileError)
+            profile = null
+            break
+          }
+        }
+      }
+
+      if (profile) {
+        const userData = mapProfileToUser(profile)
+        setUser(userData)
+      } else {
+        // Si falla obtener el perfil después de todos los intentos, usar datos básicos del auth como fallback
+        const userData: User = {
+          id: authData.userId,
+          email: authData.userEmail,
+          name: authData.userEmail.split('@')[0],
+          role: 'developer' as UserRole,
+          avatar: `/placeholder.svg?height=40&width=40`,
+          subscription: {
+            plan: 'free' as Plan,
+            tokensUsed: 0,
+            tokensLimit: 100,
+            userStoriesUsed: 0,
+            userStoriesLimit: 10
+          }
+        }
+        setUser(userData)
+      }
+      
       router.push("/dashboard")
     } catch (error) {
       console.error("[v0] Login error:", error)
@@ -142,43 +213,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, name: string, role: UserRole) => {
     try {
-      // Check if user already exists
-      const checkResponse = await fetch(createApiUrl(`/users?email=${email}`))
-      const existingUsers = await checkResponse.json()
+      // Parsear el nombre completo en firstName y lastName
+      const nameParts = name.trim().split(' ')
+      const firstName = nameParts[0] || name
+      const lastName = nameParts.slice(1).join(' ') || name
 
-      if (existingUsers.length > 0) {
-        throw new Error("El correo ya está registrado")
-      }
-
-      // Create new user
-      const newUser = {
-        email,
-        password,
-        name,
-        role,
-        avatar: `/placeholder.svg?height=40&width=40&query=${name}`,
-        subscription: {
-          plan: "free" as Plan,
-          tokensUsed: 0,
-          tokensLimit: 100,
-          userStoriesUsed: 0,
-          userStoriesLimit: 10,
+      // Real API call to Gateway
+      const response = await fetch(createApiUrl('/api/v1/authentication/sign-up'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        createdAt: new Date().toISOString(),
-        resume: {
-          skills: [],
-          experience: "0 years",
-          certifications: [],
-        },
-      }
-
-      const response = await fetch(createApiUrl('/users'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify({
+          userEmail: email,
+          userPassword: password,
+          userFirstName: firstName,
+          userLastName: lastName,
+          userPhone: '', // Opcional, puede ser vacío
+          userCountry: '' // Opcional, puede ser vacío
+        })
       })
 
+      if (!response.ok) {
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || "El correo ya está registrado o los datos son inválidos")
+        }
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `Error al registrar usuario: ${response.status}`)
+      }
+
       const createdUser = await response.json()
+      // createdUser contiene: { userId, userEmail }
+
+      // Esperar un momento para que el Profile-Service cree el perfil del usuario
+      // Esto es necesario porque el perfil puede no estar disponible inmediatamente
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Esperar 1 segundo
 
       // Auto login after registration
       await login(email, password)
@@ -191,7 +261,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem("auth_token")
-      localStorage.removeItem("user")
+      localStorage.removeItem("user_id")
+      localStorage.removeItem("user") // Mantener por compatibilidad temporal
     }
     setUser(null)
     router.push("/login")
@@ -219,25 +290,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatedUser.subscription.userStoriesUsed += amount
     }
 
-    // Update in JSON Server
-    await fetch(createApiUrl(`/users/${user.id}`), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subscription: updatedUser.subscription,
-      }),
-    })
-
+    // TODO: Actualizar en Profile-Service cuando esté disponible el campo subscription
+    // Por ahora solo actualizamos el estado local (no se guarda en localStorage)
     setUser(updatedUser)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("user", JSON.stringify(updatedUser))
-    }
   }
 
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+  const updateUser = async (updatedUser: User) => {
+    // Actualizar en Profile-Service
+    try {
+      // Primero obtener el perfil actual para tener todos los campos requeridos
+      const currentProfile = await profileService.getUserProfile({ userId: updatedUser.id })
+      
+      // Parsear el nombre completo en firstName y lastName
+      const nameParts = updatedUser.name.trim().split(' ')
+      const firstName = nameParts[0] || updatedUser.name
+      const lastName = nameParts.slice(1).join(' ') || ''
+      
+      // Preparar el payload con todos los campos requeridos
+      // El backend requiere que todos los campos sean no-nulos y no-blancos
+      // Usar valores actuales para campos que no se están actualizando
+      const updatePayload = {
+        userEmail: updatedUser.email || currentProfile.userEmail || '',
+        userFirstName: firstName || currentProfile.userFirstName || '',
+        userLastName: lastName || currentProfile.userLastName || '',
+        userPhone: (currentProfile.userPhone && currentProfile.userPhone.trim() !== '') ? currentProfile.userPhone : 'N/A',
+        userCountry: (currentProfile.userCountry && currentProfile.userCountry.trim() !== '') ? currentProfile.userCountry : 'N/A',
+        userRole: currentProfile.userRole || 'User',
+        userProfileImgUrl: (updatedUser.avatar && updatedUser.avatar !== `/placeholder.svg?height=40&width=40`) 
+          ? updatedUser.avatar 
+          : (currentProfile.userProfileImgUrl && currentProfile.userProfileImgUrl.trim() !== '') 
+            ? currentProfile.userProfileImgUrl 
+            : 'N/A'
+      }
+      
+      // Validar que los campos requeridos no estén vacíos
+      if (!updatePayload.userEmail || updatePayload.userEmail.trim() === '') {
+        throw new Error('El email es requerido')
+      }
+      if (!updatePayload.userFirstName || updatePayload.userFirstName.trim() === '') {
+        throw new Error('El nombre es requerido')
+      }
+      if (!updatePayload.userLastName || updatePayload.userLastName.trim() === '') {
+        throw new Error('El apellido es requerido')
+      }
+      
+      await profileService.updateUserProfile(updatedUser.id, updatePayload)
+      
+      // Refrescar el perfil desde Profile-Service
+      const profile = await profileService.getUserProfile({ userId: updatedUser.id })
+      const refreshedUser = mapProfileToUser(profile)
+      setUser(refreshedUser)
+    } catch (error) {
+      console.error("Error updating user profile:", error)
+      // Si falla, actualizar solo localmente
+      setUser(updatedUser)
+      throw error // Re-lanzar para que el componente pueda manejar el error
     }
   }
 

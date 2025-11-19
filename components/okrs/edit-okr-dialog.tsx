@@ -24,7 +24,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Target, Plus, X, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { createApiUrl, apiRequest } from "@/lib/api-config"
+import { useOkr } from "@/lib/domain/okrs/hooks/use-okr"
+import { okrService } from "@/lib/domain/okrs/services/okr.service"
+import type { UpdateOkrCommand, CreateKeyResultCommand, UpdateKeyResultCommand } from "@/lib/domain/okrs/types/okr.types"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useNotifications } from "@/hooks/use-notifications"
 
@@ -107,6 +109,9 @@ export function EditOKRDialog({
   const { createNotification } = useNotifications()
   const [loading, setLoading] = useState(false)
   
+  // Usar el hook useOkr con el ID del OKR (string)
+  const { updateOkr } = useOkr(okr?.id ? String(okr.id) : undefined)
+  
   // Datos del OKR
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -122,17 +127,57 @@ export function EditOKRDialog({
   // Guardar valores originales para detectar cambios
   const [originalProgress, setOriginalProgress] = useState(0)
 
+  // Función para mapear el status del backend al frontend
+  const mapStatusToFrontend = (backendStatus: string): "not_started" | "in_progress" | "completed" | "at_risk" => {
+    if (!backendStatus) return 'not_started'
+    const statusLower = backendStatus.toLowerCase().trim()
+    // Mapear estados del backend (NOT_STARTED, IN_PROGRESS, etc.) al formato del frontend
+    if (statusLower === 'not_started' || statusLower === 'not-started' || statusLower === 'notstarted') return 'not_started'
+    if (statusLower === 'in_progress' || statusLower === 'in-progress' || statusLower === 'inprogress') return 'in_progress'
+    if (statusLower === 'completed' || statusLower === 'complete') return 'completed'
+    if (statusLower === 'at_risk' || statusLower === 'at-risk' || statusLower === 'atrisk' || 
+        statusLower === 'cancelled' || statusLower === 'canceled' || 
+        statusLower === 'on_hold' || statusLower === 'on-hold' || statusLower === 'onhold') return 'at_risk'
+    // Si ya está en el formato correcto, devolverlo
+    // Validar que sea uno de los valores permitidos
+    if (['not_started', 'in_progress', 'completed', 'at_risk'].includes(statusLower)) {
+      return statusLower as "not_started" | "in_progress" | "completed" | "at_risk"
+    }
+    // Por defecto, retornar not_started
+    console.warn(`Estado desconocido recibido: ${backendStatus}, usando 'not_started' por defecto`)
+    return 'not_started'
+  }
+
   // Cargar datos del OKR cuando se abre el diálogo
   useEffect(() => {
     if (okr && open) {
+      const mappedStatus = mapStatusToFrontend(okr.status)
+      console.log('Cargando OKR:', { originalStatus: okr.status, mappedStatus })
+      
       setTitle(okr.title)
       setDescription(okr.description)
       setOwnerId(okr.ownerId)
       setQuarter(okr.quarter)
-      setStatus(okr.status)
+      setStatus(mappedStatus)
       setStartDate(okr.startDate)
       setEndDate(okr.endDate)
-      setKeyResults([...okr.keyResults])
+      // Cargar key results, asegurándonos de que tengan IDs válidos
+      const loadedKeyResults = okr.keyResults && okr.keyResults.length > 0
+        ? okr.keyResults.map(kr => ({
+            ...kr,
+            id: kr.id || `kr_${Math.random().toString(36).substr(2, 4)}`, // Asegurar que tenga ID
+            status: mapStatusToFrontend(kr.status)
+          }))
+        : [{
+            id: `kr_${Math.random().toString(36).substr(2, 4)}`,
+            title: "",
+            description: "",
+            targetValue: 0,
+            currentValue: 0,
+            unit: "percentage",
+            status: "not_started" as const
+          }]
+      setKeyResults(loadedKeyResults)
       setOriginalProgress(okr.progress)
     }
   }, [okr, open])
@@ -272,34 +317,137 @@ export function EditOKRDialog({
 
     setLoading(true)
     try {
-      const updatedOKR = {
-        ...okr,
-        title,
-        description,
-        ownerId,
-        quarter,
-        status,
-        startDate,
-        endDate,
-        progress: calculateProgress(),
-        keyResults
+      // Validar que el ID del OKR existe
+      if (!okr.id || String(okr.id).trim() === '') {
+        throw new Error('El ID del OKR no es válido.')
       }
 
-      // Actualizar el OKR usando la API real
-      const url = createApiUrl(`/okrs/${okr.id}`)
-      const response = await apiRequest(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedOKR)
-      })
-      
-      if (!response.ok) {
-        throw new Error('Error al actualizar el OKR')
+      const okrId = String(okr.id)
+
+      // Mapear status del frontend al backend
+      const statusMap: Record<string, 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'> = {
+        'not_started': 'NOT_STARTED',
+        'in_progress': 'IN_PROGRESS',
+        'completed': 'COMPLETED',
+        'at_risk': 'IN_PROGRESS' // Mapear at_risk a IN_PROGRESS
       }
+
+      // Crear el comando para actualizar el OKR usando DDD
+      const command: UpdateOkrCommand = {
+        title,
+        description: description || undefined,
+        status: statusMap[status] || 'NOT_STARTED',
+        progress: calculateProgress(),
+        startDate: startDate || undefined,
+        endDate: endDate || undefined
+      }
+
+      // Usar la función updateOkr del hook
+      const updatedOkr = await updateOkr(okrId, command)
       
-      console.log("OKR actualizado:", updatedOKR)
+      console.log("OKR actualizado:", updatedOkr)
+      
+      // Gestionar key results: crear nuevos, actualizar existentes, eliminar removidos
+      if (okr && okrId) {
+        try {
+          // Obtener key results originales del OKR
+          const originalKeyResults = okr.keyResults || []
+          const originalKeyResultIds = new Set(
+            originalKeyResults
+              .map(kr => String(kr.id))
+              .filter(id => id && id.trim() !== '')
+          )
+          
+          // Mapear status del frontend al backend
+          const mapStatusToBackend = (frontendStatus: string): string => {
+            const statusLower = frontendStatus?.toLowerCase() || 'not_started'
+            if (statusLower === 'not_started' || statusLower === 'not-started') return 'NOT_STARTED'
+            if (statusLower === 'in_progress' || statusLower === 'in-progress') return 'IN_PROGRESS'
+            if (statusLower === 'completed') return 'COMPLETED'
+            if (statusLower === 'at_risk' || statusLower === 'at-risk') return 'CANCELLED'
+            return 'NOT_STARTED'
+          }
+          
+          // Filtrar solo key results válidos (con título)
+          const validKeyResults = keyResults.filter(kr => kr.title && kr.title.trim() !== '')
+          
+          // Identificar key results nuevos (IDs temporales) y existentes (IDs string)
+          const newKeyResults: typeof validKeyResults = []
+          const existingKeyResults: typeof validKeyResults = []
+          
+          validKeyResults.forEach(kr => {
+            const krId = String(kr.id)
+            if (krId && krId.trim() !== '' && originalKeyResultIds.has(krId)) {
+              existingKeyResults.push(kr)
+            } else {
+              newKeyResults.push(kr)
+            }
+          })
+          
+          // Crear nuevos key results
+          if (newKeyResults.length > 0) {
+            const createPromises = newKeyResults.map(async (kr) => {
+              const keyResultCommand: CreateKeyResultCommand = {
+                okrId: okrId,
+                title: kr.title,
+                description: kr.description || undefined,
+                targetValue: kr.targetValue || 0,
+                currentValue: kr.currentValue || 0,
+                unit: kr.unit || 'percentage',
+                status: mapStatusToBackend(kr.status || 'not_started')
+              }
+              return okrService.createKeyResult(keyResultCommand)
+            })
+            await Promise.all(createPromises)
+            console.log(`Se crearon ${newKeyResults.length} nuevos key results`)
+          }
+          
+          // Actualizar key results existentes
+          if (existingKeyResults.length > 0) {
+            const updatePromises = existingKeyResults.map(async (kr) => {
+              const krId = String(kr.id)
+              if (krId && krId.trim() !== '') {
+                const updateCommand: UpdateKeyResultCommand = {
+                  title: kr.title,
+                  description: kr.description || undefined,
+                  targetValue: kr.targetValue || 0,
+                  currentValue: kr.currentValue || 0,
+                  unit: kr.unit || 'percentage',
+                  status: mapStatusToBackend(kr.status || 'not_started')
+                }
+                return okrService.updateKeyResult(krId, updateCommand)
+              }
+            })
+            await Promise.all(updatePromises.filter(p => p !== undefined))
+            console.log(`Se actualizaron ${existingKeyResults.length} key results existentes`)
+          }
+          
+          // Identificar key results que fueron eliminados
+          const currentKeyResultIds = new Set(
+            validKeyResults
+              .map(kr => String(kr.id))
+              .filter(id => id && id.trim() !== '')
+          )
+          
+          const deletedKeyResultIds = Array.from(originalKeyResultIds).filter(
+            id => !currentKeyResultIds.has(id)
+          )
+          
+          // Eliminar key results removidos
+          if (deletedKeyResultIds.length > 0) {
+            const deletePromises = deletedKeyResultIds.map(id => okrService.deleteKeyResult(id))
+            await Promise.all(deletePromises)
+            console.log(`Se eliminaron ${deletedKeyResultIds.length} key results`)
+          }
+        } catch (keyResultError) {
+          console.error('Error al gestionar key results:', keyResultError)
+          toast({
+            title: "Advertencia",
+            description: "El OKR se actualizó pero hubo problemas al guardar algunos key results",
+            variant: "destructive"
+          })
+        }
+      }
       
       // Crear notificación si el progreso cambió significativamente (más de 5%)
       const newProgress = calculateProgress()
@@ -308,14 +456,12 @@ export function EditOKRDialog({
       if (progressChange >= 5 && user && okr) {
         try {
           // Obtener miembros del proyecto para notificar
-          const membersResponse = await fetch(createApiUrl(`/projectMembers?projectId=${okr.projectId}`))
-          let membersToNotify = []
+          // TODO: Usar el servicio de proyectos DDD para obtener miembros
+          // Por ahora, usar los miembros que ya tenemos en props
+          let membersToNotify = members.map(m => m.id)
           
-          if (membersResponse.ok) {
-            const projectMembers = await membersResponse.json()
-            membersToNotify = projectMembers.map((member: any) => member.userId)
-          } else {
-            // Si no se pueden obtener los miembros, notificar al menos al owner del OKR
+          if (membersToNotify.length === 0) {
+            // Si no hay miembros, notificar al menos al owner del OKR
             membersToNotify = [okr.ownerId]
           }
 
@@ -359,9 +505,10 @@ export function EditOKRDialog({
       
     } catch (error) {
       console.error("Error updating OKR:", error)
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al actualizar el OKR'
       toast({
         title: "Error al actualizar OKR",
-        description: "Hubo un problema al actualizar el objetivo. Inténtalo nuevamente.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -447,9 +594,17 @@ export function EditOKRDialog({
 
               <div className="grid gap-2">
                 <Label htmlFor="status">Estado *</Label>
-                <Select value={status} onValueChange={(value: any) => setStatus(value)}>
+                <Select 
+                  value={status || 'not_started'} 
+                  onValueChange={(value: any) => {
+                    console.log('Cambiando estado de', status, 'a', value)
+                    setStatus(value)
+                  }}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar estado" />
+                    <SelectValue placeholder="Seleccionar estado">
+                      {STATUS_OPTIONS.find(opt => opt.value === status)?.label || 'Seleccionar estado'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map(option => (

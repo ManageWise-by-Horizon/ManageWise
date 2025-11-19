@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react"
-import { createApiUrl, apiRequest } from "@/lib/api-config"
+import { useState, useEffect, useMemo } from "react"
+import { permissionService } from "@/lib/domain/projects/services/permission.service"
+import type { ProjectPermission as DDDProjectPermission } from "@/lib/domain/projects/types/project.types"
 
 export type ProjectPermission = "read" | "write" | "manage_project" | "manage_members" | "manage_permissions"
 
@@ -23,32 +24,42 @@ export function useProjectPermissions(projectId: string, userId: string) {
 
   useEffect(() => {
     const fetchPermissions = async () => {
+      if (!projectId) {
+        setIsLoading(false)
+        return
+      }
+
       try {
         setIsLoading(true)
         
-        // Obtener permisos reales desde la API
-        const url = createApiUrl(`/projectPermissions?projectId=${projectId}&userId=${userId}`)
-        const response = await apiRequest(url)
+        // Obtener todos los permisos del proyecto desde la API DDD
+        const allPermissions = await permissionService.getPermissionsByProjectId(projectId)
         
-        if (!response.ok) {
-          throw new Error('Error al cargar los permisos')
+        // Buscar el permiso del usuario actual comparando UUIDs como strings
+        const userPermission = allPermissions.find(p => p.userId === userId)
+        
+        // Si el usuario tiene permisos específicos, usarlos. Si no, usar permisos por defecto
+        if (userPermission) {
+          setPermissions({
+            read: userPermission.read || false,
+            write: userPermission.write || false,
+            manage_project: userPermission.manageProject || false,
+            manage_members: userPermission.manageMembers || false,
+            manage_permissions: userPermission.managePermissions || false
+          })
+        } else {
+          // Si no hay permisos específicos, el usuario no tiene acceso
+          setPermissions({
+            read: false,
+            write: false,
+            manage_project: false,
+            manage_members: false,
+            manage_permissions: false
+          })
         }
-        
-        const permissionsData = await response.json()
-        
-        // Si el usuario tiene permisos específicos, usarlos. Si no, usar permisos por defecto (solo lectura)
-        const userPermissions = permissionsData.length > 0 ? permissionsData[0] : {
-          read: true,
-          write: false,
-          manage_project: false,
-          manage_members: false,
-          manage_permissions: false
-        }
-        
-        setPermissions(userPermissions)
       } catch (error) {
         console.error("Error fetching permissions:", error)
-        // En caso de error, denegar todos los permisos
+        // En caso de error, no asumir permisos (mostrar sin acceso)
         setPermissions({
           read: false,
           write: false,
@@ -61,9 +72,7 @@ export function useProjectPermissions(projectId: string, userId: string) {
       }
     }
 
-    if (userId && projectId) {
-      fetchPermissions()
-    }
+    fetchPermissions()
   }, [projectId, userId])
 
   const hasPermission = (permission: ProjectPermission): boolean => {

@@ -18,8 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth/auth-context"
-import { createApiUrl, API_BASE_URL } from "@/lib/api-config"
-import { cascadeDeleteProject } from "@/lib/cascade-delete"
+import { projectService } from "@/lib/domain/projects/services/project.service"
 
 interface DeleteProjectDialogProps {
   project: {
@@ -52,30 +51,19 @@ export function DeleteProjectDialog({
     setIsDeleting(true)
 
     try {
-      // Use cascade delete to remove all related entities
-      const result = await cascadeDeleteProject({
-        projectId: project.id,
-        apiUrl: API_BASE_URL,
-        currentUserId: user?.id,
-        onProgress: (entity, count) => {
-          console.log(`Deleted ${count} ${entity}`)
-        },
-        onError: (entity, error) => {
-          console.error(`Error deleting ${entity}:`, error)
-        }
-      })
-
-      if (!result.success) {
-        throw new Error(`Cascade delete failed with ${result.errors.length} errors`)
+      // Validar que el ID del proyecto existe
+      if (!project.id || project.id.trim() === '') {
+        throw new Error("El ID del proyecto no es válido")
       }
 
-      const notificationMessage = result.notifiedMembers > 0 
-        ? ` Se notificó a ${result.notifiedMembers} miembro(s) del proyecto.`
-        : '';
+      // Eliminar el proyecto usando el servicio DDD
+      // El backend maneja automáticamente la eliminación en cascada de todas las entidades relacionadas
+      // (Permissions, Invitations, History, OKRs, KeyResults) gracias a @OneToMany con cascade = CascadeType.ALL
+      await projectService.deleteProject(project.id)
 
       toast({
         title: "Proyecto eliminado",
-        description: `El proyecto y todos sus datos han sido eliminados: ${result.deletedEntities.userStories} User Stories, ${result.deletedEntities.tasks} Tasks, ${result.deletedEntities.sprints} Sprints, ${result.deletedEntities.backlogs} Backlogs, ${result.deletedEntities.okrs} OKRs, ${result.deletedEntities.notifications} Notificaciones.${notificationMessage}`,
+        description: "El proyecto ha sido eliminado correctamente.",
       })
 
       // Reset state
@@ -91,9 +79,10 @@ export function DeleteProjectDialog({
       }
     } catch (error) {
       console.error("Error deleting project:", error)
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al eliminar el proyecto'
       toast({
         title: "Error",
-        description: "No se pudo eliminar el proyecto. Por favor, intenta de nuevo.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

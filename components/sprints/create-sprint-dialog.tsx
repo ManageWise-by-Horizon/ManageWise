@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, Sparkles } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createApiUrl } from "@/lib/api-config"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
 
 interface CreateSprintDialogProps {
   open: boolean
@@ -155,29 +156,39 @@ export function CreateSprintDialog({ open, onOpenChange, projects, onSprintCreat
         allTasks.push(...mockTasks)
       }
 
-      // Create tasks with validation
+      // Create tasks with validation using DDD service
       const createdTasks = await Promise.all(
         allTasks.map(async (task) => {
           // Validate required fields before creating
           if (!task.userStoryId) {
             throw new Error(`Task "${task.title}" missing userStoryId`)
           }
-          if (task.status !== "todo") {
-            console.warn(`Task "${task.title}" has unexpected status: ${task.status}`)
-            task.status = "todo" // Force correct status
+          if (!user?.id) {
+            throw new Error('User ID is required to create tasks')
           }
 
-          const response = await fetch(createApiUrl('/tasks'), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(task),
-          })
+          // Map status to backend format
+          const status = task.status === "todo" ? "TODO" : task.status.toUpperCase() as "TODO" | "IN_PROGRESS" | "DONE"
           
-          if (!response.ok) {
-            throw new Error(`Failed to create task: ${task.title}`)
+          // Map priority to backend format
+          const priority = task.priority?.toUpperCase() as "ALTA" | "MEDIA" | "BAJA" || "MEDIA"
+
+          // Validar que siempre haya un assignedTo
+          if (!task.assignedTo) {
+            throw new Error(`Task "${task.title}" debe tener un usuario asignado`)
           }
-          
-          return response.json()
+
+          return await taskService.createTask({
+            userStoryId: task.userStoryId,
+            assignedTo: task.assignedTo, // Ahora es obligatorio
+            createdBy: user.id,
+            title: task.title,
+            description: task.description,
+            estimatedHours: task.estimatedHours,
+            status: status,
+            priority: priority,
+            aiGenerated: task.aiAssigned || false,
+          })
         }),
       )
 

@@ -12,7 +12,7 @@ import { OKRsNoResults } from "@/components/okrs/okrs-no-results"
 import { CreateOKRDialog } from "@/components/okrs/create-okr-dialog"
 import { EditOKRDialog } from "@/components/okrs/edit-okr-dialog"
 import { DeleteOKRDialog } from "@/components/okrs/delete-okr-dialog"
-import { createApiUrl, apiRequest } from "@/lib/api-config"
+import { getApiClient } from "@/lib/infrastructure/api/api-client"
 
 interface KeyResult {
   id: string
@@ -54,6 +54,7 @@ interface ProjectOKRsProps {
 
 export function ProjectOKRs({ projectId, projectName, members }: ProjectOKRsProps) {
   const { user } = useAuth()
+  const api = getApiClient()
   const [okrs, setOkrs] = useState<OKR[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -74,19 +75,88 @@ export function ProjectOKRs({ projectId, projectName, members }: ProjectOKRsProp
       setLoading(true)
       setError(null)
       
-      // Obtener OKRs reales desde la API
-      const url = createApiUrl(`/okrs?projectId=${projectId}`)
-      const response = await apiRequest(url)
+      // El backend espera projectId como String
+      let projectOkrs: any[] = []
       
-      if (!response.ok) {
-        throw new Error('Error al cargar los OKRs')
+      try {
+        // Usar el endpoint específico del proyecto
+        projectOkrs = await api.get<any[]>(`/api/v1/okrs/projects/${projectId}`)
+      } catch (apiError: any) {
+        // Si el error es 404 o "Not Found", significa que no hay OKRs (normal)
+        // También manejar errores de conexión de forma más elegante
+        if (apiError?.message?.includes('404') || 
+            apiError?.message?.includes('Not Found') ||
+            apiError?.message?.includes('No se pudo conectar')) {
+          // Si es un error de conexión, mostrar el error
+          if (apiError?.message?.includes('No se pudo conectar')) {
+            throw apiError
+          }
+          // Si es 404, simplemente no hay OKRs (comportamiento normal)
+          projectOkrs = []
+        } else {
+          // Para otros errores, propagarlos
+          throw apiError
+        }
       }
       
-      const projectOkrs = await response.json()
-      setOkrs(projectOkrs)
+      // Asegurar que projectOkrs sea un array
+      if (!Array.isArray(projectOkrs)) {
+        projectOkrs = []
+      }
+      
+      // Función para mapear el status del backend al frontend
+      const mapStatus = (backendStatus: string): string => {
+        if (!backendStatus) return 'not_started'
+        const statusLower = backendStatus.toLowerCase()
+        // Mapear estados del backend (NOT_STARTED, IN_PROGRESS, etc.) al formato del frontend
+        if (statusLower === 'not_started' || statusLower === 'not-started') return 'not_started'
+        if (statusLower === 'in_progress' || statusLower === 'in-progress') return 'in_progress'
+        if (statusLower === 'completed') return 'completed'
+        if (statusLower === 'cancelled' || statusLower === 'on_hold' || statusLower === 'on-hold') return 'at_risk'
+        // Si ya está en el formato correcto, devolverlo
+        return statusLower
+      }
+
+      // Mapear los datos del backend al formato del frontend
+      const mappedOkrs = projectOkrs.map((item: any) => ({
+        id: item.id?.toString() || String(item.id),
+        projectId: item.projectId?.toString() || String(item.projectId) || projectId,
+        title: item.title || '',
+        description: item.description || '',
+        type: item.type || 'objective',
+        ownerId: item.ownerId?.toString() || String(item.ownerId) || '',
+        quarter: item.quarter || '',
+        status: mapStatus(item.status),
+        progress: item.progress || 0,
+        startDate: item.startDate || '',
+        endDate: item.endDate || '',
+        createdAt: item.createdAt || '',
+        keyResults: Array.isArray(item.keyResults) ? item.keyResults.map((kr: any) => ({
+          id: kr.id?.toString() || String(kr.id),
+          title: kr.title || '',
+          description: kr.description || '',
+          targetValue: kr.targetValue || 0,
+          currentValue: kr.currentValue || 0,
+          unit: kr.unit || '',
+          status: mapStatus(kr.status)
+        })) : []
+      }))
+      
+      setOkrs(mappedOkrs)
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido al cargar OKRs')
+      console.error('Error fetching OKRs:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar OKRs'
+      
+      // Solo mostrar error si es un error de conexión o un error real
+      // Si es 404, ya lo manejamos arriba y establecemos okrs = []
+      if (errorMessage.includes('No se pudo conectar') || 
+          (!errorMessage.includes('404') && !errorMessage.includes('Not Found'))) {
+        setError(errorMessage)
+      }
+      
+      // Asegurar que okrs sea un array vacío en caso de error
+      setOkrs([])
     } finally {
       setLoading(false)
     }

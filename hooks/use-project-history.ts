@@ -3,21 +3,21 @@
 import { useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { 
-  ProjectHistoryEntry, 
+  History, 
   ChangeType, 
   EntityType, 
   HistoryFilters, 
-  HistoryContext 
-} from '@/lib/types/project-history';
+  HistoryContext,
+  CreateHistoryCommand 
+} from '@/lib/domain/history/types/history.types';
+import { historyService } from '@/lib/domain/history/services/history.service';
 import { 
   CreateNotificationRequest, 
   NotificationType 
 } from '@/lib/types/notifications';
 
-const API_BASE = 'http://localhost:3001';
-
 interface UseProjectHistoryReturn {
-  history: ProjectHistoryEntry[];
+  history: History[];
   loading: boolean;
   error: string | null;
   logChange: (
@@ -33,7 +33,7 @@ interface UseProjectHistoryReturn {
 }
 
 export function useProjectHistory(): UseProjectHistoryReturn {
-  const [history, setHistory] = useState<ProjectHistoryEntry[]>([]);
+  const [history, setHistory] = useState<History[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastOperation, setLastOperation] = useState<(() => Promise<void>) | null>(null);
@@ -202,12 +202,11 @@ export function useProjectHistory(): UseProjectHistoryReturn {
   ) => {
     const operation = async () => {
       try {
-        const historyEntry: ProjectHistoryEntry = {
-          id: generateId(),
-          projectId: context.projectId,
+        // Crear comando para el servicio DDD
+        const command: CreateHistoryCommand = {
           userId: context.userId,
-          changeType,
-          entityType,
+          changeType: changeType as string,
+          entityType: entityType as string,
           entityId,
           description,
           details,
@@ -219,17 +218,8 @@ export function useProjectHistory(): UseProjectHistoryReturn {
           }
         };
 
-        const response = await fetch(`${API_BASE}/projectHistory`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(historyEntry),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Error al registrar cambio: ${response.status}`);
-        }
+        // Usar el servicio DDD para crear el historial
+        const historyEntry = await historyService.createHistory(context.projectId, command);
 
         // Crear notificaciones automáticamente después de registrar el cambio
         await createNotificationFromChange(
@@ -279,32 +269,21 @@ export function useProjectHistory(): UseProjectHistoryReturn {
     setError(null);
 
     try {
-      let url = `${API_BASE}/projectHistory`;
-      const params = new URLSearchParams();
-
-      if (filters?.projectId) params.append('projectId', filters.projectId);
-      if (filters?.userId) params.append('userId', filters.userId);
-      if (filters?.changeType) params.append('changeType', filters.changeType);
-      if (filters?.entityType) params.append('entityType', filters.entityType);
-      if (filters?.startDate) params.append('startDate', filters.startDate);
-      if (filters?.endDate) params.append('endDate', filters.endDate);
-
-      if (params.toString()) {
-        url += `?${params.toString()}`;
+      // Obtener projectId de los filtros o lanzar error
+      const projectId = filters?.projectId;
+      if (!projectId) {
+        throw new Error('projectId es requerido para obtener el historial');
       }
 
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Error al obtener historial: ${response.status}`);
-      }
-
-      const data = await response.json();
+      // Usar el servicio DDD para obtener el historial
+      const data = await historyService.getHistoryByProjectId(projectId, filters);
       
       // Ordenar por fecha más reciente
-      const sortedHistory = data.sort((a: ProjectHistoryEntry, b: ProjectHistoryEntry) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
+      const sortedHistory = data.sort((a: History, b: History) => {
+        const timestampA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : (a.timestamp as Date).getTime();
+        const timestampB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : (b.timestamp as Date).getTime();
+        return timestampB - timestampA;
+      });
 
       setHistory(sortedHistory);
     } catch (err) {
