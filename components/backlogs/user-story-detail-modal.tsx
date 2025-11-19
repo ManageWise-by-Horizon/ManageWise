@@ -162,16 +162,22 @@ export function UserStoryDetailModal({
     return users.find(u => u.id === userId)
   }
 
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-red-500 text-white",
-      Alta: "bg-red-500 text-white",
-      medium: "bg-yellow-500 text-white",
-      Media: "bg-yellow-500 text-white", 
-      low: "bg-green-500 text-white",
-      Baja: "bg-green-500 text-white",
-    }
-    return colors[priority as keyof typeof colors] || "bg-muted"
+  const getPriorityLabel = (priority?: string): string => {
+    if (!priority) return "Media"
+    const upperPriority = priority.toUpperCase()
+    if (upperPriority === "ALTA" || upperPriority === "HIGH") return "Alta"
+    if (upperPriority === "MEDIA" || upperPriority === "MEDIUM") return "Media"
+    if (upperPriority === "BAJA" || upperPriority === "LOW") return "Baja"
+    return "Media" // default
+  }
+
+  const getPriorityColor = (priority?: string) => {
+    if (!priority) return "bg-yellow-500 text-white"
+    const upperPriority = priority.toUpperCase()
+    if (upperPriority === "ALTA" || upperPriority === "HIGH") return "bg-red-500 text-white"
+    if (upperPriority === "MEDIA" || upperPriority === "MEDIUM") return "bg-yellow-500 text-white"
+    if (upperPriority === "BAJA" || upperPriority === "LOW") return "bg-green-500 text-white"
+    return "bg-yellow-500 text-white" // default
   }
 
   const getStatusColor = (status: string) => {
@@ -212,7 +218,7 @@ export function UserStoryDetailModal({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Badge className={getPriorityColor(userStory.priority)}>
-                  {userStory.priority === "high" ? "Alta" : userStory.priority === "medium" ? "Media" : "Baja"}
+                  {getPriorityLabel(userStory.priority)}
                 </Badge>
                 <Badge variant="outline">{userStory.storyPoints} pts</Badge>
                 {userStory.aiGenerated && (

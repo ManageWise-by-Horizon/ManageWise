@@ -201,19 +201,25 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
     getHistory({ projectId });
   };
 
-  const getChangeTypeColor = (changeType: ChangeType) => {
-    if (changeType.includes('created')) return CHANGE_TYPE_COLORS.created;
-    if (changeType.includes('updated')) return CHANGE_TYPE_COLORS.updated;
-    if (changeType.includes('deleted')) return CHANGE_TYPE_COLORS.deleted;
-    if (changeType.includes('status_changed')) return CHANGE_TYPE_COLORS.status_changed;
-    if (changeType.includes('assigned')) return CHANGE_TYPE_COLORS.assigned;
+  const getChangeTypeColor = (changeType: string | ChangeType) => {
+    const changeTypeStr = String(changeType).toLowerCase();
+    if (changeTypeStr.includes('created') || changeTypeStr === 'create') return CHANGE_TYPE_COLORS.created;
+    if (changeTypeStr.includes('updated') || changeTypeStr === 'update') return CHANGE_TYPE_COLORS.updated;
+    if (changeTypeStr.includes('deleted') || changeTypeStr === 'delete') return CHANGE_TYPE_COLORS.deleted;
+    if (changeTypeStr.includes('status_changed')) return CHANGE_TYPE_COLORS.status_changed;
+    if (changeTypeStr.includes('assigned')) return CHANGE_TYPE_COLORS.assigned;
     return CHANGE_TYPE_COLORS.default;
   };
 
   const getEntityIcon = (entityType: string) => {
     // Normalizar entityType para que coincida con las claves del objeto
     const normalizedType = entityType === 'user_story' ? 'userStory' : 
-                          entityType === 'key_result' ? 'keyResult' : 
+                          entityType === 'key_result' ? 'keyResult' :
+                          entityType === 'User Story' ? 'userStory' :
+                          entityType === 'Key Result' ? 'keyResult' :
+                          entityType === 'Project' ? 'project' :
+                          entityType === 'Task' ? 'task' :
+                          entityType === 'Okr' ? 'okr' :
                           entityType;
     const IconComponent = CHANGE_TYPE_ICONS[normalizedType as EntityType] || FileText;
     return <IconComponent className="h-4 w-4" />;
@@ -240,11 +246,44 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
     return user?.avatar;
   };
 
+  // Función para normalizar entityType
+  const normalizeEntityType = (entityType: string): EntityType => {
+    const normalized = entityType === 'user_story' ? 'userStory' : 
+                      entityType === 'key_result' ? 'keyResult' :
+                      entityType === 'User Story' ? 'userStory' :
+                      entityType === 'Key Result' ? 'keyResult' :
+                      entityType === 'Project' ? 'project' :
+                      entityType === 'Task' ? 'task' :
+                      entityType === 'Okr' ? 'okr' :
+                      entityType;
+    return normalized as EntityType;
+  };
+
+  // Función para normalizar changeType
+  const normalizeChangeType = (changeType: string, entityType: string): ChangeType => {
+    const normalizedEntity = normalizeEntityType(entityType);
+    const changeTypeStr = changeType.toUpperCase();
+    
+    if (changeTypeStr === 'CREATE') {
+      return `${normalizedEntity}_created` as ChangeType;
+    }
+    if (changeTypeStr === 'UPDATE') {
+      return `${normalizedEntity}_updated` as ChangeType;
+    }
+    if (changeTypeStr === 'DELETE') {
+      return `${normalizedEntity}_deleted` as ChangeType;
+    }
+    
+    return changeType as ChangeType;
+  };
+
   const filteredHistory = history.filter(entry => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
-    const changeTypeLabel = CHANGE_TYPE_LABELS[entry.changeType as ChangeType] || entry.changeType;
-    const entityTypeLabel = ENTITY_TYPE_LABELS[entry.entityType as EntityType] || entry.entityType;
+    const normalizedChangeType = normalizeChangeType(entry.changeType, entry.entityType);
+    const normalizedEntityType = normalizeEntityType(entry.entityType);
+    const changeTypeLabel = CHANGE_TYPE_LABELS[normalizedChangeType] || entry.changeType;
+    const entityTypeLabel = ENTITY_TYPE_LABELS[normalizedEntityType] || entry.entityType;
     return (
       entry.description.toLowerCase().includes(searchLower) ||
       changeTypeLabel.toLowerCase().includes(searchLower) ||
@@ -365,13 +404,13 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge 
-                            className={getChangeTypeColor(entry.changeType as ChangeType)}
+                            className={getChangeTypeColor(entry.changeType)}
                             variant="outline"
                           >
-                            {CHANGE_TYPE_LABELS[entry.changeType as ChangeType] || entry.changeType}
+                            {CHANGE_TYPE_LABELS[normalizeChangeType(entry.changeType, entry.entityType)] || entry.changeType}
                           </Badge>
                           <Badge variant="secondary">
-                            {ENTITY_TYPE_LABELS[entry.entityType as EntityType] || entry.entityType}
+                            {ENTITY_TYPE_LABELS[normalizeEntityType(entry.entityType)] || entry.entityType}
                           </Badge>
                           {entry.metadata?.source === 'ai_generated' && (
                             <Badge variant="outline" className="bg-purple-50 text-purple-700">
@@ -386,21 +425,73 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                         
                         {Object.keys(entry.details).length > 0 && (
                           <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md space-y-1">
-                            {Object.entries(entry.details).map(([key, value]) => (
-                              <div key={key} className="flex gap-2">
-                                <span className="font-medium capitalize min-w-[80px]">
-                                  {key.replace(/([A-Z])/g, ' $1').toLowerCase()}:
-                                </span>
-                                <span className="text-foreground">
-                                  {typeof value === 'object' && value !== null
-                                    ? Array.isArray(value)
-                                      ? value.join(', ')
-                                      : JSON.stringify(value)
-                                    : String(value)
-                                  }
-                                </span>
-                              </div>
-                            ))}
+                            {Object.entries(entry.details).map(([key, value]) => {
+                              // Formatear valores de status y priority
+                              let formattedValue = value;
+                              const keyLower = key.toLowerCase();
+                              
+                              if (keyLower === 'status') {
+                                const statusStr = String(value).toUpperCase();
+                                if (statusStr === 'TODO') formattedValue = 'Por hacer';
+                                else if (statusStr === 'IN_PROGRESS') formattedValue = 'En Progreso';
+                                else if (statusStr === 'DONE') formattedValue = 'Completado';
+                                else if (statusStr === 'BLOCKED') formattedValue = 'Bloqueado';
+                                else formattedValue = String(value);
+                              } else if (keyLower === 'priority') {
+                                const priorityStr = String(value).toUpperCase();
+                                if (priorityStr === 'ALTA') formattedValue = 'Alta';
+                                else if (priorityStr === 'MEDIA') formattedValue = 'Media';
+                                else if (priorityStr === 'BAJA') formattedValue = 'Baja';
+                                else {
+                                  // Si ya está formateado, solo capitalizar primera letra
+                                  const str = String(value);
+                                  formattedValue = str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+                                }
+                              } else if (keyLower === 'title' || keyLower === 'name') {
+                                // Mantener title y name tal cual, pero asegurar que se muestren bien
+                                formattedValue = String(value);
+                              } else if (keyLower === 'description') {
+                                // Mantener description tal cual
+                                formattedValue = String(value);
+                              }
+                              
+                              // Mapeo de etiquetas en español
+                              const getLabel = (key: string): string => {
+                                const keyLower = key.toLowerCase();
+                                const labelMap: Record<string, string> = {
+                                  'status': 'Estado',
+                                  'priority': 'Prioridad',
+                                  'title': 'Título',
+                                  'name': 'Nombre',
+                                  'description': 'Descripción',
+                                  'storypoints': 'Story Points',
+                                  'story_points': 'Story Points',
+                                  'estimatedhours': 'Horas Estimadas',
+                                  'estimated_hours': 'Horas Estimadas',
+                                  'assignedto': 'Asignado a',
+                                  'assigned_to': 'Asignado a',
+                                  'createdby': 'Creado por',
+                                  'created_by': 'Creado por'
+                                };
+                                return labelMap[keyLower] || key.replace(/([A-Z])/g, ' $1').toLowerCase();
+                              };
+                              
+                              return (
+                                <div key={key} className="flex gap-2">
+                                  <span className="font-medium capitalize min-w-[100px]">
+                                    {getLabel(key)}:
+                                  </span>
+                                  <span className="text-foreground break-words">
+                                    {typeof formattedValue === 'object' && formattedValue !== null
+                                      ? Array.isArray(formattedValue)
+                                        ? formattedValue.join(', ')
+                                        : JSON.stringify(formattedValue)
+                                      : String(formattedValue)
+                                    }
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         
