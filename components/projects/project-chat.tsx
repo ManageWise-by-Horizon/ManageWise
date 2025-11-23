@@ -11,6 +11,7 @@ import { chatWithGemini, ChatMessage, ProjectContext } from "@/lib/gemini"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { createApiUrl } from "@/lib/api-config"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -305,8 +306,26 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
     setMessages((prev) => [...prev, generatingMessage])
 
     try {
+      // Obtener los miembros del proyecto para asignar las tareas
+      let projectMembers: string[] = []
+      try {
+        const { projectService } = await import('@/lib/domain/projects/services/project.service')
+        const project = await projectService.getProjectById(projectId)
+        if (project && project.members && Array.isArray(project.members)) {
+          projectMembers = project.members
+        }
+      } catch (error) {
+        console.warn('Error fetching project members:', error)
+      }
+
+      // Si no hay miembros, usar el usuario actual
+      if (projectMembers.length === 0 && user?.id) {
+        projectMembers = [user.id]
+      }
+
       const createdStories = []
       const createdTasks = []
+      let taskIndex = 0 // Para rotar la asignación de tareas
       
       for (const item of items) {
         const userStory = {
@@ -332,12 +351,22 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
         createdStories.push(created)
 
         // Create tasks for this user story (MANDATORY)
+        // Asignar tareas de forma rotativa entre los miembros del proyecto
+        const getAssignedUser = () => {
+          if (projectMembers.length === 0) {
+            return user?.id || ""
+          }
+          const assignedUserId = projectMembers[taskIndex % projectMembers.length]
+          taskIndex++
+          return assignedUserId
+        }
+
         const tasksForStory = [
           {
             title: `Diseñar UI para ${item.title}`,
             description: `Crear mockups y diseño de interfaz para: ${item.description}`,
             userStoryId: created.id,
-            assignedTo: null,
+            assignedTo: getAssignedUser(), // Asignar a un miembro del proyecto
             status: "todo",
             priority: item.priority,
             estimatedHours: Math.max(2, Math.floor(item.storyPoints * 0.5)),
@@ -349,7 +378,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Implementar backend para ${item.title}`,
             description: `Desarrollar lógica de negocio y APIs para: ${item.description}`,
             userStoryId: created.id,
-            assignedTo: null,
+            assignedTo: getAssignedUser(), // Asignar a un miembro del proyecto
             status: "todo",
             priority: item.priority,
             estimatedHours: Math.max(4, Math.floor(item.storyPoints * 0.8)),
@@ -361,7 +390,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Implementar frontend para ${item.title}`,
             description: `Desarrollar componentes y vistas para: ${item.description}`,
             userStoryId: created.id,
-            assignedTo: null,
+            assignedTo: getAssignedUser(), // Asignar a un miembro del proyecto
             status: "todo",
             priority: item.priority,
             estimatedHours: Math.max(3, Math.floor(item.storyPoints * 0.6)),
@@ -373,7 +402,7 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
             title: `Testing para ${item.title}`,
             description: `Pruebas unitarias e integración para: ${item.description}`,
             userStoryId: created.id,
-            assignedTo: null,
+            assignedTo: getAssignedUser(), // Asignar a un miembro del proyecto
             status: "todo",
             priority: item.priority,
             estimatedHours: Math.max(2, Math.floor(item.storyPoints * 0.4)),
@@ -383,19 +412,37 @@ El sistema generó el proyecto "${projectContext.projectName}". ¿Qué te parece
           },
         ]
 
-        // Create all tasks for this user story
+        // Create all tasks for this user story using DDD service
         for (const task of tasksForStory) {
           try {
-            const taskResponse = await fetch(createApiUrl('/tasks'), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(task),
-            })
-            
-            if (taskResponse.ok) {
-              const createdTask = await taskResponse.json()
-              createdTasks.push(createdTask)
+            if (!user?.id) {
+              console.error('User ID is required to create tasks')
+              continue
             }
+
+            // Map status and priority to backend format
+            const status = task.status === "todo" ? "TODO" : task.status.toUpperCase() as "TODO" | "IN_PROGRESS" | "DONE"
+            const priority = task.priority?.toUpperCase() as "ALTA" | "MEDIA" | "BAJA" || "MEDIA"
+
+            // Validar que siempre haya un assignedTo
+            if (!task.assignedTo) {
+              console.error(`Task "${task.title}" debe tener un usuario asignado`)
+              continue
+            }
+
+            const createdTask = await taskService.createTask({
+              userStoryId: task.userStoryId,
+              assignedTo: task.assignedTo, // Ahora es obligatorio
+              createdBy: user.id,
+              title: task.title,
+              description: task.description,
+              estimatedHours: task.estimatedHours,
+              status: status,
+              priority: priority,
+              aiGenerated: task.aiGenerated || false,
+            })
+
+            createdTasks.push(createdTask)
           } catch (error) {
             console.error(`Error creating task: ${task.title}`, error)
           }

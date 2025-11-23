@@ -62,7 +62,12 @@ export type ChangeType =
   // Miembros del proyecto
   | 'member_added'
   | 'member_removed'
-  | 'member_role_changed';
+  | 'member_role_changed'
+  
+  // Reuniones
+  | 'meeting_created'
+  | 'meeting_updated'
+  | 'meeting_deleted';
 
 export type EntityType = 
   | 'project'
@@ -72,7 +77,8 @@ export type EntityType =
   | 'objective'
   | 'keyResult'
   | 'comment'
-  | 'member';
+  | 'member'
+  | 'meeting';
 
 export interface HistoryFilters {
   projectId?: string;

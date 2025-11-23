@@ -17,6 +17,7 @@ import {
   MoreVertical,
   UserPlus,
   Settings,
+  Edit,
   LayoutGrid,
   List,
   GanttChart,
@@ -25,6 +26,7 @@ import {
   UserCog,
   Clock,
   Trash2,
+  Video,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -40,8 +42,16 @@ import { ProjectBacklog } from "@/components/projects/project-backlog"
 import { ProjectBoard } from "@/components/projects/project-board"
 import { ProjectOKRs } from "@/components/projects/project-okrs"
 import { ProjectHistoryDashboard } from "@/components/projects/project-history-dashboard"
+import { ProjectSprints } from "@/components/projects/project-sprints"
+import { ProjectMeetings } from "@/components/projects/project-meetings"
+import { ProjectCalendar } from "@/components/projects/project-calendar"
+import { ProjectTimeline } from "@/components/projects/project-timeline"
 import { createApiUrl } from "@/lib/api-config"
 import { enrichTasks } from "@/lib/data-helpers"
+import { useProject } from "@/lib/domain/projects/hooks/use-project"
+import { getProjectStatusLabel, getProjectStatusBadgeVariant } from "@/lib/domain/projects/utils/project-status.utils"
+import type { Project as ProjectType } from "@/lib/domain/projects/types/project.types"
+import { profileService } from "@/lib/domain/profile/services/profile.service"
 
 interface Project {
   id: string
@@ -55,6 +65,7 @@ interface Project {
     estimatedEndDate?: string
   }
   members: string[]
+  ownerId?: string
   createdBy: string
   createdAt: string
   status: string
@@ -117,8 +128,8 @@ interface Task {
 
 interface Sprint {
   id: string
-  name: string
-  goal: string
+  title: string
+  description: string
   startDate: string
   endDate: string
   status: string
@@ -130,6 +141,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter()
   const { user } = useAuth()
   const { toast } = useToast()
+  
+  const projectId = resolvedParams.id
+  
+  // Usar el hook DDD para obtener el proyecto
+  const { project: dddProject, isLoading: projectLoading, error: projectError, refetch: refetchProject } = useProject(
+    { projectId: projectId }
+  )
+  
   const [project, setProject] = useState<Project | null>(null)
   const [members, setMembers] = useState<User[]>([])
   const [memberPermissions, setMemberPermissions] = useState<Record<string, ProjectPermission>>({})
@@ -143,75 +162,200 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
+  // Sincronizar el proyecto del hook DDD con el estado local
   useEffect(() => {
-    fetchProjectDetails()
-  }, [resolvedParams.id])
+    if (dddProject) {
+      // Convertir el proyecto DDD al formato esperado por el componente
+      setProject({
+        id: dddProject.projectId,
+        name: dddProject.name,
+        description: dddProject.description,
+        objectives: dddProject.objectives || [],
+        timeline: {
+          start: dddProject.startDate || undefined,
+          end: dddProject.endDate || undefined,
+          startDate: dddProject.startDate || undefined,
+          estimatedEndDate: dddProject.endDate || undefined,
+        },
+        members: dddProject.members || [],
+        ownerId: dddProject.ownerId,
+        createdBy: dddProject.createdBy,
+        createdAt: dddProject.createdAt,
+        status: dddProject.status,
+        structuredPrompt: dddProject.structuredPrompt ? JSON.parse(dddProject.structuredPrompt) : undefined,
+      })
+    }
+  }, [dddProject])
+
+  useEffect(() => {
+    if (project) {
+      fetchProjectDetails()
+    }
+  }, [project, resolvedParams.id])
 
   const fetchProjectDetails = async () => {
+    if (!project) return
+    
     try {
-      const projectRes = await fetch(createApiUrl(`/projects/${resolvedParams.id}`))
-      if (!projectRes.ok) throw new Error('Proyecto no encontrado')
-      const projectData = await projectRes.json()
-      setProject(projectData)
+      setIsLoading(true)
+      console.log('[ProjectDetail] Fetching project details, members:', project.members)
 
-      // Fetch members
-      const usersRes = await fetch(createApiUrl('/users'))
-      if (!usersRes.ok) throw new Error('Error al cargar usuarios')
-      const usersData = await usersRes.json()
-      const projectMembers = usersData.filter((u: User) => projectData.members.includes(u.id))
+      // Fetch members from Profile-Service
+      if (!project.members || project.members.length === 0) {
+        console.log('[ProjectDetail] No members found in project')
+        setMembers([])
+        setIsLoading(false)
+        return
+      }
+
+      const projectMembers: User[] = await Promise.all(
+        project.members.map(async (memberId: string) => {
+          console.log(`[ProjectDetail] Fetching profile for member: ${memberId}`)
+          try {
+            const profile = await profileService.getUserProfile({ userId: memberId })
+            console.log(`[ProjectDetail] Profile fetched for ${memberId}:`, profile)
+            return {
+              id: profile.userId,
+              name: `${profile.userFirstName} ${profile.userLastName}`.trim() || profile.userEmail,
+              email: profile.userEmail,
+              role: profile.userRole || 'developer',
+              avatar: profile.userProfileImgUrl || '/placeholder.svg'
+            }
+          } catch (error) {
+            // Si falla obtener el perfil, intentar obtener todos los usuarios y buscar
+            console.warn(`[ProjectDetail] Could not fetch profile for user ${memberId}:`, error)
+            try {
+              // Intentar obtener todos los usuarios y buscar el que coincida
+              const allUsers = await profileService.getAllUsers()
+              const foundUser = allUsers.find(u => u.userId === memberId)
+              if (foundUser) {
+                console.log(`[ProjectDetail] Found user in allUsers list:`, foundUser)
+                return {
+                  id: foundUser.userId,
+                  name: `${foundUser.userFirstName} ${foundUser.userLastName}`.trim() || foundUser.userEmail,
+                  email: foundUser.userEmail,
+                  role: foundUser.userRole || 'developer',
+                  avatar: foundUser.userProfileImgUrl || '/placeholder.svg'
+                }
+              }
+            } catch (fallbackError) {
+              console.warn(`[ProjectDetail] Could not fetch all users as fallback:`, fallbackError)
+            }
+            // Último recurso: mostrar "Usuario" + primeros caracteres del ID
+            console.warn(`[ProjectDetail] Using fallback name for ${memberId}`)
+            return {
+              id: memberId,
+              name: `Usuario ${memberId.substring(0, 8)}...`,
+              email: `${memberId}@example.com`,
+              role: 'developer',
+              avatar: '/placeholder.svg'
+            }
+          }
+        })
+      )
+      console.log('[ProjectDetail] Final members array:', projectMembers)
       setMembers(projectMembers)
-
-      // Fetch permissions for all members
-      const permissionsPromises = projectMembers.map(async (member: User) => {
-        const permRes = await fetch(
-          createApiUrl(`/projectPermissions?projectId=${resolvedParams.id}&userId=${member.id}`)
-        )
-        const perms = await permRes.json()
-        return { userId: member.id, permission: perms[0] }
-      })
-
-      const permissionsResults = await Promise.all(permissionsPromises)
-      const permissionsMap = permissionsResults.reduce((acc, { userId, permission }) => {
-        if (permission) {
-          acc[userId] = permission
-        }
-        return acc
-      }, {} as Record<string, ProjectPermission>)
-
-      setMemberPermissions(permissionsMap)
-
-      // Fetch user stories
-      const userStoriesRes = await fetch(createApiUrl(`/userStories?projectId=${resolvedParams.id}`))
-      if (!userStoriesRes.ok) throw new Error('Error al cargar user stories')
-      const userStoriesData = await userStoriesRes.json()
-      setUserStories(userStoriesData)
-
-      // Fetch ALL tasks y filtrar por projectId usando el helper
-      const allTasksRes = await fetch(createApiUrl('/tasks'))
-      if (!allTasksRes.ok) throw new Error('Error al cargar tasks')
-      const allTasksData = await allTasksRes.json()
       
-      // Enriquecer tasks con projectId y filtrar por este proyecto
-      const enrichedTasks = await enrichTasks(allTasksData)
-      const projectTasks = enrichedTasks.filter(task => task.projectId === resolvedParams.id) as Task[]
-      setTasks(projectTasks)
+      // Verificar que los miembros se hayan cargado correctamente
+      if (projectMembers.length > 0) {
+        console.log('[ProjectDetail] Members loaded successfully:', projectMembers.map(m => ({ id: m.id, name: m.name })))
+      }
 
-      // Fetch sprints for this project
-      const sprintsRes = await fetch(createApiUrl(`/sprints?projectId=${resolvedParams.id}`))
-      if (!sprintsRes.ok) throw new Error('Error al cargar sprints')
-      const sprintsData = await sprintsRes.json()
-      setSprints(sprintsData)
+      // Fetch permissions for all members - TODO: Usar permission service DDD
+      // Por ahora, dejamos vacío
+      setMemberPermissions({})
+
+      // Fetch user stories usando servicio DDD
+      let loadedUserStories: UserStory[] = []
+      try {
+        const { userStoryService } = await import('@/lib/domain/user-stories/services/user-story.service')
+        const userStoriesData = await userStoryService.getUserStoriesByProjectId(projectId)
+        loadedUserStories = Array.isArray(userStoriesData) ? userStoriesData : []
+        setUserStories(loadedUserStories)
+      } catch (err) {
+        console.warn("Error loading user stories:", err)
+        setUserStories([])
+      }
+
+      // Fetch tasks using DDD service - get tasks from all user stories in the project
+      let loadedTasks: Task[] = []
+      try {
+        const { taskService } = await import('@/lib/domain/tasks/services/task.service')
+        
+        // Helper functions to map backend format to component format
+        const mapPriority = (priority: string): "high" | "medium" | "low" => {
+          const upperPriority = priority.toUpperCase()
+          if (upperPriority === "ALTA") return "high"
+          if (upperPriority === "MEDIA") return "medium"
+          if (upperPriority === "BAJA") return "low"
+          return "medium" // default
+        }
+
+        const mapStatus = (status: string): "todo" | "in_progress" | "done" => {
+          const upperStatus = status.toUpperCase()
+          if (upperStatus === "TODO") return "todo"
+          if (upperStatus === "IN_PROGRESS") return "in_progress"
+          if (upperStatus === "DONE") return "done"
+          return "todo" // default
+        }
+
+        // Get tasks for each user story in the project
+        const tasksPromises = loadedUserStories.map(async (userStory) => {
+          try {
+            const storyTasks = await taskService.getTasksByUserStoryId(userStory.id)
+            // Map backend task format to component format and add projectId
+            return storyTasks.map((task) => ({
+              id: task.id,
+              title: task.title,
+              description: task.description,
+              status: mapStatus(task.status),
+              priority: mapPriority(task.priority),
+              assignedTo: task.assignedTo || undefined,
+              estimatedHours: task.estimatedHours,
+              projectId: project.id, // Add projectId from current project
+              userStoryId: task.userStoryId,
+              aiAssigned: task.aiGenerated,
+              createdAt: task.createdAt ? (typeof task.createdAt === 'string' ? task.createdAt : new Date(task.createdAt).toISOString()) : new Date().toISOString(),
+            }))
+          } catch (error) {
+            console.warn(`Error loading tasks for user story ${userStory.id}:`, error)
+            return []
+          }
+        })
+        
+        const tasksArrays = await Promise.all(tasksPromises)
+        loadedTasks = tasksArrays.flat()
+        setTasks(loadedTasks)
+        console.log(`[ProjectDetail] Loaded ${loadedTasks.length} tasks from ${loadedUserStories.length} user stories`)
+      } catch (err) {
+        console.warn("Error loading tasks:", err)
+        setTasks([])
+      }
+
+      // Fetch sprints usando ApiClient con autenticación
+      let loadedSprints: Sprint[] = []
+      try {
+        const { getApiClient } = await import('@/lib/infrastructure/api/api-client')
+        const apiClient = getApiClient()
+        const sprintsData = await apiClient.get<Sprint[]>(`/api/v1/sprints/project/${project.id}`)
+        loadedSprints = Array.isArray(sprintsData) ? sprintsData : []
+        setSprints(loadedSprints)
+        console.log('[ProjectDetail] Sprints cargados:', loadedSprints.length, loadedSprints)
+      } catch (err) {
+        console.warn("Error loading sprints:", err)
+        setSprints([])
+      }
       
       console.log("🎯 Contexto completo cargado:")
-      console.log("  - User Stories:", userStoriesData.length)
-      console.log("  - Tasks:", projectTasks.length)
-      console.log("  - Sprints:", sprintsData.length)
+      console.log("  - User Stories:", loadedUserStories.length)
+      console.log("  - Tasks:", loadedTasks.length)
+      console.log("  - Sprints:", loadedSprints.length)
       console.log("  - Members:", projectMembers.length)
     } catch (error) {
       console.error("[v0] Error fetching project details:", error)
       toast({
         title: "Error",
-        description: "No se pudo cargar el proyecto",
+        description: "No se pudo cargar los detalles del proyecto",
         variant: "destructive",
       })
     } finally {
@@ -250,7 +394,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     return project?.createdBy === user?.id
   }
 
-  if (isLoading) {
+  if (projectLoading || isLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-48 animate-pulse rounded bg-muted" />
@@ -270,15 +414,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  if (!project) {
+  if (projectError || (!project && !projectLoading)) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <h2 className="text-2xl font-bold">Proyecto no encontrado</h2>
+        <p className="mt-2 text-muted-foreground">{projectError || "El proyecto solicitado no existe"}</p>
         <Link href="/projects">
           <Button className="mt-4">Volver a Proyectos</Button>
         </Link>
       </div>
     )
+  }
+
+  if (!project) {
+    return null // Aún cargando
   }
 
   return (
@@ -294,8 +443,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-              <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                {project.status === "active" ? "Activo" : "Inactivo"}
+              <Badge variant={getProjectStatusBadgeVariant(project.status)}>
+                {getProjectStatusLabel(project.status)}
               </Badge>
             </div>
             <p className="mt-2 text-muted-foreground">{project.description}</p>
@@ -308,20 +457,28 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <PermissionWrapper
-              projectId={project.id}
-              userId={user?.id || ""}
-              requiredPermission="manage_project"
-            >
-              {(canManageProject) => (
-                canManageProject && (
-                  <DropdownMenuItem onClick={() => setIsEditProjectDialogOpen(true)}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configuración
-                  </DropdownMenuItem>
-                )
-              )}
-            </PermissionWrapper>
+            {/* Editar Proyecto - Visible si el usuario es owner o tiene permisos */}
+            {(user?.id === project.createdBy || user?.id === project.ownerId) ? (
+              <DropdownMenuItem onClick={() => setIsEditProjectDialogOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar Proyecto
+              </DropdownMenuItem>
+            ) : (
+              <PermissionWrapper
+                projectId={project.id}
+                userId={user?.id || ""}
+                requiredPermission="manage_project"
+              >
+                {(canManageProject) => (
+                  canManageProject && (
+                    <DropdownMenuItem onClick={() => setIsEditProjectDialogOpen(true)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar Proyecto
+                    </DropdownMenuItem>
+                  )
+                )}
+              </PermissionWrapper>
+            )}
             <PermissionWrapper
               projectId={project.id}
               userId={user?.id || ""}
@@ -350,26 +507,40 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 )
               )}
             </PermissionWrapper>
-            <PermissionWrapper
-              projectId={project.id}
-              userId={user?.id || ""}
-              requiredPermission="manage_project"
-            >
-              {(canManageProject) => (
-                canManageProject && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => setIsDeleteDialogOpen(true)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Eliminar Proyecto
-                    </DropdownMenuItem>
-                  </>
-                )
-              )}
-            </PermissionWrapper>
+            {/* Eliminar Proyecto - Visible si el usuario es owner o tiene permisos */}
+            {(user?.id === project.createdBy || user?.id === project.ownerId) ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar Proyecto
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <PermissionWrapper
+                projectId={project.id}
+                userId={user?.id || ""}
+                requiredPermission="manage_project"
+              >
+                {(canManageProject) => (
+                  canManageProject && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setIsDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar Proyecto
+                      </DropdownMenuItem>
+                    </>
+                  )
+                )}
+              </PermissionWrapper>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -425,22 +596,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       {/* Views Tabs */}
       <Tabs value={activeView} onValueChange={setActiveView}>
         <TabsList>
+          {/* Vista General */}
           <TabsTrigger value="summary">
             <LayoutGrid className="mr-2 h-4 w-4" />
             Resumen
           </TabsTrigger>
+          {/* Planificación y Ejecución */}
           <TabsTrigger value="backlog">
             <List className="mr-2 h-4 w-4" />
             Backlog
-          </TabsTrigger>
-          <TabsTrigger value="chat">
-            <Bot className="mr-2 h-4 w-4" />
-            Chat IA
           </TabsTrigger>
           <TabsTrigger value="board">
             <LayoutGrid className="mr-2 h-4 w-4" />
             Board
           </TabsTrigger>
+          <TabsTrigger value="sprints">
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Sprints
+          </TabsTrigger>
+          {/* Objetivos y Planificación Temporal */}
           <TabsTrigger value="okrs">
             <Target className="mr-2 h-4 w-4" />
             OKRs
@@ -449,13 +623,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <GanttChart className="mr-2 h-4 w-4" />
             Timeline
           </TabsTrigger>
-          <TabsTrigger value="history">
-            <Clock className="mr-2 h-4 w-4" />
-            Historial
-          </TabsTrigger>
+          {/* Calendario y Colaboración */}
           <TabsTrigger value="calendar">
             <CalendarDays className="mr-2 h-4 w-4" />
             Calendario
+          </TabsTrigger>
+          <TabsTrigger value="meetings">
+            <Video className="mr-2 h-4 w-4" />
+            Reuniones
+          </TabsTrigger>
+          {/* Asistente e Historial */}
+          <TabsTrigger value="chat">
+            <Bot className="mr-2 h-4 w-4" />
+            Chat IA
+          </TabsTrigger>
+          <TabsTrigger value="history">
+            <Clock className="mr-2 h-4 w-4" />
+            Historial
           </TabsTrigger>
         </TabsList>
 
@@ -505,31 +689,37 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {members.map((member) => {
-                    const memberPerm = memberPermissions[member.id]
-                    const roleBadge = memberPerm ? getRoleBadge(memberPerm.role) : null
-                    return (
-                      <div key={member.id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                            <AvatarFallback className="bg-chart-1 text-white">
-                              {member.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{member.name}</p>
-                            {roleBadge && (
-                              <Badge className={`mt-1 text-xs ${roleBadge.color}`}>{roleBadge.label}</Badge>
-                            )}
+                  {isLoading && members.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Cargando miembros...</p>
+                  ) : members.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay miembros en el proyecto</p>
+                  ) : (
+                    members.map((member) => {
+                      const memberPerm = memberPermissions[member.id]
+                      const roleBadge = memberPerm ? getRoleBadge(memberPerm.role) : null
+                      return (
+                        <div key={member.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
+                              <AvatarFallback className="bg-chart-1 text-white">
+                                {member.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">{member.name}</p>
+                              {roleBadge && (
+                                <Badge className={`mt-1 text-xs ${roleBadge.color}`}>{roleBadge.label}</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -544,9 +734,36 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             showError={true}
           >
             <ProjectBacklog 
-              projectId={project.id} 
+              projectId={dddProject?.projectId || project.id || projectId} 
               projectName={project.name} 
               externalUserStories={userStories}
+              onTaskCreated={() => {
+                // Recargar las tareas cuando se crea una nueva
+                fetchProjectDetails()
+              }}
+              onStoryCreated={() => {
+                // Recargar las user stories cuando se crea una nueva
+                fetchProjectDetails()
+              }}
+            />
+          </PermissionGuard>
+        </TabsContent>
+
+        <TabsContent value="sprints" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectSprints 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name} 
+              externalUserStories={userStories}
+              onSprintUpdated={() => {
+                // Recargar los datos cuando se actualiza un sprint
+                fetchProjectDetails()
+              }}
             />
           </PermissionGuard>
         </TabsContent>
@@ -572,7 +789,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   teamMembers: members,
                 }}
                 initialPrompt={project.structuredPrompt}
-                onDataUpdate={fetchProjectDetails} // Actualiza sin reload
+                onDataUpdate={() => {
+                  refetchProject()
+                  fetchProjectDetails()
+                }} // Actualiza sin reload
               />
             </div>
           </PermissionGuard>
@@ -589,7 +809,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               projectId={project.id}
               tasks={tasks}
               members={members}
-              onUpdate={fetchProjectDetails}
+              userStories={userStories}
+              sprints={sprints}
+              onUpdate={() => {
+                refetchProject()
+                fetchProjectDetails()
+              }}
             />
           </PermissionGuard>
         </TabsContent>
@@ -619,28 +844,57 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </Card>
         </TabsContent>
 
-        <TabsContent value="timeline">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <GanttChart className="mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">Vista de Timeline</h3>
-              <p className="text-sm text-muted-foreground">Próximamente: Diagrama de Gantt interactivo</p>
-            </CardContent>
-          </Card>
+        <TabsContent value="timeline" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectTimeline 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name}
+              projectStartDate={dddProject?.startDate || project.timeline?.start || project.timeline?.startDate}
+              projectEndDate={dddProject?.endDate || project.timeline?.end || project.timeline?.estimatedEndDate}
+            />
+          </PermissionGuard>
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
           <ProjectHistoryDashboard projectId={project.id} />
         </TabsContent>
 
-        <TabsContent value="calendar">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <CalendarDays className="mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">Vista de Calendario</h3>
-              <p className="text-sm text-muted-foreground">Próximamente: Calendario con eventos y reuniones</p>
-            </CardContent>
-          </Card>
+        <TabsContent value="calendar" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectCalendar 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name}
+              projectEndDate={dddProject?.endDate || project.timeline?.end || project.timeline?.estimatedEndDate}
+            />
+          </PermissionGuard>
+        </TabsContent>
+
+        <TabsContent value="meetings" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectMeetings 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name}
+              onMeetingUpdated={() => {
+                // Recargar los datos cuando se actualiza una reunión
+                fetchProjectDetails()
+              }}
+            />
+          </PermissionGuard>
         </TabsContent>
       </Tabs>
 
@@ -656,23 +910,41 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           projectId={project.id}
           currentMembers={project.members}
           currentUserId={user?.id || ""}
-          onMemberAdded={fetchProjectDetails}
+          onMemberAdded={() => {
+            refetchProject()
+            fetchProjectDetails()
+          }}
         />
       </PermissionGuard>
 
-      {/* Edit Project Dialog */}
-      <PermissionGuard
-        projectId={project.id}
-        userId={user?.id || ""}
-        requiredPermission="manage_project"
-      >
+      {/* Edit Project Dialog - Visible si el usuario es owner o tiene permisos */}
+      {(user?.id === project?.createdBy || user?.id === project?.ownerId) ? (
         <EditProjectDialog
           open={isEditProjectDialogOpen}
           onOpenChange={setIsEditProjectDialogOpen}
           project={project}
-          onProjectUpdated={fetchProjectDetails}
+          onProjectUpdated={() => {
+            refetchProject()
+            fetchProjectDetails()
+          }}
         />
-      </PermissionGuard>
+      ) : (
+        <PermissionGuard
+          projectId={project.id}
+          userId={user?.id || ""}
+          requiredPermission="manage_project"
+        >
+          <EditProjectDialog
+            open={isEditProjectDialogOpen}
+            onOpenChange={setIsEditProjectDialogOpen}
+            project={project}
+            onProjectUpdated={() => {
+              refetchProject()
+              fetchProjectDetails()
+            }}
+          />
+        </PermissionGuard>
+      )}
 
       {/* Manage Permissions Dialog */}
       <PermissionGuard
@@ -686,16 +958,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           projectId={project.id}
           currentUser={user!}
           isAdmin={checkIsAdmin()}
-          onPermissionsUpdated={fetchProjectDetails}
+          onPermissionsUpdated={() => {
+            refetchProject()
+            fetchProjectDetails()
+          }}
         />
       </PermissionGuard>
 
-      {/* Delete Project Dialog */}
-      <PermissionGuard
-        projectId={project.id}
-        userId={user?.id || ""}
-        requiredPermission="manage_project"
-      >
+      {/* Delete Project Dialog - Visible si el usuario es owner o tiene permisos */}
+      {(user?.id === project?.createdBy || user?.id === project?.ownerId) ? (
         <DeleteProjectDialog
           project={{
             id: project.id,
@@ -705,7 +976,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           onOpenChange={setIsDeleteDialogOpen}
           onSuccess={handleDeleteSuccess}
         />
-      </PermissionGuard>
+      ) : (
+        <PermissionGuard
+          projectId={project.id}
+          userId={user?.id || ""}
+          requiredPermission="manage_project"
+        >
+          <DeleteProjectDialog
+            project={{
+              id: project.id,
+              name: project.name,
+            }}
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onSuccess={handleDeleteSuccess}
+          />
+        </PermissionGuard>
+      )}
     </div>
   )
 }

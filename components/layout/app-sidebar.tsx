@@ -109,19 +109,19 @@ export function AppSidebar() {
             <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/profile">
+              <Link href="/settings?tab=profile">
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/subscription">
+              <Link href="/settings?tab=subscription">
                 <CreditCard className="mr-2 h-4 w-4" />
                 Suscripción
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings">
+              <Link href="/settings?tab=security">
                 <Settings className="mr-2 h-4 w-4" />
                 Configuración
               </Link>

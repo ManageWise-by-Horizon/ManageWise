@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Plus, X } from "lucide-react"
-import { createApiUrl } from "@/lib/api-config"
+import { userStoryService } from "@/lib/domain/user-stories/services/user-story.service"
 
 interface CreateUserStoryDialogProps {
   open: boolean
@@ -42,8 +42,8 @@ export function CreateUserStoryDialog({
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [priority, setPriority] = useState<"high" | "medium" | "low">("medium")
   const [storyPoints, setStoryPoints] = useState("5")
+  const [priority, setPriority] = useState<"ALTA" | "MEDIA" | "BAJA">("MEDIA")
   const [acceptanceCriteria, setAcceptanceCriteria] = useState<string[]>([""])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,37 +51,37 @@ export function CreateUserStoryDialog({
     setIsLoading(true)
 
     try {
-      const newStory = {
+      if (!projectId || projectId.trim() === '') {
+        throw new Error('El ID del proyecto es requerido')
+      }
+
+      if (!user?.id) {
+        throw new Error('Debes estar autenticado para crear user stories')
+      }
+
+      // Validar que projectId sea un string válido (UUID)
+      if (typeof projectId !== 'string') {
+        throw new Error('El ID del proyecto debe ser un UUID válido')
+      }
+
+      console.log('[CreateUserStoryDialog] Creating user story with:', {
+        projectId,
+        createdBy: user.id,
+        title,
+        storyPoints: Number.parseInt(storyPoints)
+      })
+
+      // Usar el servicio DDD - el backend espera projectId y createdBy como String (UUID)
+      const createdStory = await userStoryService.createUserStory({
+        projectId: String(projectId), // Asegurar que sea string
+        createdBy: String(user.id), // Asegurar que sea string (UUID)
         title,
         description,
         acceptanceCriteria: acceptanceCriteria.filter((c) => c.trim() !== ""),
-        priority,
         storyPoints: Number.parseInt(storyPoints),
-        status: "todo",
-        projectId,
-        createdBy: user?.id,
-        createdAt: new Date().toISOString(),
+        priority: priority, // Usar la prioridad seleccionada
+        status: 'TODO', // Valor por defecto
         aiGenerated: false,
-      }
-
-      const response = await fetch(createApiUrl('/userStories'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newStory),
-      })
-
-      const createdStory = await response.json()
-
-      // Update backlog items
-      const backlogRes = await fetch(createApiUrl(`/backlogs/${backlogId}`))
-      const backlog = await backlogRes.json()
-
-      await fetch(createApiUrl(`/backlogs/${backlogId}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: [...backlog.items, createdStory.id],
-        }),
       })
 
       toast({
@@ -93,10 +93,11 @@ export function CreateUserStoryDialog({
       onOpenChange(false)
       onStoryCreated()
     } catch (error) {
-      console.error("[v0] Error creating user story:", error)
+      console.error("Error creating user story:", error)
+      const errorMessage = error instanceof Error ? error.message : "No se pudo crear la user story"
       toast({
         title: "Error",
-        description: "No se pudo crear la user story",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -107,8 +108,8 @@ export function CreateUserStoryDialog({
   const resetForm = () => {
     setTitle("")
     setDescription("")
-    setPriority("medium")
     setStoryPoints("5")
+    setPriority("MEDIA")
     setAcceptanceCriteria([""])
   }
 
@@ -160,20 +161,6 @@ export function CreateUserStoryDialog({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="priority">Prioridad</Label>
-              <Select value={priority} onValueChange={(value: any) => setPriority(value)} required>
-                <SelectTrigger id="priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">Alta</SelectItem>
-                  <SelectItem value="medium">Media</SelectItem>
-                  <SelectItem value="low">Baja</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="storyPoints">Story Points</Label>
               <Select value={storyPoints} onValueChange={setStoryPoints} required>
                 <SelectTrigger id="storyPoints">
@@ -187,6 +174,20 @@ export function CreateUserStoryDialog({
                   <SelectItem value="8">8</SelectItem>
                   <SelectItem value="13">13</SelectItem>
                   <SelectItem value="21">21</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priority">Prioridad</Label>
+              <Select value={priority} onValueChange={(value: "ALTA" | "MEDIA" | "BAJA") => setPriority(value)} required>
+                <SelectTrigger id="priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALTA">Alta</SelectItem>
+                  <SelectItem value="MEDIA">Media</SelectItem>
+                  <SelectItem value="BAJA">Baja</SelectItem>
                 </SelectContent>
               </Select>
             </div>

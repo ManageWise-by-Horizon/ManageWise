@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,58 +12,240 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import { User, CreditCard, Shield, Crown, Zap, TrendingUp, Upload, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { uploadToImgBB } from "@/lib/imgbb"
 import { createApiUrl } from "@/lib/api-config"
+import { profileService } from "@/lib/domain/profile/services/profile.service"
+import type { UserProfile } from "@/lib/domain/profile/types/profile.types"
+
+// Lista de países comunes
+const COUNTRIES = [
+  { value: "España", label: "España" },
+  { value: "México", label: "México" },
+  { value: "Argentina", label: "Argentina" },
+  { value: "Colombia", label: "Colombia" },
+  { value: "Chile", label: "Chile" },
+  { value: "Perú", label: "Perú" },
+  { value: "Venezuela", label: "Venezuela" },
+  { value: "Ecuador", label: "Ecuador" },
+  { value: "Guatemala", label: "Guatemala" },
+  { value: "Cuba", label: "Cuba" },
+  { value: "Bolivia", label: "Bolivia" },
+  { value: "República Dominicana", label: "República Dominicana" },
+  { value: "Honduras", label: "Honduras" },
+  { value: "Paraguay", label: "Paraguay" },
+  { value: "Nicaragua", label: "Nicaragua" },
+  { value: "El Salvador", label: "El Salvador" },
+  { value: "Costa Rica", label: "Costa Rica" },
+  { value: "Panamá", label: "Panamá" },
+  { value: "Uruguay", label: "Uruguay" },
+  { value: "Estados Unidos", label: "Estados Unidos" },
+  { value: "Canadá", label: "Canadá" },
+  { value: "Brasil", label: "Brasil" },
+  { value: "Reino Unido", label: "Reino Unido" },
+  { value: "Francia", label: "Francia" },
+  { value: "Alemania", label: "Alemania" },
+  { value: "Italia", label: "Italia" },
+  { value: "Portugal", label: "Portugal" },
+  { value: "Otro", label: "Otro" },
+]
+
+// Códigos de país para teléfonos
+const PHONE_COUNTRY_CODES = [
+  { value: "+34", label: "+34 (España)" },
+  { value: "+52", label: "+52 (México)" },
+  { value: "+54", label: "+54 (Argentina)" },
+  { value: "+57", label: "+57 (Colombia)" },
+  { value: "+56", label: "+56 (Chile)" },
+  { value: "+51", label: "+51 (Perú)" },
+  { value: "+58", label: "+58 (Venezuela)" },
+  { value: "+593", label: "+593 (Ecuador)" },
+  { value: "+502", label: "+502 (Guatemala)" },
+  { value: "+53", label: "+53 (Cuba)" },
+  { value: "+591", label: "+591 (Bolivia)" },
+  { value: "+1", label: "+1 (EE.UU./Canadá)" },
+  { value: "+55", label: "+55 (Brasil)" },
+  { value: "+44", label: "+44 (Reino Unido)" },
+  { value: "+33", label: "+33 (Francia)" },
+  { value: "+49", label: "+49 (Alemania)" },
+  { value: "+39", label: "+39 (Italia)" },
+  { value: "+351", label: "+351 (Portugal)" },
+]
 
 export default function SettingsPage() {
   const { user, updateUser, logout } = useAuth()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Obtener el tab activo desde la URL o usar "profile" por defecto
+  const activeTab = searchParams.get("tab") || "profile"
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
+    firstName: "",
+    lastName: "",
     email: user?.email || "",
+    phone: "",
+    phoneCountryCode: "+34", // Código por defecto
+    country: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
+
+  // Cargar perfil completo del usuario
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user?.id) {
+        try {
+          setLoadingProfile(true)
+          const userProfile = await profileService.getUserProfile({ userId: user.id })
+          setProfile(userProfile)
+          // Extraer código de país del teléfono si existe
+          const phoneValue = userProfile.userPhone || ""
+          const phoneMatch = phoneValue.match(/^(\+\d{1,3})\s*(.+)$/)
+          const phoneCountryCode = phoneMatch ? phoneMatch[1] : "+34"
+          const phoneNumber = phoneMatch ? phoneMatch[2] : phoneValue
+
+          setFormData({
+            firstName: userProfile.userFirstName || "",
+            lastName: userProfile.userLastName || "",
+            email: userProfile.userEmail || user?.email || "",
+            phone: phoneNumber,
+            phoneCountryCode: phoneCountryCode,
+            country: userProfile.userCountry || "",
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          })
+        } catch (error) {
+          console.error("Error loading profile:", error)
+          // Si falla, usar datos del user del contexto
+          const nameParts = user.name?.split(" ") || []
+          setFormData({
+            firstName: nameParts[0] || "",
+            lastName: nameParts.slice(1).join(" ") || "",
+            email: user.email || "",
+            phone: "",
+            country: "",
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          })
+        } finally {
+          setLoadingProfile(false)
+        }
+      }
+    }
+    loadProfile()
+  }, [user?.id, user?.email, user?.name])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const updatedUser = {
-        ...user!,
-        name: formData.name,
-        email: formData.email,
+      if (!user?.id) {
+        throw new Error("Usuario no encontrado")
       }
 
-      localStorage.setItem("user", JSON.stringify(updatedUser))
-      updateUser(updatedUser)
+      if (!profile) {
+        throw new Error("Perfil no cargado. Por favor, recarga la página.")
+      }
 
-      await fetch(createApiUrl(`/users/${user!.id}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: formData.name, email: formData.email }),
-      })
+      // El backend requiere TODOS los campos no-nulos y no-blancos
+      // Validar y preparar todos los campos requeridos
+      const firstName = (formData.firstName || "").trim() || (profile.userFirstName || "").trim() || ""
+      const lastName = (formData.lastName || "").trim() || (profile.userLastName || "").trim() || ""
+      
+      if (!firstName) {
+        toast({
+          title: "Error de validación",
+          description: "El nombre es requerido.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Preparar todos los campos con valores válidos (no vacíos)
+      // El backend requiere que todos los campos sean no-nulos y no-blancos
+      // Combinar código de país con número de teléfono
+      const phoneNumber = (formData.phone || "").trim()
+      const fullPhone = phoneNumber ? `${formData.phoneCountryCode || "+34"} ${phoneNumber}` : (profile.userPhone || "").trim()
+      const currentPhone = fullPhone || "N/A"
+      const currentCountry = (formData.country || "").trim() || (profile.userCountry || "").trim()
+      const currentProfileImg = profile.userProfileImgUrl && 
+                                profile.userProfileImgUrl.trim() !== "" && 
+                                profile.userProfileImgUrl !== "null" 
+                                ? profile.userProfileImgUrl.trim() 
+                                : null
+
+      const updatePayload = {
+        userEmail: (profile.userEmail || user.email || "").trim(),
+        userFirstName: firstName,
+        userLastName: lastName || "N/A", // Si está vacío, usar "N/A"
+        userPhone: currentPhone || "N/A",
+        userCountry: currentCountry || "N/A",
+        userRole: (profile.userRole || "User").trim(),
+        userProfileImgUrl: currentProfileImg || "N/A",
+      }
+
+      // Validación final de campos requeridos
+      if (!updatePayload.userEmail || updatePayload.userEmail.trim() === "") {
+        toast({
+          title: "Error",
+          description: "El correo electrónico es requerido.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Asegurar que todos los campos tengan valores válidos (no vacíos)
+      const finalPayload = {
+        userEmail: updatePayload.userEmail,
+        userFirstName: updatePayload.userFirstName,
+        userLastName: updatePayload.userLastName || "N/A",
+        userPhone: updatePayload.userPhone || "N/A",
+        userCountry: updatePayload.userCountry || "N/A",
+        userRole: updatePayload.userRole || "User",
+        userProfileImgUrl: updatePayload.userProfileImgUrl || "N/A",
+      }
+
+      console.log("[Settings] Updating profile with payload:", finalPayload)
+
+      const updatedProfile = await profileService.updateUserProfile(user.id, finalPayload)
+
+      // Actualizar el estado local del perfil
+      setProfile(updatedProfile)
+
+      // Actualizar el usuario en el contexto con el nombre completo
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim() || formData.firstName
+      const updatedUser = {
+        ...user,
+        name: fullName,
+      }
+      await updateUser(updatedUser)
 
       toast({
         title: "Perfil actualizado",
         description: "Tus cambios han sido guardados exitosamente.",
       })
     } catch (error) {
+      console.error("Error updating profile:", error)
       toast({
         title: "Error",
-        description: "No se pudo actualizar el perfil.",
+        description: "No se pudo actualizar el perfil. Intenta de nuevo.",
         variant: "destructive",
       })
     } finally {
@@ -97,7 +280,7 @@ export default function SettingsPage() {
     setUploadingImage(true)
 
     try {
-      // Upload to ImgBB
+      // Upload to ImgBB (o usar data URL si no hay API key)
       const imageUrl = await uploadToImgBB(file)
 
       // Update user profile
@@ -109,15 +292,18 @@ export default function SettingsPage() {
       localStorage.setItem("user", JSON.stringify(updatedUser))
       updateUser(updatedUser)
 
-      await fetch(createApiUrl(`/users/${user!.id}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: imageUrl }),
-      })
+      // TODO: Actualizar en Profile-Service cuando esté disponible
+      // await fetch(createApiUrl(`/api/v1/profiles/${user!.id}`), {
+      //   method: "PATCH",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ avatar: imageUrl }),
+      // })
 
       toast({
         title: "Foto actualizada",
-        description: "Tu foto de perfil ha sido actualizada exitosamente.",
+        description: imageUrl.startsWith('data:') 
+          ? "Tu foto de perfil ha sido actualizada (modo local). Para subir a la nube, configura NEXT_PUBLIC_IMGBB_API_KEY en .env.local"
+          : "Tu foto de perfil ha sido actualizada exitosamente.",
       })
     } catch (error) {
       console.error("Error uploading image:", error)
@@ -198,7 +384,7 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">Administra tu cuenta, suscripción y preferencias</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => router.push(`/settings?tab=${value}`)} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">
             <User className="w-4 h-4 mr-2" />
@@ -266,42 +452,98 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nombre completo</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
+              {loadingProfile ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Cargando perfil...</span>
+                </div>
+              ) : (
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Nombre</Label>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        placeholder="Tu nombre"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Apellido</Label>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        placeholder="Tu apellido"
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                    />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Teléfono</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={formData.phoneCountryCode}
+                          onValueChange={(value) => setFormData({ ...formData, phoneCountryCode: value })}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Código" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PHONE_COUNTRY_CODES.map((code) => (
+                              <SelectItem key={code.value} value={code.value}>
+                                {code.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder="123456789"
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="country">País</Label>
+                      <Select
+                        value={formData.country}
+                        onValueChange={(value) => setFormData({ ...formData, country: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar país" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country.value} value={country.value}>
+                              {country.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="role">Rol de Perfil</Label>
-                  <Input id="role" value={user.role} disabled className="bg-muted" />
-                  <p className="text-xs text-muted-foreground">
-                    Este es tu rol de perfil. Los roles y permisos específicos se asignan en cada proyecto.
-                  </p>
-                </div>
-
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Guardando..." : "Guardar cambios"}
-                </Button>
-              </form>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      "Guardar cambios"
+                    )}
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

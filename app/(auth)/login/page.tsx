@@ -68,11 +68,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary mb-4">
-            <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-muted/20 to-background">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo Section */}
+        <div className="text-center space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 shadow-lg shadow-primary/20 mb-2 transition-transform hover:scale-105">
+            <svg className="w-12 h-12 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M9 3H4C3.44772 3 3 3.44772 3 4V9C3 9.55228 3.44772 10 4 10H9C9.55228 10 10 9.55228 10 9V4C10 3.44772 9.55228 3 9 3Z"
                 stroke="currentColor"
@@ -96,19 +97,24 @@ export default function LoginPage() {
               <path d="M7 7L17 17" stroke="#08f1e5" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Manage Wize</h1>
-          <p className="text-muted-foreground mt-2">Gestor de proyectos con IA</p>
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent leading-tight pb-1">
+              Manage Wize
+            </h1>
+            <p className="text-muted-foreground mt-2 text-base">Gestor de proyectos con IA</p>
+          </div>
         </div>
 
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
-            <CardDescription>Ingresa tus credenciales para acceder</CardDescription>
+        {/* Login Card */}
+        <Card className="border-0 shadow-2xl bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <CardHeader className="space-y-2 pb-6">
+            <CardTitle className="text-3xl font-bold">Iniciar Sesión</CardTitle>
+            <CardDescription className="text-base">Ingresa tus credenciales para acceder a tu cuenta</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Correo Electrónico</Label>
                 <Input
                   id="email"
                   type="email"
@@ -117,10 +123,11 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={isLoading}
+                  className="h-11 transition-all focus:ring-2 focus:ring-primary/20 border-border/50 hover:border-primary/50"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
                 <Input
                   id="password"
                   type="password"
@@ -129,19 +136,16 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  className="h-11 transition-all focus:ring-2 focus:ring-primary/20 border-border/50 hover:border-primary/50"
                 />
               </div>
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-1">Usuarios de prueba:</p>
-                <ul className="text-xs space-y-1">
-                  <li>• admin@managewize.com / Admin123!</li>
-                  <li>• po@managewize.com / ProductOwner123!</li>
-                  <li>• dev@managewize.com / Developer123!</li>
-                </ul>
-              </div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
+            <CardFooter className="flex flex-col gap-4 pt-6">
+              <Button 
+                type="submit" 
+                className="w-full h-11 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-200 font-medium" 
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -153,7 +157,7 @@ export default function LoginPage() {
               </Button>
               <p className="text-sm text-center text-muted-foreground">
                 ¿No tienes cuenta?{" "}
-                <Link href="/register" className="text-primary font-medium hover:underline">
+                <Link href="/register" className="text-primary font-semibold hover:underline transition-colors">
                   Regístrate aquí
                 </Link>
               </p>

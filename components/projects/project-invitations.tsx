@@ -39,9 +39,12 @@ export function ProjectInvitations({ projectId, onInvitationUpdated }: ProjectIn
   const fetchInvitations = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(createApiUrl(`/projectInvitations?projectId=${projectId}`))
+      const response = await fetch(createApiUrl(`/api/v1/invitations/projects/${projectId}`))
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
-      setInvitations(data)
+      setInvitations(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Error fetching invitations:", error)
       toast({
@@ -75,10 +78,9 @@ export function ProjectInvitations({ projectId, onInvitationUpdated }: ProjectIn
 
   const cancelInvitation = async (invitationId: string) => {
     try {
-      await fetch(createApiUrl(`/projectInvitations/${invitationId}`), {
-        method: "PATCH",
+      await fetch(createApiUrl(`/api/v1/invitations/${invitationId}`), {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled" }),
       })
 
       toast({

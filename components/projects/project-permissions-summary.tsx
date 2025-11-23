@@ -28,20 +28,34 @@ export function ProjectPermissionsSummary({ projectId, userId }: ProjectPermissi
     )
   }
 
+  // Contar los permisos reales del usuario
+  const countActivePermissions = () => {
+    let count = 0
+    if (permissions.read) count++
+    if (permissions.write) count++
+    if (permissions.manage_project) count++
+    if (permissions.manage_members) count++
+    if (permissions.manage_permissions) count++
+    return count
+  }
+
+  const activePermissionsCount = countActivePermissions()
+  const totalPermissions = 5 // read, write, manage_project, manage_members, manage_permissions
+
   const getPermissionLevel = () => {
     if (permissions.manage_permissions || permissions.manage_project) {
-      return { level: "Admin", count: 5, color: "bg-green-100 text-green-800", icon: Settings }
+      return { level: "Admin", color: "bg-green-100 text-green-800", icon: Settings }
     }
     if (permissions.manage_members) {
-      return { level: "Manager", count: 3, color: "bg-blue-100 text-blue-800", icon: Users }
+      return { level: "Manager", color: "bg-blue-100 text-blue-800", icon: Users }
     }
     if (permissions.write) {
-      return { level: "Editor", count: 2, color: "bg-yellow-100 text-yellow-800", icon: Shield }
+      return { level: "Editor", color: "bg-yellow-100 text-yellow-800", icon: Shield }
     }
     if (permissions.read) {
-      return { level: "Lector", count: 1, color: "bg-gray-100 text-gray-800", icon: Lock }
+      return { level: "Lector", color: "bg-gray-100 text-gray-800", icon: Lock }
     }
-    return { level: "Sin acceso", count: 0, color: "bg-red-100 text-red-800", icon: Lock }
+    return { level: "Sin acceso", color: "bg-red-100 text-red-800", icon: Lock }
   }
 
   const permissionInfo = getPermissionLevel()
@@ -58,7 +72,7 @@ export function ProjectPermissionsSummary({ projectId, userId }: ProjectPermissi
           <div>
             <div className="text-2xl font-bold">{permissionInfo.level}</div>
             <p className="text-xs text-muted-foreground">
-              {permissionInfo.count}/5 permisos
+              {activePermissionsCount}/{totalPermissions} permisos
             </p>
           </div>
           <Badge className={permissionInfo.color}>

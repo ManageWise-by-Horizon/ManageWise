@@ -50,12 +50,21 @@ export default function NotificationsPage() {
     }
 
     try {
-      // Obtener el proyecto actual
-      const projectRes = await fetch(createApiUrl(`/projects/${projectId}`))
-      const project = await projectRes.json()
+      // Obtener el proyecto usando el servicio DDD
+      const { projectService } = await import('@/lib/domain/projects/services/project.service')
+      const project = await projectService.getProjectById(projectId)
 
-      // Verificar si el usuario ya es miembro (Escenario 4)
-      if (project.members.includes(user.id)) {
+      if (!project) {
+        toast({
+          title: "Error",
+          description: "Proyecto no encontrado",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Verificar si el usuario ya es miembro (validar que members existe y es un array)
+      if (project.members && Array.isArray(project.members) && project.members.includes(user.id)) {
         toast({
           title: "Ya eres miembro",
           description: "Ya perteneces a este proyecto",
@@ -64,81 +73,81 @@ export default function NotificationsPage() {
         return
       }
 
-      // Agregar usuario al proyecto
-      const updatedMembers = [...project.members, user.id]
-      await fetch(createApiUrl(`/projects/${projectId}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ members: updatedMembers }),
-      })
+      // Agregar usuario al proyecto usando el servicio DDD
+      await projectService.addMember(projectId, user.id)
 
-      // Crear permisos por defecto para el nuevo miembro
-      const defaultPermission = {
-        id: `perm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId,
+      // Crear permisos por defecto para el nuevo miembro usando el servicio DDD
+      const { permissionService } = await import('@/lib/domain/projects/services/permission.service')
+      await permissionService.createPermission({
+        projectId: projectId,
         userId: user.id,
         role: 'developer', // Rol por defecto
         read: true,
         write: true,
-        manage_project: false,
-        manage_members: false,
-        manage_permissions: false
-      }
-
-      await fetch(createApiUrl('/projectPermissions'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(defaultPermission),
+        manageProject: false,
+        manageMembers: false,
+        managePermissions: false
       })
+
+      // Obtener la notificación para obtener datos adicionales
+      const notification = notifications.find(n => n.id === notificationId)
+
+      // Actualizar el estado de la invitación si existe usando el servicio DDD
+      if (notification?.data?.invitationId) {
+        const { invitationService } = await import('@/lib/domain/invitations/services/invitation.service')
+        await invitationService.updateInvitation(notification.data.invitationId, { status: 'ACCEPTED' })
+      } else {
+        // Si no hay invitationId en la notificación, buscar por email y projectId
+        const { invitationService } = await import('@/lib/domain/invitations/services/invitation.service')
+        const allInvitations = await invitationService.getInvitationsByProjectId(projectId)
+        const userInvitation = allInvitations.find((inv: any) => 
+          inv.email === user.email && (inv.status === 'PENDING' || inv.status === 'pending')
+        )
+        if (userInvitation) {
+          await invitationService.updateInvitation(String(userInvitation.id), { status: 'ACCEPTED' })
+        }
+      }
 
       // Marcar notificación como leída
       await markAsRead(notificationId)
 
-      // Actualizar el estado de la invitación si existe
-      const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${projectId}&email=${user.email}`))
-      const invitations = await invitationsRes.json()
-      if (invitations.length > 0) {
-        await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "accepted" }),
-        })
-      }
-
-      // Crear notificación de confirmación para el que invitó
-      const notification = notifications.find(n => n.id === notificationId)
+      // Crear notificación de confirmación para el que invitó usando el servicio DDD
       if (notification?.data?.invitedBy) {
-        const confirmationNotification = {
-          id: `notif_accept_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        const { notificationService } = await import('@/lib/domain/notifications/services/notification.service')
+        await notificationService.createNotification({
           userId: notification.data.invitedBy,
-          projectId,
+          projectId: projectId,
           type: "invitation_accepted",
           title: "Invitación aceptada",
-          message: `${user.name} ha aceptado tu invitación al proyecto "${notification.data.projectName}"`,
+          message: `${user.name} ha aceptado tu invitación al proyecto "${notification.data.projectName || 'el proyecto'}"`,
           data: {
             projectId,
             projectName: notification.data.projectName,
             acceptedBy: user.id,
             acceptedByName: user.name,
             changeType: "accepted"
-          },
-          read: false,
-          createdAt: new Date().toISOString(),
-          deliveryStatus: "delivered"
-        }
-
-        await fetch(createApiUrl('/notifications'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(confirmationNotification),
+          }
         })
       }
 
       // Eliminar la notificación de invitación aceptada (ya no es necesaria)
       await deleteNotification(notificationId)
 
+      // Refrescar la lista de notificaciones para que se actualice en la UI
+      await refreshNotifications()
+
+      toast({
+        title: "Invitación aceptada",
+        description: `Te has unido al proyecto "${notification?.data?.projectName || 'desconocido'}"`,
+      })
+
     } catch (error) {
       console.error("Error accepting invitation:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo aceptar la invitación. Intenta nuevamente.",
+        variant: "destructive",
+      })
       throw error
     }
   }
@@ -158,61 +167,61 @@ export default function NotificationsPage() {
       // Obtener la notificación antes de eliminarla
       const notification = notifications.find(n => n.id === notificationId)
 
-      // Actualizar el estado de la invitación si existe
+      // Actualizar el estado de la invitación si existe usando el servicio DDD
+      const { invitationService } = await import('@/lib/domain/invitations/services/invitation.service')
+      
       if (invitationId) {
-        await fetch(createApiUrl(`/projectInvitations/${invitationId}`), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "declined" }),
-        })
-      } else {
+        await invitationService.updateInvitation(String(invitationId), { status: 'REJECTED' })
+      } else if (notification?.data?.invitationId) {
+        await invitationService.updateInvitation(String(notification.data.invitationId), { status: 'REJECTED' })
+      } else if (notification?.data?.projectId) {
         // Buscar invitación por email del usuario y projectId
-        if (notification?.data?.projectId) {
-          const invitationsRes = await fetch(createApiUrl(`/projectInvitations?projectId=${notification.data.projectId}&email=${user.email}`))
-          const invitations = await invitationsRes.json()
-          if (invitations.length > 0) {
-            await fetch(createApiUrl(`/projectInvitations/${invitations[0].id}`), {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: "declined" }),
-            })
-          }
+        const allInvitations = await invitationService.getInvitationsByProjectId(notification.data.projectId)
+        const userInvitation = allInvitations.find((inv: any) => 
+          inv.email === user.email && (inv.status === 'PENDING' || inv.status === 'pending')
+        )
+        if (userInvitation) {
+          await invitationService.updateInvitation(String(userInvitation.id), { status: 'REJECTED' })
         }
       }
 
-      // Crear notificación de confirmación para el que invitó
+      // Crear notificación de confirmación para el que invitó usando el servicio DDD
       if (notification?.data?.invitedBy) {
-        const confirmationNotification = {
-          id: `notif_decline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        const { notificationService } = await import('@/lib/domain/notifications/services/notification.service')
+        await notificationService.createNotification({
           userId: notification.data.invitedBy,
           projectId: notification.data.projectId,
           type: "invitation_declined",
           title: "Invitación rechazada",
-          message: `${user.name} ha rechazado tu invitación al proyecto "${notification.data.projectName}"`,
+          message: `${user.name} ha rechazado tu invitación al proyecto "${notification.data.projectName || 'el proyecto'}"`,
           data: {
             projectId: notification.data.projectId,
             projectName: notification.data.projectName,
             declinedBy: user.id,
             declinedByName: user.name,
             changeType: "declined"
-          },
-          read: false,
-          createdAt: new Date().toISOString(),
-          deliveryStatus: "delivered"
-        }
-
-        await fetch(createApiUrl('/notifications'), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(confirmationNotification),
+          }
         })
       }
 
       // Eliminar la notificación de invitación rechazada (ya no es necesaria)
       await deleteNotification(notificationId)
 
+      // Refrescar la lista de notificaciones para que se actualice en la UI
+      await refreshNotifications()
+
+      toast({
+        title: "Invitación rechazada",
+        description: "La invitación ha sido rechazada y la notificación eliminada",
+      })
+
     } catch (error) {
       console.error("Error declining invitation:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar la invitación. Intenta nuevamente.",
+        variant: "destructive",
+      })
       throw error
     }
   }

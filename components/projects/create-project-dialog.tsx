@@ -31,6 +31,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useProjects } from "@/lib/domain/projects/hooks/use-projects"
+import { permissionService } from "@/lib/domain/projects/services/permission.service"
+import type { CreateProjectCommand } from "@/lib/domain/projects/types/project.types"
+import { taskService } from "@/lib/domain/tasks/services/task.service"
 
 interface CreateProjectDialogProps {
   open: boolean
@@ -41,6 +45,7 @@ interface CreateProjectDialogProps {
 export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: CreateProjectDialogProps) {
   const { user, checkLimits, updateUsage } = useAuth()
   const { toast } = useToast()
+  const { createProject, refetch } = useProjects()
   const [isLoading, setIsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -69,10 +74,19 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "Debes estar autenticado para crear un proyecto",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const newProject = {
+      const command: CreateProjectCommand = {
         name,
         description,
         objectives: [],
@@ -80,35 +94,112 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           start: startDate,
           end: endDate,
         },
-        members: [user?.id],
-        createdBy: user?.id,
-        createdAt: new Date().toISOString(),
+        members: [user.id],
+        createdBy: user.id,
         status: "active",
+        aiGenerated: false
       }
 
-      const projectResponse = await fetch(createApiUrl('/projects'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newProject),
+      const createdProject = await createProject(command)
+      console.log('[CreateProject] Project created:', {
+        projectId: createdProject.projectId,
+        name: createdProject.name
       })
 
-      const createdProject = await projectResponse.json()
-
-      // Crear permisos de administrador para el creador del proyecto
-      await fetch(createApiUrl('/projectPermissions'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: createdProject.id,
-          userId: user?.id,
-          role: 'product_owner', // Rol por defecto para el creador del proyecto
-          read: true,
-          write: true,
-          manage_project: true,
-          manage_members: true,
-          manage_permissions: true,
-        }),
-      })
+      // Crear permiso automático para el creador con todos los permisos
+      // Intentar crear el permiso con retry en caso de que el proyecto no esté disponible inmediatamente
+      try {
+        let permissionCreated = false
+        const maxRetries = 3
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            // Esperar un momento antes de cada intento (más tiempo en el primer intento)
+            await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 500 : 300))
+            
+            const permissionPayload = {
+              projectId: String(createdProject.projectId),
+              userId: String(user.id),
+              role: 'product_owner',
+              read: true,
+              write: true,
+              manageProject: true,
+              manageMembers: true,
+              managePermissions: true,
+              addedBy: String(user.id)
+            }
+            console.log(`[CreateProject] Creating permission (attempt ${attempt}/${maxRetries}):`, permissionPayload)
+            
+            await permissionService.createPermission(permissionPayload)
+            console.log('[CreateProject] Permission created successfully for creator')
+            permissionCreated = true
+            break
+          } catch (permError: any) {
+            const errorMsg = permError?.message || String(permError)
+            console.warn(`[CreateProject] Permission creation attempt ${attempt} failed:`, errorMsg)
+            
+            // Si es el último intento, lanzar el error
+            if (attempt === maxRetries) {
+              throw permError
+            }
+            
+            // Si el error indica que el proyecto no existe, esperar más tiempo
+            if (errorMsg.includes('not found') || errorMsg.includes('ProjectNotFoundException')) {
+              console.log('[CreateProject] Project not found yet, waiting longer...')
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+          }
+        }
+        
+        if (!permissionCreated) {
+          throw new Error('Failed to create permission after multiple attempts')
+        }
+      } catch (permError: any) {
+        // Si falla la creación, loguear el error completo pero no fallar la creación del proyecto
+        let errorMsg = 'Error desconocido'
+        let errorStatus = null
+        let errorDetails = null
+        
+        if (permError instanceof Error) {
+          errorMsg = permError.message
+          errorStatus = (permError as any).status
+          errorDetails = (permError as any).details
+        } else if (typeof permError === 'string') {
+          errorMsg = permError
+        } else if (permError?.message) {
+          errorMsg = permError.message
+          errorStatus = permError.status
+          errorDetails = permError.details
+        } else {
+          errorMsg = JSON.stringify(permError) || 'Error desconocido'
+        }
+        
+        console.error('[CreateProject] Error creating permission:', {
+          error: permError,
+          errorType: typeof permError,
+          errorConstructor: permError?.constructor?.name,
+          message: errorMsg,
+          status: errorStatus,
+          details: errorDetails,
+          projectId: createdProject.projectId,
+          userId: user.id,
+          stack: permError?.stack
+        })
+        
+        if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
+          console.log('[CreateProject] Permission already exists (duplicate key)')
+        } else {
+          // Mostrar un warning al usuario con más detalles
+          const displayMsg = errorStatus 
+            ? `HTTP ${errorStatus}: ${errorMsg.substring(0, 100)}`
+            : errorMsg.substring(0, 150)
+          toast({
+            title: "Advertencia",
+            description: `El proyecto se creó exitosamente. Error al crear permisos: ${displayMsg}`,
+            variant: "default",
+          })
+        }
+      }
 
       toast({
         title: "Proyecto creado",
@@ -117,12 +208,19 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
 
       resetForm()
       onOpenChange(false)
+      
+      // Esperar un momento para que el backend persista los cambios
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Refrescar la lista de proyectos
+      await refetch()
       onProjectCreated()
     } catch (error) {
       console.error("[v0] Error creating project:", error)
+      const errorMessage = error instanceof Error ? error.message : "No se pudo crear el proyecto"
       toast({
         title: "Error",
-        description: "No se pudo crear el proyecto",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -290,43 +388,123 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       // Step 10: Creating project
       setGenerationLog((prev) => [...prev, getMessageForStep("creating_project")])
 
-      // Save project to backend
-      const projectData = {
+      if (!user?.id) {
+        throw new Error("Usuario no autenticado")
+      }
+
+      // Save project to backend usando el servicio DDD
+      const command: CreateProjectCommand = {
         name: result.projectName,
         description: result.description,
         objectives: result.objectives,
         timeline: result.timeline,
-        members: [user?.id],
-        createdBy: user?.id,
-        createdAt: new Date().toISOString(),
+        members: [user.id],
+        createdBy: user.id,
         status: "active",
         aiGenerated: true,
-        structuredPrompt,
+        structuredPrompt: JSON.stringify(structuredPrompt)
       }
 
-      const projectResponse = await fetch(createApiUrl('/projects'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(projectData),
+      const createdProject = await createProject(command)
+      console.log('[CreateProject] Project created (AI):', {
+        projectId: createdProject.projectId,
+        name: createdProject.name
       })
 
-      const createdProject = await projectResponse.json()
-
-      // Crear permisos de administrador para el creador del proyecto
-      await fetch(createApiUrl('/projectPermissions'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: createdProject.id,
-          userId: user?.id,
-          role: 'product_owner', // Rol por defecto para el creador del proyecto
-          read: true,
-          write: true,
-          manage_project: true,
-          manage_members: true,
-          manage_permissions: true,
-        }),
-      })
+      // Crear permiso automático para el creador con todos los permisos
+      // Intentar crear el permiso con retry en caso de que el proyecto no esté disponible inmediatamente
+      try {
+        let permissionCreated = false
+        const maxRetries = 3
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            // Esperar un momento antes de cada intento (más tiempo en el primer intento)
+            await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 500 : 300))
+            
+            const permissionPayload = {
+              projectId: String(createdProject.projectId),
+              userId: String(user.id),
+              role: 'product_owner',
+              read: true,
+              write: true,
+              manageProject: true,
+              manageMembers: true,
+              managePermissions: true,
+              addedBy: String(user.id)
+            }
+            console.log(`[CreateProject] Creating permission (attempt ${attempt}/${maxRetries}) (AI):`, permissionPayload)
+            
+            await permissionService.createPermission(permissionPayload)
+            console.log('[CreateProject] Permission created successfully for creator (AI)')
+            permissionCreated = true
+            break
+          } catch (permError: any) {
+            const errorMsg = permError?.message || String(permError)
+            console.warn(`[CreateProject] Permission creation attempt ${attempt} failed (AI):`, errorMsg)
+            
+            // Si es el último intento, lanzar el error
+            if (attempt === maxRetries) {
+              throw permError
+            }
+            
+            // Si el error indica que el proyecto no existe, esperar más tiempo
+            if (errorMsg.includes('not found') || errorMsg.includes('ProjectNotFoundException')) {
+              console.log('[CreateProject] Project not found yet, waiting longer... (AI)')
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+          }
+        }
+        
+        if (!permissionCreated) {
+          throw new Error('Failed to create permission after multiple attempts')
+        }
+      } catch (permError: any) {
+        // Si falla la creación, loguear el error completo pero no fallar la creación del proyecto
+        let errorMsg = 'Error desconocido'
+        let errorStatus = null
+        let errorDetails = null
+        
+        if (permError instanceof Error) {
+          errorMsg = permError.message
+          errorStatus = (permError as any).status
+          errorDetails = (permError as any).details
+        } else if (typeof permError === 'string') {
+          errorMsg = permError
+        } else if (permError?.message) {
+          errorMsg = permError.message
+          errorStatus = permError.status
+          errorDetails = permError.details
+        } else {
+          errorMsg = JSON.stringify(permError) || 'Error desconocido'
+        }
+        
+        console.error('[CreateProject] Error creating permission (AI):', {
+          error: permError,
+          errorType: typeof permError,
+          errorConstructor: permError?.constructor?.name,
+          message: errorMsg,
+          status: errorStatus,
+          details: errorDetails,
+          projectId: createdProject.projectId,
+          userId: user.id,
+          stack: permError?.stack
+        })
+        
+        if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
+          console.log('[CreateProject] Permission already exists (duplicate key, AI)')
+        } else {
+          // Mostrar un warning al usuario con más detalles
+          const displayMsg = errorStatus 
+            ? `HTTP ${errorStatus}: ${errorMsg.substring(0, 100)}`
+            : errorMsg.substring(0, 150)
+          toast({
+            title: "Advertencia",
+            description: `El proyecto se creó exitosamente. Error al crear permisos: ${displayMsg}`,
+            variant: "default",
+          })
+        }
+      }
 
       // Step 11: Saving backlog
       setGenerationLog((prev) => [...prev, getMessageForStep("saving_backlog")])
@@ -348,7 +526,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               priority: backlogItem.priority,
               storyPoints: backlogItem.storyPoints,
               acceptanceCriteria: backlogItem.acceptanceCriteria || [],
-              projectId: createdProject.id,
+              projectId: createdProject.projectId,
               createdBy: user?.id,
               createdAt: new Date().toISOString(),
               status: "todo",
@@ -370,12 +548,14 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           const userStoryId = userStoryIds[i]
           
           // Generate tasks based on user story complexity and type
+          // Asignar todas las tareas al usuario actual (el creador del proyecto)
+          const assignedUserId = user?.id || ""
           const tasksForStory = [
             {
               title: `Diseñar UI para ${backlogItem.title}`,
               description: `Crear mockups y diseño de interfaz para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              assignedTo: null, // Sin asignar por defecto
+              assignedTo: assignedUserId, // Asignar al usuario actual
               status: "todo",
               priority: backlogItem.priority,
               estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * 0.5)),
@@ -387,7 +567,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Implementar backend para ${backlogItem.title}`,
               description: `Desarrollar lógica de negocio y APIs para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              assignedTo: null,
+              assignedTo: assignedUserId, // Asignar al usuario actual
               status: "todo",
               priority: backlogItem.priority,
               estimatedHours: Math.max(4, Math.floor(backlogItem.storyPoints * 0.8)),
@@ -399,7 +579,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Implementar frontend para ${backlogItem.title}`,
               description: `Desarrollar componentes y vistas para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              assignedTo: null,
+              assignedTo: assignedUserId, // Asignar al usuario actual
               status: "todo",
               priority: backlogItem.priority,
               estimatedHours: Math.max(3, Math.floor(backlogItem.storyPoints * 0.6)),
@@ -411,7 +591,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
               title: `Testing para ${backlogItem.title}`,
               description: `Pruebas unitarias e integración para: ${backlogItem.description}`,
               userStoryId: userStoryId,
-              assignedTo: null,
+              assignedTo: assignedUserId, // Asignar al usuario actual
               status: "todo",
               priority: backlogItem.priority,
               estimatedHours: Math.max(2, Math.floor(backlogItem.storyPoints * 0.4)),
@@ -421,19 +601,37 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
             },
           ]
 
-          // Create tasks for this user story
+          // Create tasks for this user story using DDD service
           for (const task of tasksForStory) {
             try {
-              const taskResponse = await fetch(createApiUrl('/tasks'), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(task),
-              })
-              
-              if (taskResponse.ok) {
-                const createdTask = await taskResponse.json()
-                allCreatedTasks.push(createdTask)
+              if (!user?.id) {
+                console.error('User ID is required to create tasks')
+                continue
               }
+
+              // Map status and priority to backend format
+              const status = task.status === "todo" ? "TODO" : task.status.toUpperCase() as "TODO" | "IN_PROGRESS" | "DONE"
+              const priority = task.priority?.toUpperCase() as "ALTA" | "MEDIA" | "BAJA" || "MEDIA"
+
+              // Validar que siempre haya un assignedTo
+              if (!task.assignedTo) {
+                console.error(`Task "${task.title}" debe tener un usuario asignado`)
+                continue
+              }
+
+              const createdTask = await taskService.createTask({
+                userStoryId: task.userStoryId,
+                assignedTo: task.assignedTo, // Ahora es obligatorio
+                createdBy: user.id,
+                title: task.title,
+                description: task.description,
+                estimatedHours: task.estimatedHours,
+                status: status,
+                priority: priority,
+                aiGenerated: task.aiGenerated || false,
+              })
+
+              allCreatedTasks.push(createdTask)
             } catch (error) {
               console.error(`Error creating task: ${task.title}`, error)
             }
@@ -445,7 +643,7 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            projectId: createdProject.id,
+            projectId: createdProject.projectId,
             type: "product",
             items: userStoryIds,
             createdBy: user?.id,
@@ -470,6 +668,9 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
         description: `${result.projectName} creado con ${result.productBacklog?.length || 0} user stories y ${allCreatedTasks.length} tareas`,
       })
 
+      // Refrescar la lista de proyectos
+      await refetch()
+      
       setTimeout(() => {
         resetForm()
         onOpenChange(false)
