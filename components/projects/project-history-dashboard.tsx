@@ -77,13 +77,18 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   'project': 'Proyecto',
   'userStory': 'Historia de Usuario',
+  'user_story': 'Historia de Usuario',
   'task': 'Tarea',
   'sprint': 'Sprint',
   'objective': 'Objetivo',
+  'okr': 'Objetivo',
   'keyResult': 'Resultado Clave',
+  'key_result': 'Resultado Clave',
   'comment': 'Comentario',
   'member': 'Miembro',
-  'meeting': 'Reunión'
+  'meeting': 'Reunión',
+  'invitation': 'Invitación',
+  'permission': 'Permiso'
 };
 
 const CHANGE_TYPE_ICONS: Record<string, any> = {
@@ -269,13 +274,26 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
     return undefined; // Retornar undefined para que se muestre el fallback
   };
 
-  const getUserInitial = (userId: string) => {
-    const name = getUserName(userId);
-    // Obtener la primera letra del nombre, o si es "Usuario X", obtener la X
-    if (name.startsWith('Usuario ')) {
-      return name.substring(8, 9).toUpperCase() || 'U';
-    }
-    return name.charAt(0).toUpperCase() || '?';
+  const getEntityInitial = (entityType: string) => {
+    const normalizedType = normalizeEntityType(entityType);
+    // Mapeo de tipos de entidad a sus iniciales
+    const entityInitials: Record<string, string> = {
+      'project': 'P',
+      'userStory': 'H',
+      'user_story': 'H',
+      'task': 'T',
+      'sprint': 'S',
+      'objective': 'O',
+      'okr': 'O',
+      'keyResult': 'K',
+      'key_result': 'K',
+      'comment': 'C',
+      'member': 'M',
+      'meeting': 'R',
+      'invitation': 'I',
+      'permission': 'P'
+    };
+    return entityInitials[normalizedType] || '?';
   };
 
   // Función para normalizar entityType
@@ -425,20 +443,15 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                         <div className="p-2 rounded-full bg-muted">
                           {getEntityIcon(entry.entityType)}
                         </div>
-                        {normalizeEntityType(entry.entityType) === 'sprint' ? (
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-blue-500/10 text-blue-700 font-medium border border-blue-200">
-                              S
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={getUserAvatar(entry.userId)} alt={getUserName(entry.userId)} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                              {getUserInitial(entry.userId)}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className={`font-medium ${
+                            normalizeEntityType(entry.entityType) === 'sprint' 
+                              ? 'bg-blue-500/10 text-blue-700 border border-blue-200'
+                              : 'bg-primary/10 text-primary'
+                          }`}>
+                            {getEntityInitial(entry.entityType)}
+                          </AvatarFallback>
+                        </Avatar>
                       </div>
                       
                       <div className="flex-1 space-y-2">
