@@ -29,9 +29,10 @@ interface ProjectBacklogProps {
   projectName: string
   externalUserStories?: UserStory[] // User Stories desde el padre (actualizadas en tiempo real)
   onTaskCreated?: () => void // Callback para actualizar tareas en el proyecto
+  onStoryCreated?: () => void // Callback para notificar al padre cuando se crea una user story
 }
 
-export function ProjectBacklog({ projectId, projectName, externalUserStories, onTaskCreated }: ProjectBacklogProps) {
+export function ProjectBacklog({ projectId, projectName, externalUserStories, onTaskCreated, onStoryCreated }: ProjectBacklogProps) {
   const [userStories, setUserStories] = useState<UserStory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -389,7 +390,13 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories, on
         onOpenChange={setIsCreateDialogOpen}
         projectId={projectId}
         backlogId={projectId}
-        onStoryCreated={fetchUserStories}
+        onStoryCreated={() => {
+          fetchUserStories()
+          // Notificar al padre para que actualice las user stories en otros componentes
+          if (onStoryCreated) {
+            onStoryCreated()
+          }
+        }}
       />
 
       {/* Edit User Story Dialog */}
@@ -397,7 +404,13 @@ export function ProjectBacklog({ projectId, projectName, externalUserStories, on
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         userStory={selectedUserStory}
-        onStoryUpdated={fetchUserStories}
+        onStoryUpdated={() => {
+          fetchUserStories()
+          // Notificar al padre para que actualice las user stories en otros componentes
+          if (onStoryCreated) {
+            onStoryCreated()
+          }
+        }}
       />
 
       {/* User Story Detail Modal */}

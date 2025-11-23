@@ -26,6 +26,7 @@ import {
   UserCog,
   Clock,
   Trash2,
+  Video,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -41,6 +42,10 @@ import { ProjectBacklog } from "@/components/projects/project-backlog"
 import { ProjectBoard } from "@/components/projects/project-board"
 import { ProjectOKRs } from "@/components/projects/project-okrs"
 import { ProjectHistoryDashboard } from "@/components/projects/project-history-dashboard"
+import { ProjectSprints } from "@/components/projects/project-sprints"
+import { ProjectMeetings } from "@/components/projects/project-meetings"
+import { ProjectCalendar } from "@/components/projects/project-calendar"
+import { ProjectTimeline } from "@/components/projects/project-timeline"
 import { createApiUrl } from "@/lib/api-config"
 import { enrichTasks } from "@/lib/data-helpers"
 import { useProject } from "@/lib/domain/projects/hooks/use-project"
@@ -122,8 +127,8 @@ interface Task {
 
 interface Sprint {
   id: string
-  name: string
-  goal: string
+  title: string
+  description: string
   startDate: string
   endDate: string
   status: string
@@ -326,15 +331,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         setTasks([])
       }
 
-      // Fetch sprints - TODO: Usar servicio DDD cuando esté disponible
+      // Fetch sprints usando ApiClient con autenticación
       let loadedSprints: Sprint[] = []
       try {
-        const sprintsRes = await fetch(createApiUrl(`/sprints?projectId=${project.id}`))
-        if (sprintsRes.ok) {
-          const sprintsData = await sprintsRes.json()
-          loadedSprints = Array.isArray(sprintsData) ? sprintsData : []
-          setSprints(loadedSprints)
-        }
+        const { getApiClient } = await import('@/lib/infrastructure/api/api-client')
+        const apiClient = getApiClient()
+        const sprintsData = await apiClient.get<Sprint[]>(`/api/v1/sprints/project/${project.id}`)
+        loadedSprints = Array.isArray(sprintsData) ? sprintsData : []
+        setSprints(loadedSprints)
+        console.log('[ProjectDetail] Sprints cargados:', loadedSprints.length, loadedSprints)
       } catch (err) {
         console.warn("Error loading sprints:", err)
         setSprints([])
@@ -598,6 +603,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <List className="mr-2 h-4 w-4" />
             Backlog
           </TabsTrigger>
+          <TabsTrigger value="sprints">
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Sprints
+          </TabsTrigger>
           <TabsTrigger value="chat">
             <Bot className="mr-2 h-4 w-4" />
             Chat IA
@@ -621,6 +630,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <TabsTrigger value="calendar">
             <CalendarDays className="mr-2 h-4 w-4" />
             Calendario
+          </TabsTrigger>
+          <TabsTrigger value="meetings">
+            <Video className="mr-2 h-4 w-4" />
+            Reuniones
           </TabsTrigger>
         </TabsList>
 
@@ -722,6 +735,29 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 // Recargar las tareas cuando se crea una nueva
                 fetchProjectDetails()
               }}
+              onStoryCreated={() => {
+                // Recargar las user stories cuando se crea una nueva
+                fetchProjectDetails()
+              }}
+            />
+          </PermissionGuard>
+        </TabsContent>
+
+        <TabsContent value="sprints" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectSprints 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name} 
+              externalUserStories={userStories}
+              onSprintUpdated={() => {
+                // Recargar los datos cuando se actualiza un sprint
+                fetchProjectDetails()
+              }}
             />
           </PermissionGuard>
         </TabsContent>
@@ -767,6 +803,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               projectId={project.id}
               tasks={tasks}
               members={members}
+              userStories={userStories}
+              sprints={sprints}
               onUpdate={() => {
                 refetchProject()
                 fetchProjectDetails()
@@ -800,28 +838,57 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </Card>
         </TabsContent>
 
-        <TabsContent value="timeline">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <GanttChart className="mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">Vista de Timeline</h3>
-              <p className="text-sm text-muted-foreground">Próximamente: Diagrama de Gantt interactivo</p>
-            </CardContent>
-          </Card>
+        <TabsContent value="timeline" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectTimeline 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name}
+              projectStartDate={dddProject?.startDate || project.timeline?.start || project.timeline?.startDate}
+              projectEndDate={dddProject?.endDate || project.timeline?.end || project.timeline?.estimatedEndDate}
+            />
+          </PermissionGuard>
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
           <ProjectHistoryDashboard projectId={project.id} />
         </TabsContent>
 
-        <TabsContent value="calendar">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <CalendarDays className="mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-semibold">Vista de Calendario</h3>
-              <p className="text-sm text-muted-foreground">Próximamente: Calendario con eventos y reuniones</p>
-            </CardContent>
-          </Card>
+        <TabsContent value="calendar" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectCalendar 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name}
+              projectEndDate={dddProject?.endDate || project.timeline?.end || project.timeline?.estimatedEndDate}
+            />
+          </PermissionGuard>
+        </TabsContent>
+
+        <TabsContent value="meetings" className="space-y-4">
+          <PermissionGuard
+            projectId={project.id}
+            userId={user?.id || ""}
+            requiredPermission="read"
+            showError={true}
+          >
+            <ProjectMeetings 
+              projectId={dddProject?.projectId || project.id || projectId} 
+              projectName={project.name}
+              onMeetingUpdated={() => {
+                // Recargar los datos cuando se actualiza una reunión
+                fetchProjectDetails()
+              }}
+            />
+          </PermissionGuard>
         </TabsContent>
       </Tabs>
 

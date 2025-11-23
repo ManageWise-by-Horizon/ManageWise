@@ -10,6 +10,7 @@ export interface UserStory {
   status: string
   acceptanceCriteria: string[]
   aiGenerated: boolean
+  sprintId?: string | null
   qualityMetrics?: {
     bleu: number
     rouge: number
@@ -37,5 +38,6 @@ export interface UpdateUserStoryCommand {
   priority?: string
   status?: string
   acceptanceCriteria?: string[]
+  sprintId?: string | null
 }
 

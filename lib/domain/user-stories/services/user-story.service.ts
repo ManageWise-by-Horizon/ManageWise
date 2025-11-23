@@ -46,6 +46,7 @@ export class UserStoryService {
     if (command.priority !== undefined) payload.priority = command.priority
     if (command.status !== undefined) payload.status = command.status
     if (command.acceptanceCriteria !== undefined) payload.acceptanceCriteria = command.acceptanceCriteria
+    if (command.sprintId !== undefined) payload.sprintId = command.sprintId
 
     // El backend UpdateUserStoryResource requiere id
     payload.id = id
