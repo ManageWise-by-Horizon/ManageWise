@@ -49,6 +49,7 @@ import { ProjectTimeline } from "@/components/projects/project-timeline"
 import { createApiUrl } from "@/lib/api-config"
 import { enrichTasks } from "@/lib/data-helpers"
 import { useProject } from "@/lib/domain/projects/hooks/use-project"
+import { getProjectStatusLabel, getProjectStatusBadgeVariant } from "@/lib/domain/projects/utils/project-status.utils"
 import type { Project as ProjectType } from "@/lib/domain/projects/types/project.types"
 import { profileService } from "@/lib/domain/profile/services/profile.service"
 
@@ -442,8 +443,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-              <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                {project.status === "active" ? "Activo" : "Inactivo"}
+              <Badge variant={getProjectStatusBadgeVariant(project.status)}>
+                {getProjectStatusLabel(project.status)}
               </Badge>
             </div>
             <p className="mt-2 text-muted-foreground">{project.description}</p>
@@ -595,26 +596,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       {/* Views Tabs */}
       <Tabs value={activeView} onValueChange={setActiveView}>
         <TabsList>
+          {/* Vista General */}
           <TabsTrigger value="summary">
             <LayoutGrid className="mr-2 h-4 w-4" />
             Resumen
           </TabsTrigger>
+          {/* Planificación y Ejecución */}
           <TabsTrigger value="backlog">
             <List className="mr-2 h-4 w-4" />
             Backlog
-          </TabsTrigger>
-          <TabsTrigger value="sprints">
-            <CalendarDays className="mr-2 h-4 w-4" />
-            Sprints
-          </TabsTrigger>
-          <TabsTrigger value="chat">
-            <Bot className="mr-2 h-4 w-4" />
-            Chat IA
           </TabsTrigger>
           <TabsTrigger value="board">
             <LayoutGrid className="mr-2 h-4 w-4" />
             Board
           </TabsTrigger>
+          <TabsTrigger value="sprints">
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Sprints
+          </TabsTrigger>
+          {/* Objetivos y Planificación Temporal */}
           <TabsTrigger value="okrs">
             <Target className="mr-2 h-4 w-4" />
             OKRs
@@ -623,10 +623,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <GanttChart className="mr-2 h-4 w-4" />
             Timeline
           </TabsTrigger>
-          <TabsTrigger value="history">
-            <Clock className="mr-2 h-4 w-4" />
-            Historial
-          </TabsTrigger>
+          {/* Calendario y Colaboración */}
           <TabsTrigger value="calendar">
             <CalendarDays className="mr-2 h-4 w-4" />
             Calendario
@@ -634,6 +631,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <TabsTrigger value="meetings">
             <Video className="mr-2 h-4 w-4" />
             Reuniones
+          </TabsTrigger>
+          {/* Asistente e Historial */}
+          <TabsTrigger value="chat">
+            <Bot className="mr-2 h-4 w-4" />
+            Chat IA
+          </TabsTrigger>
+          <TabsTrigger value="history">
+            <Clock className="mr-2 h-4 w-4" />
+            Historial
           </TabsTrigger>
         </TabsList>
 

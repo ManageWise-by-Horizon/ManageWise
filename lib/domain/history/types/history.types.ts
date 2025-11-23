@@ -47,6 +47,11 @@ export type ChangeType =
   | 'member_added'
   | 'member_removed'
   | 'member_role_changed'
+  
+  // Reuniones
+  | 'meeting_created'
+  | 'meeting_updated'
+  | 'meeting_deleted'
 
 export type EntityType = 
   | 'project'
@@ -62,6 +67,7 @@ export type EntityType =
   | 'keyResult'
   | 'comment'
   | 'member'
+  | 'meeting'
 
 export interface MetadataResource {
   source: string

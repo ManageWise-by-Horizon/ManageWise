@@ -15,6 +15,7 @@ import { EditProjectDialog } from "@/components/projects/edit-project-dialog"
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog"
 import { useProjects } from "@/lib/domain/projects/hooks/use-projects"
 import { permissionService } from "@/lib/domain/projects/services/permission.service"
+import { getProjectStatusLabel, getProjectStatusBadgeVariant } from "@/lib/domain/projects/utils/project-status.utils"
 import type { Project, ProjectPermission, ProjectRole } from "@/lib/domain/projects/types/project.types"
 
 export default function ProjectsPage() {
@@ -217,8 +218,8 @@ export default function ProjectsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                    {project.status === "active" ? "Activo" : "Inactivo"}
+                  <Badge variant={getProjectStatusBadgeVariant(project.status)}>
+                    {getProjectStatusLabel(project.status)}
                   </Badge>
                   {projectPermissions[project.projectId] && (
                     <Badge className={getRoleBadgeColor(projectPermissions[project.projectId].role)}>

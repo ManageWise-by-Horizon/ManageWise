@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { FolderKanban, ListTodo, CheckCircle2, TrendingUp, Users, Zap, ArrowRight, Calendar } from "lucide-react"
+import { FolderKanban, ListTodo, CheckCircle2, TrendingUp, Users, Zap, ArrowRight, Calendar, BarChart3, Target, Bell, Plus, FileText, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useProjects } from "@/lib/domain/projects/hooks/use-projects"
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog"
 import { taskService } from "@/lib/domain/tasks/services/task.service"
+import { getProjectStatusLabel } from "@/lib/domain/projects/utils/project-status.utils"
 import type { Project } from "@/lib/domain/projects/types/project.types"
 import type { Task } from "@/lib/domain/tasks/types/task.types"
 
@@ -40,6 +41,8 @@ export default function DashboardPage() {
     tokensUsed: 0, // Inicializar siempre con 0
     tokensLimit: 100, // Inicializar siempre con 100
   })
+  const [pendingTasks, setPendingTasks] = useState(0)
+  const [inProgressTasks, setInProgressTasks] = useState(0)
 
   // useEffect para marcar que estamos en el cliente
   useEffect(() => {
@@ -96,12 +99,16 @@ export default function DashboardPage() {
       try {
         const userTasks = await taskService.getTasksByUserId(user.id)
         const completedTasks = userTasks.filter((task: Task) => task.status === 'DONE')
+        const pendingTasks = userTasks.filter((task: Task) => task.status === 'TODO')
+        const inProgressTasks = userTasks.filter((task: Task) => task.status === 'IN_PROGRESS')
         
         setStats(prev => ({
           ...prev,
           totalTasks: userTasks.length,
           completedTasks: completedTasks.length,
         }))
+        setPendingTasks(pendingTasks.length)
+        setInProgressTasks(inProgressTasks.length)
       } catch (error) {
         console.error('Error loading user tasks:', error)
         // En caso de error, mantener los valores por defecto (0)
@@ -110,6 +117,8 @@ export default function DashboardPage() {
           totalTasks: 0,
           completedTasks: 0,
         }))
+        setPendingTasks(0)
+        setInProgressTasks(0)
       }
     }
 
@@ -228,7 +237,7 @@ export default function DashboardPage() {
                         <p className="font-medium">{project.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
-                            {project.status === "active" ? "Activo" : project.status || "Inactivo"}
+                            {getProjectStatusLabel(project.status)}
                           </Badge>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Users className="h-3 w-3" />
@@ -255,33 +264,94 @@ export default function DashboardPage() {
             <CardTitle>Acciones Rápidas</CardTitle>
             <CardDescription>Accede a las funciones más usadas</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button 
-              className="w-full justify-start bg-transparent" 
-              variant="outline"
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <FolderKanban className="mr-2 h-4 w-4" />
-              Crear Nuevo Proyecto
-            </Button>
-            <Link href="/chat">
-              <Button className="w-full justify-start bg-transparent" variant="outline">
-                <Zap className="mr-2 h-4 w-4" />
-                Generar con IA
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Crear Proyecto */}
+              <Button 
+                className="h-auto flex-col items-start p-4 hover:bg-primary/5 hover:border-primary/20 transition-all" 
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <div className="flex items-center gap-2 w-full mb-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <FolderKanban className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold text-sm">Nuevo Proyecto</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-left w-full">Crear un proyecto desde cero</p>
               </Button>
-            </Link>
-            <Link href="/backlogs">
-              <Button className="w-full justify-start bg-transparent" variant="outline">
-                <ListTodo className="mr-2 h-4 w-4" />
-                Ver Backlogs
-              </Button>
-            </Link>
-            <Link href="/calendar">
-              <Button className="w-full justify-start bg-transparent" variant="outline">
-                <Calendar className="mr-2 h-4 w-4" />
-                Ver Calendario
-              </Button>
-            </Link>
+
+              {/* Generar con IA */}
+              <Link href="/chat" className="block">
+                <Button className="h-auto flex-col items-start p-4 w-full hover:bg-primary/5 hover:border-primary/20 transition-all" variant="outline">
+                  <div className="flex items-center gap-2 w-full mb-2">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+                      <Sparkles className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-sm">Generar con IA</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-left w-full">Asistente inteligente</p>
+                </Button>
+              </Link>
+
+              {/* Analytics */}
+              <Link href="/analytics" className="block">
+                <Button className="h-auto flex-col items-start p-4 w-full hover:bg-primary/5 hover:border-primary/20 transition-all" variant="outline">
+                  <div className="flex items-center gap-2 w-full mb-2">
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <BarChart3 className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-sm">Analytics</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-left w-full">Métricas y estadísticas</p>
+                </Button>
+              </Link>
+
+              {/* Notificaciones */}
+              <Link href="/notifications" className="block">
+                <Button className="h-auto flex-col items-start p-4 w-full hover:bg-primary/5 hover:border-primary/20 transition-all relative" variant="outline">
+                  <div className="flex items-center gap-2 w-full mb-2">
+                    <div className="p-2 rounded-lg bg-yellow-500/10">
+                      <Bell className="h-5 w-5 text-yellow-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-sm">Notificaciones</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-left w-full">Ver alertas y avisos</p>
+                </Button>
+              </Link>
+            </div>
+
+            {/* Acciones secundarias */}
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex flex-wrap gap-2">
+                <Link href="/projects">
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    <FolderKanban className="mr-1.5 h-3.5 w-3.5" />
+                    Proyectos
+                  </Button>
+                </Link>
+                <Link href="/analytics">
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+                    Analytics
+                  </Button>
+                </Link>
+                <Link href="/notifications">
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    <Bell className="mr-1.5 h-3.5 w-3.5" />
+                    Notificaciones
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

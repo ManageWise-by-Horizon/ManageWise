@@ -44,9 +44,12 @@ export class HistoryService {
       'Sprint': 'sprint',
       'Comment': 'comment',
       'Member': 'member',
+      'Meeting': 'meeting',
       // También manejar valores ya normalizados
       'user_story': 'userStory',
-      'key_result': 'keyResult'
+      'key_result': 'keyResult',
+      'meeting': 'meeting',
+      'sprint': 'sprint'
     }
     
     // Si ya está en el mapa, retornarlo
@@ -58,6 +61,8 @@ export class HistoryService {
     const lower = backendEntityType.toLowerCase().replace(/\s+/g, '_')
     if (lower === 'user_story') return 'userStory'
     if (lower === 'key_result') return 'keyResult'
+    if (lower === 'sprint') return 'sprint'
+    if (lower === 'meeting') return 'meeting'
     
     // Por defecto, convertir a camelCase
     return backendEntityType.toLowerCase().replace(/\s+/g, '').replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())

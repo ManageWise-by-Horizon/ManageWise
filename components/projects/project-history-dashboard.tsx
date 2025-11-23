@@ -27,7 +27,8 @@ import {
   Target,
   MessageSquare,
   UserPlus,
-  Calendar
+  Calendar,
+  Video
 } from 'lucide-react';
 
 interface ProjectHistoryDashboardProps {
@@ -67,7 +68,10 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   'comment_deleted': 'Comentario eliminado',
   'member_added': 'Miembro agregado',
   'member_removed': 'Miembro removido',
-  'member_role_changed': 'Rol de miembro cambiado'
+  'member_role_changed': 'Rol de miembro cambiado',
+  'meeting_created': 'Reunión creada',
+  'meeting_updated': 'Reunión actualizada',
+  'meeting_deleted': 'Reunión eliminada'
 };
 
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
@@ -78,7 +82,8 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   'objective': 'Objetivo',
   'keyResult': 'Resultado Clave',
   'comment': 'Comentario',
-  'member': 'Miembro'
+  'member': 'Miembro',
+  'meeting': 'Reunión'
 };
 
 const CHANGE_TYPE_ICONS: Record<string, any> = {
@@ -89,7 +94,8 @@ const CHANGE_TYPE_ICONS: Record<string, any> = {
   'objective': Target,
   'keyResult': Target,
   'comment': MessageSquare,
-  'member': UserPlus
+  'member': UserPlus,
+  'meeting': Video
 };
 
 const CHANGE_TYPE_COLORS: Record<string, string> = {
@@ -220,6 +226,12 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                           entityType === 'Project' ? 'project' :
                           entityType === 'Task' ? 'task' :
                           entityType === 'Okr' ? 'okr' :
+                          entityType === 'Sprint' ? 'sprint' :
+                          entityType.toLowerCase() === 'sprint' ? 'sprint' :
+                          entityType === 'Comment' ? 'comment' :
+                          entityType === 'Member' ? 'member' :
+                          entityType === 'Meeting' ? 'meeting' :
+                          entityType.toLowerCase() === 'meeting' ? 'meeting' :
                           entityType;
     const IconComponent = CHANGE_TYPE_ICONS[normalizedType as EntityType] || FileText;
     return <IconComponent className="h-4 w-4" />;
@@ -238,12 +250,32 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
 
   const getUserName = (userId: string) => {
     const user = users.find(u => u.id === userId);
-    return user ? user.name : 'Usuario desconocido';
+    if (user) {
+      return user.name || user.email || `Usuario ${userId.substring(0, 8)}`;
+    }
+    // Si no se encuentra el usuario, generar un nombre desde el userId
+    if (userId.includes('@')) {
+      return userId.split('@')[0];
+    }
+    return `Usuario ${userId.substring(0, 8)}`;
   };
 
   const getUserAvatar = (userId: string) => {
     const user = users.find(u => u.id === userId);
-    return user?.avatar;
+    // Solo retornar el avatar si existe y no es un placeholder
+    if (user?.avatar && user.avatar !== '/placeholder.svg' && user.avatar.trim() !== '') {
+      return user.avatar;
+    }
+    return undefined; // Retornar undefined para que se muestre el fallback
+  };
+
+  const getUserInitial = (userId: string) => {
+    const name = getUserName(userId);
+    // Obtener la primera letra del nombre, o si es "Usuario X", obtener la X
+    if (name.startsWith('Usuario ')) {
+      return name.substring(8, 9).toUpperCase() || 'U';
+    }
+    return name.charAt(0).toUpperCase() || '?';
   };
 
   // Función para normalizar entityType
@@ -393,12 +425,20 @@ export function ProjectHistoryDashboard({ projectId }: ProjectHistoryDashboardPr
                         <div className="p-2 rounded-full bg-muted">
                           {getEntityIcon(entry.entityType)}
                         </div>
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={getUserAvatar(entry.userId)} />
-                          <AvatarFallback>
-                            {getUserName(entry.userId).charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        {normalizeEntityType(entry.entityType) === 'sprint' ? (
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-blue-500/10 text-blue-700 font-medium border border-blue-200">
+                              S
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={getUserAvatar(entry.userId)} alt={getUserName(entry.userId)} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                              {getUserInitial(entry.userId)}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
                       </div>
                       
                       <div className="flex-1 space-y-2">
