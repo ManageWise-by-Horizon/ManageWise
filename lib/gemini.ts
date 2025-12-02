@@ -1,22 +1,25 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import Groq from "groq-sdk"
 
 /**
- * Initialize Gemini AI client
+ * Initialize Groq AI client
  */
-function getGeminiClient() {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+function getGroqClient() {
+  const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
 
   if (!apiKey) {
-    console.error("❌ Gemini API key is missing!")
-    throw new Error("Gemini API key is not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.")
+    console.error("❌ Groq API key is missing!")
+    throw new Error("Groq API key is not configured. Please add NEXT_PUBLIC_GROQ_API_KEY to your .env.local file.")
   }
 
-  console.log("✅ Gemini API key found, initializing client...")
-  return new GoogleGenerativeAI(apiKey)
+  console.log("✅ Groq API key found, initializing client...")
+  return new Groq({ apiKey, dangerouslyAllowBrowser: true })
 }
 
+// Groq model to use
+const GROQ_MODEL = "llama-3.3-70b-versatile"
+
 /**
- * Convert file to base64 for Gemini API
+ * Convert file to base64 for API
  */
 export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -33,45 +36,13 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Extract text from file (image or document) using Gemini Vision/Document AI
+ * Extract text from file (image or document)
+ * Note: Groq doesn't support vision - returns file info instead
  */
 export async function extractTextFromFile(file: File): Promise<string> {
-  try {
-    const base64File = await fileToBase64(file)
-    const mimeType = file.type
-
-    const genAI = getGeminiClient()
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
-
-    const prompt = `Extrae TODO el texto visible en este archivo de manera estructurada.
-    
-Instrucciones:
-- Transcribe fielmente TODO el texto que veas
-- Mantén el formato y estructura (títulos, listas, párrafos)
-- Si hay tablas, conviértelas a formato markdown
-- Si hay diagramas o wireframes, describe los componentes principales
-- Si hay código, envuélvelo en bloques de código
-- Si hay requisitos o especificaciones, lista cada uno claramente
-- Si no hay texto legible, responde: "No se detectó texto en el archivo"
-
-Por favor, extrae y estructura el contenido ahora:`
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64File,
-          mimeType: mimeType,
-        },
-      },
-      prompt,
-    ])
-
-    const response = await result.response
-    return response.text()
-  } catch (error) {
-    console.error("❌ Error extracting text from file:", error)
-    throw new Error("No se pudo extraer el texto del archivo")
-  }
+  // Groq doesn't support vision/OCR - return placeholder
+  console.warn("⚠️ Groq no soporta extracción de texto de imágenes. Usar texto manual.")
+  return `[Archivo adjunto: ${file.name} (${file.type}) - ${(file.size / 1024).toFixed(1)} KB]\n\nNota: Groq no soporta análisis de imágenes. Por favor describe el contenido del archivo manualmente.`
 }
 
 /**
@@ -85,7 +56,7 @@ export interface StructuredPrompt {
 }
 
 /**
- * Build a structured prompt for Gemini
+ * Build a structured prompt for Groq
  */
 function buildStructuredPrompt(prompt: StructuredPrompt): string {
   // Get current date context
@@ -158,7 +129,7 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin texto adicional antes 
 }
 
 /**
- * Generate project structure using Gemini AI with optional file context
+ * Generate project structure using Groq AI with optional file context
  */
 export async function generateProjectWithGemini(
   prompt: StructuredPrompt,
@@ -166,76 +137,68 @@ export async function generateProjectWithGemini(
   onProgress?: (message: string) => void
 ): Promise<any> {
   try {
-    const genAI = getGeminiClient()
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    const groq = getGroqClient()
 
     // Handle both single file and multiple files
     const fileArray = files ? (Array.isArray(files) ? files : [files]) : []
 
-    // Extract text from all files if provided
+    // Note about files - Groq doesn't support vision
     let filesContext = ""
     if (fileArray.length > 0) {
-      if (onProgress) onProgress(`📄 Analizando ${fileArray.length} archivo(s) adjunto(s) con OCR...`)
-      
-      const extractedTexts = await Promise.all(
-        fileArray.map(async (file, index) => {
-          try {
-            const text = await extractTextFromFile(file)
-            if (onProgress) onProgress(`✅ Archivo ${index + 1}/${fileArray.length} analizado: ${file.name}`)
-            return `\n### Archivo ${index + 1}: ${file.name}\n${text}\n`
-          } catch (error) {
-            console.error(`Error extrayendo texto de ${file.name}:`, error)
-            if (onProgress) onProgress(`⚠️ No se pudo extraer texto de ${file.name}`)
-            return `\n### Archivo ${index + 1}: ${file.name}\n[Error: No se pudo extraer el texto de este archivo]\n`
-          }
-        })
-      )
-      
-      filesContext = extractedTexts.join('\n---\n')
+      if (onProgress) onProgress(`📄 ${fileArray.length} archivo(s) adjuntado(s) (nota: Groq no soporta análisis de imágenes)`)
+      filesContext = fileArray.map((file, index) => 
+        `\n### Archivo ${index + 1}: ${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)} KB)\n[Por favor describe el contenido relevante de este archivo en el contexto]\n`
+      ).join('\n---\n')
     }
 
     // Enhance context with files information
     const enhancedPrompt = {
       ...prompt,
       context: filesContext 
-        ? `${prompt.context}\n\n**Información adicional extraída de archivos adjuntos (${fileArray.length}):**\n${filesContext}`
+        ? `${prompt.context}\n\n**Archivos adjuntos (${fileArray.length}):**\n${filesContext}`
         : prompt.context
     }
 
     const structuredPrompt = buildStructuredPrompt(enhancedPrompt)
 
     if (onProgress) {
-      onProgress("🤖 Generando estructura del proyecto...")
+      onProgress("🤖 Generando estructura del proyecto con Groq AI...")
       
       // Stream response for progress feedback
-      const result = await model.generateContentStream(structuredPrompt)
-      let fullText = ""
+      const stream = await groq.chat.completions.create({
+        messages: [{ role: "user", content: structuredPrompt }],
+        model: GROQ_MODEL,
+        stream: true,
+      })
 
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text()
+      let fullText = ""
+      for await (const chunk of stream) {
+        const chunkText = chunk.choices[0]?.delta?.content || ""
         fullText += chunkText
       }
 
       onProgress("✅ Proyecto generado exitosamente")
-      return parseGeminiResponse(fullText)
+      return parseGroqResponse(fullText)
     } else {
       // Non-streaming response
-      const result = await model.generateContent(structuredPrompt)
-      const response = await result.response
-      const text = response.text()
+      const result = await groq.chat.completions.create({
+        messages: [{ role: "user", content: structuredPrompt }],
+        model: GROQ_MODEL,
+      })
 
-      return parseGeminiResponse(text)
+      const text = result.choices[0]?.message?.content || ""
+      return parseGroqResponse(text)
     }
   } catch (error) {
-    console.error("❌ Error generating project with Gemini:", error)
+    console.error("❌ Error generating project with Groq:", error)
     throw error
   }
 }
 
 /**
- * Parse Gemini response and extract JSON
+ * Parse Groq response and extract JSON
  */
-function parseGeminiResponse(text: string): any {
+function parseGroqResponse(text: string): any {
   try {
     // Remove markdown code blocks if present
     let cleanText = text.trim()
@@ -247,21 +210,20 @@ function parseGeminiResponse(text: string): any {
 
     return JSON.parse(cleanText)
   } catch (error) {
-    console.error("Error parsing Gemini response:", error)
+    console.error("Error parsing Groq response:", error)
     console.error("Raw response:", text)
     throw new Error("Failed to parse AI response. Please try again.")
   }
 }
 
 /**
- * Generate backlog items with Gemini
+ * Generate backlog items with Groq
  */
 export async function generateBacklogWithGemini(
   projectDescription: string,
   onProgress?: (chunk: string) => void
 ): Promise<any[]> {
-  const genAI = getGeminiClient()
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+  const groq = getGroqClient()
 
   const prompt = `
 Como Product Owner experto, genera un product backlog detallado para el siguiente proyecto:
@@ -284,27 +246,33 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON array válido.
 `.trim()
 
   if (onProgress) {
-    const result = await model.generateContentStream(prompt)
-    let fullText = ""
+    const stream = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: GROQ_MODEL,
+      stream: true,
+    })
 
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text()
+    let fullText = ""
+    for await (const chunk of stream) {
+      const chunkText = chunk.choices[0]?.delta?.content || ""
       fullText += chunkText
       onProgress(chunkText)
     }
 
-    return parseGeminiResponse(fullText)
+    return parseGroqResponse(fullText)
   } else {
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    const result = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: GROQ_MODEL,
+    })
 
-    return parseGeminiResponse(text)
+    const text = result.choices[0]?.message?.content || ""
+    return parseGroqResponse(text)
   }
 }
 
 /**
- * Generate sprint plan with Gemini
+ * Generate sprint plan with Groq
  */
 export async function generateSprintWithGemini(
   backlogItems: any[],
@@ -312,8 +280,7 @@ export async function generateSprintWithGemini(
   teamCapacity: number,
   onProgress?: (chunk: string) => void
 ): Promise<any> {
-  const genAI = getGeminiClient()
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+  const groq = getGroqClient()
 
   const prompt = `
 Como Scrum Master experto, planifica un sprint con la siguiente información:
@@ -356,22 +323,28 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido.
 `.trim()
 
   if (onProgress) {
-    const result = await model.generateContentStream(prompt)
-    let fullText = ""
+    const stream = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: GROQ_MODEL,
+      stream: true,
+    })
 
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text()
+    let fullText = ""
+    for await (const chunk of stream) {
+      const chunkText = chunk.choices[0]?.delta?.content || ""
       fullText += chunkText
       onProgress(chunkText)
     }
 
-    return parseGeminiResponse(fullText)
+    return parseGroqResponse(fullText)
   } else {
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    const result = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: GROQ_MODEL,
+    })
 
-    return parseGeminiResponse(text)
+    const text = result.choices[0]?.message?.content || ""
+    return parseGroqResponse(text)
   }
 }
 
@@ -410,33 +383,18 @@ export async function chatWithGemini(
   onProgress?: (chunk: string) => void
 ): Promise<string> {
   try {
-    const genAI = getGeminiClient()
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    const groq = getGroqClient()
 
     // Handle both single file and multiple files
     const fileArray = files ? (Array.isArray(files) ? files : [files]) : []
 
-    // Extract text from all files if provided
+    // Note about files - Groq doesn't support vision
     let filesContext = ""
     if (fileArray.length > 0) {
-      console.log(`📄 Extrayendo texto de ${fileArray.length} archivo(s)...`)
-      
-      const extractedTexts = await Promise.all(
-        fileArray.map(async (file, index) => {
-          try {
-            console.log(`  ${index + 1}. ${file.name} (${file.type})`)
-            const text = await extractTextFromFile(file)
-            console.log(`  ✅ Texto extraído de ${file.name}: ${text.substring(0, 50)}...`)
-            return `\n### Archivo ${index + 1}: ${file.name}\n${text}\n`
-          } catch (error) {
-            console.error(`  ❌ Error extrayendo texto de ${file.name}:`, error)
-            return `\n### Archivo ${index + 1}: ${file.name}\n[Error: No se pudo extraer el texto de este archivo]\n`
-          }
-        })
-      )
-      
-      filesContext = extractedTexts.join('\n---\n')
-      console.log(`✅ Extracción completada de ${fileArray.length} archivo(s)`)
+      console.log(`📄 ${fileArray.length} archivo(s) adjuntado(s) (Groq no soporta análisis de imágenes)`)
+      filesContext = fileArray.map((file, index) => 
+        `\n### Archivo ${index + 1}: ${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)} KB)\n[Por favor describe el contenido relevante de este archivo]\n`
+      ).join('\n---\n')
     }
 
     // Build conversation history
@@ -524,7 +482,7 @@ ${conversationHistory || "No hay mensajes previos"}
 MENSAJE ACTUAL DEL USUARIO:
 ${userMessage}
 
-${filesContext ? `\n## 📷 CONTENIDO DE ARCHIVOS ADJUNTOS\n\n${filesContext}\n\nPuedes referenciar esta información en tu respuesta y usarla para generar User Stories, analizar requisitos, o responder preguntas.\n` : ""}
+${filesContext ? `\n## 📷 ARCHIVOS ADJUNTOS\n\n${filesContext}\n\nNota: Groq no soporta análisis de imágenes. El usuario debe describir el contenido relevante.\n` : ""}
 
 ═══════════════════════════════════════════════════════════════
 
@@ -600,23 +558,30 @@ Responde ahora de manera conversacional, profesional y útil:
 `.trim()
 
   if (onProgress) {
-    const result = await model.generateContentStream(prompt)
-    let fullText = ""
+    const stream = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: GROQ_MODEL,
+      stream: true,
+    })
 
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text()
+    let fullText = ""
+    for await (const chunk of stream) {
+      const chunkText = chunk.choices[0]?.delta?.content || ""
       fullText += chunkText
       onProgress(chunkText)
     }
 
     return fullText
   } else {
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    return response.text()
+    const result = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: GROQ_MODEL,
+    })
+
+    return result.choices[0]?.message?.content || ""
   }
   } catch (error) {
-    console.error("❌ Error chatting with Gemini:", error)
+    console.error("❌ Error chatting with Groq:", error)
     throw error
   }
 }
