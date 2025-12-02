@@ -110,7 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       // Call Auth-Service to sign in
-      const authResponse = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:8080'}/api/v1/authentication/sign-in`, {
+      const authServiceUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL
+      if (!authServiceUrl) {
+        throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
+      }
+      
+      const authResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-in`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userEmail: email, userPassword: password }),
@@ -127,7 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { userId, userToken, userEmail } = authData
 
       // Get user profile from Profile-Service
-      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/user/${userId}`, {
+      const profileServiceUrl = process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL
+      if (!profileServiceUrl) {
+        throw new Error("NEXT_PUBLIC_PROFILE_SERVICE_URL no está configurada")
+      }
+      
+      const profileResponse = await fetch(`${profileServiceUrl}/api/v1/user/${userId}`, {
         headers: { 
           "Authorization": `Bearer ${userToken}`,
           "Content-Type": "application/json"
@@ -181,7 +191,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => {
     try {
       // Call Auth-Service to sign up
-      const authResponse = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:8080'}/api/v1/authentication/sign-up`, {
+      const authServiceUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL
+      if (!authServiceUrl) {
+        throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
+      }
+      
+      const authResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-up`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -206,7 +221,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       // Get user profile from Profile-Service
-      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL || 'http://localhost:8081'}/api/v1/user/${userId}`, {
+      const profileServiceUrl = process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL
+      if (!profileServiceUrl) {
+        throw new Error("NEXT_PUBLIC_PROFILE_SERVICE_URL no está configurada")
+      }
+      
+      const profileResponse = await fetch(`${profileServiceUrl}/api/v1/user/${userId}`, {
         headers: { "Content-Type": "application/json" },
       })
 
@@ -226,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Auto login - call sign-in to get JWT
-      const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:8080'}/api/v1/authentication/sign-in`, {
+      const loginResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-in`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userEmail: email, userPassword: password }),

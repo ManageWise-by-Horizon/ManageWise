@@ -1,6 +1,6 @@
 // Configuración de la API
 // Por defecto usa el Gateway en puerto 8000
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://172.190.244.181:8000'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
 // Constante para uso en imports que no soportan optional chaining
 export const API_BASE = API_BASE_URL
