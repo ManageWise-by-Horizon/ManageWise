@@ -37,7 +37,7 @@ interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
-  register: (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => Promise<boolean>
+  register: (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => Promise<void>
   isLoading: boolean
   isMounted: boolean
   checkLimits: (type: "tokens" | "userStories", amount?: number) => boolean
@@ -189,28 +189,114 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => {
+    try {
+      // Call Auth-Service to sign up
       const authServiceUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL
-      if (!authServiceUrl) throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
-
-      const authResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-up`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-              userFirstName: firstName,
-              userLastName: lastName,
-              userEmail: email,
-              userPhone: phone,
-              userCountry: country || "Unknown",
-              userPassword: password,
-          }),
-      })
-
-      if (authResponse.status !== 201) {
-          const error = await authResponse.text()
-          throw new Error(error || "Error al crear la cuenta")
+      if (!authServiceUrl) {
+        throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
       }
 
-      return true
+      const authResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-up`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userFirstName: firstName,
+          userLastName: lastName,
+          userEmail: email,
+          userPhone: phone,
+          userCountry: country || "Unknown",
+          userPassword: password,
+        }),
+      })
+
+      if (!authResponse.ok) {
+        const error = await authResponse.text()
+        throw new Error(error || "Error al crear la cuenta")
+      }
+
+      const authData = await authResponse.json()
+      const userId = authData.userId
+
+      // Wait a bit for Profile-Service to create profile via ActiveMQ event
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Get user profile from Profile-Service
+      const profileServiceUrl = process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL
+      if (!profileServiceUrl) {
+        throw new Error("NEXT_PUBLIC_PROFILE_SERVICE_URL no está configurada")
+      }
+
+      const profileResponse = await fetch(`${profileServiceUrl}/api/v1/user/${userId}`, {
+        headers: { "Content-Type": "application/json" },
+      })
+
+      let profileData
+      if (profileResponse.ok) {
+        profileData = await profileResponse.json()
+      } else {
+        // If profile doesn't exist yet, use data from auth response
+        profileData = {
+          userId: userId,
+          userEmail: email,
+          userFirstName: firstName,
+          userLastName: lastName,
+          userPhone: phone,
+          userProfileImgUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+        }
+      }
+
+      // Auto login - call sign-in to get JWT
+      const loginResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-in`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail: email, userPassword: password }),
+      })
+
+      if (!loginResponse.ok) {
+        throw new Error("Error al iniciar sesión")
+      }
+
+      const loginData = await loginResponse.json()
+      const { userToken } = loginData
+
+      // Build complete user object
+      const userObject: User = {
+        id: profileData.userId,
+        email: profileData.userEmail,
+        firstName: profileData.userFirstName,
+        lastName: profileData.userLastName,
+        phone: profileData.userPhone,
+        role: "developer", // Rol por defecto temporal, se asigna por proyecto
+        avatar: profileData.userProfileImgUrl,
+        subscription: {
+          plan: "free",
+          tokensUsed: 0,
+          tokensLimit: 100,
+          userStoriesUsed: 0,
+          userStoriesLimit: 10,
+        },
+        resume: {
+          skills: [],
+          experience: "0 years",
+          certifications: [],
+        },
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("auth_token", userToken)
+        localStorage.setItem("user", JSON.stringify(userObject))
+      }
+
+      setUser(userObject)
+
+      // Redirect to dashboard
+      if (typeof window !== 'undefined') {
+        window.location.href = "/dashboard"
+      }
+    } catch (error) {
+      console.error("[v0] Registration error:", error)
+      throw error
+    }
   }
 
   const logout = () => {

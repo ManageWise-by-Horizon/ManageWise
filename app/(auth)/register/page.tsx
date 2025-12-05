@@ -70,13 +70,13 @@ export default function RegisterPage() {
       }
 
       await register(email, password, firstName, lastName, phone, detectedCountry)
+      // No need to handle navigation here - register() now handles it with window.location
+      // Just show success message briefly
       toast({
         title: "¡Cuenta creada!",
         description: "Redirigiendo...",
         className: "bg-success text-success-foreground",
       })
-      router.push("/login")
-
     } catch (error) {
       toast({
         title: "Error al registrar",
