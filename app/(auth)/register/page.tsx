@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { parsePhoneNumber, getCountryCallingCode } from 'react-phone-number-input'
-import type { E164Number } from 'react-phone-number-input'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -71,13 +70,13 @@ export default function RegisterPage() {
       }
 
       await register(email, password, firstName, lastName, phone, detectedCountry)
-      // No need to handle navigation here - register() now handles it with window.location
-      // Just show success message briefly
       toast({
         title: "¡Cuenta creada!",
         description: "Redirigiendo...",
         className: "bg-success text-success-foreground",
       })
+      router.push("/login")
+
     } catch (error) {
       toast({
         title: "Error al registrar",
