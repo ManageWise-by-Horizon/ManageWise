@@ -35,7 +35,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
   register: (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => Promise<boolean>
   isLoading: boolean
@@ -107,85 +107,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [isMounted])
 
-    const login = async (email: string, password: string) => {
-        const authServiceUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL
-        if (!authServiceUrl) throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
+  const login = async (email: string, password: string) => {
+    try {
+      // Call Auth-Service to sign in
+      const authServiceUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL
+      if (!authServiceUrl) {
+        throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
+      }
 
-        // Call Auth-Service
-        const authResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-in`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userEmail: email, userPassword: password }),
-        })
+      const authResponse = await fetch(`${authServiceUrl}/api/v1/authentication/sign-in`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail: email, userPassword: password }),
+      })
 
-        if (!authResponse.ok) {
-            const error = await authResponse.text()
-            throw new Error(error || "Credenciales inválidas")
-        }
+      if (!authResponse.ok) {
+        const error = await authResponse.text()
+        console.error("[v0] Auth error response:", error)
+        throw new Error(error || "Credenciales inválidas")
+      }
 
-        const authData = await authResponse.json()
-        const { userId, userToken, userEmail: emailFromBack } = authData
+      const authData = await authResponse.json()
+      console.log("[v0] Auth response data:", authData)
+      const { userId, userToken, userEmail } = authData
 
-        // Get user profile
-        const profileServiceUrl = process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL
-        if (!profileServiceUrl) throw new Error("NEXT_PUBLIC_PROFILE_SERVICE_URL no está configurada")
+      // Get user profile from Profile-Service
+      const profileServiceUrl = process.env.NEXT_PUBLIC_PROFILE_SERVICE_URL
+      if (!profileServiceUrl) {
+        throw new Error("NEXT_PUBLIC_PROFILE_SERVICE_URL no está configurada")
+      }
 
-        const profileResponse = await fetch(`${profileServiceUrl}/api/v1/user/${userId}`, {
-            headers: {
-                "Authorization": `Bearer ${userToken}`,
-                "Content-Type": "application/json",
-            },
-        })
+      const profileResponse = await fetch(`${profileServiceUrl}/api/v1/user/${userId}`, {
+        headers: {
+          "Authorization": `Bearer ${userToken}`,
+          "Content-Type": "application/json"
+        },
+      })
 
-        let profileData
-        if (profileResponse.ok) {
-            profileData = await profileResponse.json()
-        } else {
-            // Fallback si no hay perfil, usar datos del auth
-            profileData = {
-                userId,
-                userEmail: emailFromBack,
-                userFirstName: "",
-                userLastName: "",
-                userPhone: "",
-                userProfileImgUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${emailFromBack}`,
-            }
-        }
+      if (!profileResponse.ok) {
+        console.error("[v0] Profile fetch error:", await profileResponse.text())
+        throw new Error("Error al obtener perfil de usuario")
+      }
 
-        // Construir user object
-        const userObject: User = {
-            id: profileData.userId,
-            email: profileData.userEmail,
-            firstName: profileData.userFirstName || "",
-            lastName: profileData.userLastName || "",
-            phone: profileData.userPhone || "",
-            role: "developer", // por defecto
-            avatar: profileData.userProfileImgUrl,
-            subscription: {
-                plan: "free",
-                tokensUsed: 0,
-                tokensLimit: 100,
-                userStoriesUsed: 0,
-                userStoriesLimit: 10,
-            },
-            resume: {
-                skills: [],
-                experience: "0 years",
-                certifications: [],
-            },
-        }
+      const profileData = await profileResponse.json()
+      console.log("[v0] Profile data:", profileData)
 
-        if (typeof window !== 'undefined') {
-            localStorage.setItem("auth_token", userToken)
-            localStorage.setItem("user", JSON.stringify(userObject))
-        }
+      // Build complete user object
+      const userObject: User = {
+        id: profileData.userId,
+        email: profileData.userEmail,
+        firstName: profileData.userFirstName,
+        lastName: profileData.userLastName,
+        phone: profileData.userPhone,
+        role: "developer", // TODO: Get from Auth or Profile
+        avatar: profileData.userProfileImgUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profileData.userEmail}`,
+        subscription: {
+          plan: "free",
+          tokensUsed: 0,
+          tokensLimit: 100,
+          userStoriesUsed: 0,
+          userStoriesLimit: 10,
+        },
+        resume: {
+          skills: [],
+          experience: "0 years",
+          certifications: [],
+        },
+      }
 
-        setUser(userObject)
-        return true
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("auth_token", userToken)
+        localStorage.setItem("user", JSON.stringify(userObject))
+      }
+
+      setUser(userObject)
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("[v0] Login error:", error)
+      throw error
     }
+  }
 
-
-    const register = async (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => {
+  const register = async (email: string, password: string, firstName: string, lastName: string, phone: string, country?: string) => {
       const authServiceUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL
       if (!authServiceUrl) throw new Error("NEXT_PUBLIC_AUTH_SERVICE_URL no está configurada")
 

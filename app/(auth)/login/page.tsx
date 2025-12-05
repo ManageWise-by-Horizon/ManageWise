@@ -45,30 +45,27 @@ export default function LoginPage() {
     return null
   }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setIsLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
 
-        try {
-            const success = await login(email, password)
-            if (success) {
-                toast({
-                    title: "¡Bienvenido!",
-                    description: "Has iniciado sesión correctamente",
-                    className: "bg-success text-success-foreground",
-                })
-                router.push("/dashboard")
-            }
-        } catch (error) {
-            toast({
-                title: "Error de autenticación",
-                description: error instanceof Error ? error.message : "Credenciales inválidas",
-                variant: "destructive",
-            })
-        } finally {
-            setIsLoading(false)
-        }
+    try {
+      await login(email, password)
+      toast({
+        title: "¡Bienvenido!",
+        description: "Has iniciado sesión correctamente",
+        className: "bg-success text-success-foreground",
+      })
+    } catch (error) {
+      toast({
+        title: "Error de autenticación",
+        description: error instanceof Error ? error.message : "Credenciales inválidas",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
